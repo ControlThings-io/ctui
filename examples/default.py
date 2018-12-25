@@ -9,14 +9,23 @@
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details at <http://www.gnu.org/licenses/>.
 
-from ctui.commands import Commands
-from ctui.application import start_app
+from ctui.commands import Ctui
 # try:
 #     import better_exceptions
 # except ImportError as err:
 #     pass
 
+# Class MyApp(Application)
+#     name = 'Example'
+#     version = '0'
+#     description = 'Please set description with get_app().descrition = ...'
+#     prompt = '> '
+#     statusbar = {}
+#     statusbar_sep = '  -  '
 
-
-if __name__ == '__main__':
-    start_app([])
+myapp = Ctui()
+myapp.name = 'My App'
+myapp.version = '0'
+myapp.description = 'This is my app'
+myapp.prompt = 'MyApp> '
+myapp.run()

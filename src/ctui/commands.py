@@ -18,17 +18,26 @@ import re
 import time
 from prompt_toolkit.application.current import get_app
 from prompt_toolkit.document import Document
+from .application import start_app
 from tabulate import tabulate
 from os.path import expanduser
 
 
-class Commands(object):
+class Ctui(object):
     """Commands that users may use at the application prompt."""
     # Each function that users can call must:
     #     - start with a do_
     #     - accept self, input_text, output_text, and event as params
     #     - return a string to print, None, or False
     # Returning a False does nothing, forcing users to correct mistakes
+    name = 'PleaseSetAppName'
+    version = '0'
+    description = 'Please set description with get_app().descrition = ...'
+    prompt = '> '
+
+
+    def run(self):
+        start_app(self)
 
 
     def execute(self, input_text, output_text, event):

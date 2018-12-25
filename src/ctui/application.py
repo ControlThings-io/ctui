@@ -15,7 +15,7 @@ Control Things User Interface, aka ctui.py
 
 import sys
 import time
-from .commands import Commands
+# from .commands import Ctui
 from .base import TextArea
 from prompt_toolkit.application import Application
 from prompt_toolkit.application.current import get_app
@@ -33,34 +33,39 @@ from prompt_toolkit.search import start_search, SearchDirection
 from prompt_toolkit.styles import Style
 from prompt_toolkit.widgets import MenuContainer, MenuItem, ProgressBar, SearchToolbar #, TextArea
 from prompt_toolkit.completion import WordCompleter
+from tinydb import TinyDB, Query
+from tinydb.storages import MemoryStorage
 
 
 class MyApplication(Application):
-    settings = {}
+    """Application class"""
+    prompt = '> '
     statusbar = {}
     statusbar_sep = '  -  '
-    prompt = '> '
+    db = TinyDB(storage=MemoryStorage)
+    settings = db.table('settings')
+    trans = db.table('transactions')
+    history = db.table('history')
 
 
 def get_statusbar_text():
     sep = get_app().statusbar_sep
     statusbar = get_app().statusbar
-    output_text = sep.join(['{}:{}'.format(k,v) for k,v in statusbar.items()])
-    return output_text
+    text = sep.join(['{}:{}'.format(k,v) for k,v in statusbar.items()])
+    return text
 
 
 # def start_app(session):
-def start_app(args):
+def start_app(ctui):
     """Text-based GUI application"""
-    cmd = Commands()
-    completer = WordCompleter(cmd.commands(), meta_dict=cmd.meta_dict(), ignore_case=True)
+    completer = WordCompleter(ctui.commands(), meta_dict=ctui.meta_dict(), ignore_case=True)
     history = InMemoryHistory()
     search_field = SearchToolbar()
 
     # Individual windows
     input_field = TextArea(
         height=1,
-        prompt='> ',
+        prompt=ctui.prompt,
         style='class:input-field',
         completer=completer,
         history=history)
@@ -131,7 +136,7 @@ def start_app(args):
     @kb.add('c-q')
     def _(event):
         " Pressing Ctrl-Q will exit the user interface. "
-        cmd.do_exit(input_field.text, output_field.text, event)
+        ctui.do_exit(input_field.text, output_field.text, event)
 
     @kb.add('c-d')
     def _(event):
@@ -155,10 +160,10 @@ def start_app(args):
     def _(event):
         # Process commands on prompt after hitting enter key
         # tx_bytes = parse_command(input_field.text, event=event)
-        input_field.buffer.completer = WordCompleter(cmd.commands(), meta_dict=cmd.meta_dict(), ignore_case=True)
+        input_field.buffer.completer = WordCompleter(ctui.commands(), meta_dict=ctui.meta_dict(), ignore_case=True)
         if len(input_field.text) == 0:
             return
-        output_text = cmd.execute(input_field.text, output_field.text, event)
+        output_text = ctui.execute(input_field.text, output_field.text, event)
         input_field.buffer.reset(append_to_history=True)
 
         # For commands that do not have output_text
@@ -256,7 +261,7 @@ def start_app(args):
         layout=Layout(root_container, focused_element=input_field),
         key_bindings=kb,
         style=style,
-        enable_page_navigation_bindings=True,
+        # enable_page_navigation_bindings=True,
         mouse_support=True,
         full_screen=True  )
     application.run()
