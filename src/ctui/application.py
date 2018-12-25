@@ -35,6 +35,7 @@ from prompt_toolkit.widgets import MenuContainer, MenuItem, ProgressBar, SearchT
 from prompt_toolkit.completion import WordCompleter
 from tinydb import TinyDB, Query
 from tinydb.storages import MemoryStorage
+import datetime
 
 
 class MyApplication(Application):
@@ -164,6 +165,7 @@ def start_app(ctui):
         if len(input_field.text) == 0:
             return
         output_text = ctui.execute(input_field.text, output_field.text, event)
+        event.app.history.insert({'timestamp': str(datetime.datetime.now()), 'command': input_field.text})
         input_field.buffer.reset(append_to_history=True)
 
         # For commands that do not have output_text
