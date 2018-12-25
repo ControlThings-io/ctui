@@ -95,7 +95,9 @@ class Ctui(object):
 
     def do_history(self, input_text, output_text, event):
         """Print current history."""
-        output_text += str(get_app().history.all()) + '\n'
+        # output_text += str(get_app().history.all()) + '\n'
+        for item in get_app().history.all():
+            output_text += str(item) + '\n'
         return output_text
 
 
