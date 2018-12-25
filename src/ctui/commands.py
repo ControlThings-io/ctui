@@ -88,7 +88,7 @@ class Ctui(object):
         table = []
         for key, value in self.meta_dict().items():
             table.append([key, value])
-        output_text += tabulate(table, tablefmt="plain") + '\n'
+        output_text += tabulate(table, tablefmt='plain') + '\n'
         output_text += '==============================================\n'
         return output_text
 
@@ -96,8 +96,7 @@ class Ctui(object):
     def do_history(self, input_text, output_text, event):
         """Print current history."""
         # output_text += str(get_app().history.all()) + '\n'
-        for item in get_app().history.all():
-            output_text += str(item) + '\n'
+        output_text += tabulate(get_app().history.all(), headers='keys', tablefmt='plain')
         return output_text
 
 

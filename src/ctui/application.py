@@ -15,13 +15,13 @@ Control Things User Interface, aka ctui.py
 
 import sys
 import time
-# from .commands import Ctui
 from .base import TextArea
+from pathlib import Path
 from prompt_toolkit.application import Application
 from prompt_toolkit.application.current import get_app
 from prompt_toolkit.document import Document
 from prompt_toolkit.filters import has_focus
-from prompt_toolkit.history import InMemoryHistory
+from prompt_toolkit.history import FileHistory
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.key_binding.bindings.scroll import scroll_page_down, scroll_page_up
 from prompt_toolkit.layout.containers import HSplit, VSplit, Window, FloatContainer, Float
@@ -60,7 +60,7 @@ def get_statusbar_text():
 def start_app(ctui):
     """Text-based GUI application"""
     completer = WordCompleter(ctui.commands(), meta_dict=ctui.meta_dict(), ignore_case=True)
-    history = InMemoryHistory()
+    history = FileHistory("{}/.{}_history".format(Path.home(), ctui.name))
     search_field = SearchToolbar()
 
     # Individual windows
@@ -165,7 +165,8 @@ def start_app(ctui):
         if len(input_field.text) == 0:
             return
         output_text = ctui.execute(input_field.text, output_field.text, event)
-        event.app.history.insert({'timestamp': str(datetime.datetime.now()), 'command': input_field.text})
+        date, time = str(datetime.datetime.today()).split()
+        event.app.history.insert({'Date': date, 'Time': time, 'Command': input_field.text})
         input_field.buffer.reset(append_to_history=True)
 
         # For commands that do not have output_text
