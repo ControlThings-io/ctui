@@ -24,16 +24,24 @@ from os.path import expanduser
 
 
 class Ctui(object):
-    """Commands that users may use at the application prompt."""
-    # Each function that users can call must:
+    """Class with commands that users may use at the application prompt."""
+    # Each function representing a command must:
     #     - start with a do_
     #     - accept self, input_text, output_text, and event as params
     #     - return a string to print, None, or False
     # Returning a False does nothing, forcing users to correct mistakes
-    name = 'PleaseSetAppName'
-    version = '0'
-    description = 'Please set description with get_app().descrition = ...'
+    name = 'Nameless'
+    version = '0.1'
+    description = 'No description.'
     prompt = '> '
+    welcome = ''
+    help_message = ''
+
+    def __init__(self):
+        if self.welcome == '':
+            self.welcome = 'Welcome to ' + self.name + ' ' + self.version + '\n' + self.description + '\n'
+        if self.help_message == '':
+            self.help_message = self.welcome + '\n' + 'Available commands are:' + '\n\n'
 
 
     def run(self):
@@ -76,9 +84,7 @@ class Ctui(object):
     def do_help(self, input_text, output_text, event):
         """Print application help."""
         output_text += '==================== Help ====================\n'
-        output_text += 'Welcome to Control Things User Interface, or ctui.\n\n'
-        output_text += 'You can replace this help message by setting '
-        output_text += 'get_app.help equal to whatever text you wish \n\n'
+        output_text += self.help_message
         table = []
         for key, value in self.meta_dict().items():
             table.append([key, value])
