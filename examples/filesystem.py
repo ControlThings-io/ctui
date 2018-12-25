@@ -26,11 +26,13 @@ class MyFsTerm(Ctui):
     #     - return a string to print, None, or False
     # Returning a False does nothing, forcing users to correct mistakes
 
+    # Example of a command with no arguments
     def do_ls(self, input_text, output_text, event):
         """Help menu for ls."""
-        output_text = output_text + 'Direcotry contains:\n' + str(os.listdir()) + '\n'
+        output_text = output_text + 'Directory contains:\n' + str(os.listdir()) + '\n'
         return output_text
 
+    # Example of a command with 1 argument
     def do_cd(self, input_text, output_text, event):
         """Help menu for cd."""
         os.chdir(input_text)
