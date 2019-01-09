@@ -23,6 +23,7 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.search import start_search, SearchDirection
 from prompt_toolkit.completion import WordCompleter
 import datetime
+import traceback
 
 
 def get_key_bindings(ctui):
@@ -53,18 +54,22 @@ def get_key_bindings(ctui):
     @kb.add('enter', filter=has_focus(input_field))
     def _(event):
         # Process commands on prompt after hitting enter key
-        # tx_bytes = parse_command(input_field.text, event=event)
         input_field.buffer.completer = WordCompleter(ctui.commands(), meta_dict=ctui.meta_dict(), ignore_case=True)
         if len(input_field.text) == 0:
             return
-        output_text = ctui.execute(input_field.text, output_field.text, event)
-        date, time = str(datetime.datetime.today()).split()
+        try:
+            output_text = ctui.execute(input_field.text, output_field.text, event)
+        except AssertionError as error:
+            message_dialog(title='Error', text=str(error))
+        except:
+            message_dialog(title='Error', text=traceback.format_exc())
 
         # For invalid commands forcing users to correct them
-        if output_text == False:
+        if 'output_text' not in locals() or output_text == False:
             return
 
-        event.app.history.insert({'Date': date, 'Time': time, 'Command': input_field.text})
+        date, time = str(datetime.datetime.today()).split()
+        get_app().ctui.history.insert({'Date': date, 'Time': time, 'Command': input_field.text})
         input_field.buffer.reset(append_to_history=True)
 
         # For commands that do not have output_text

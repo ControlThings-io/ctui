@@ -9,7 +9,7 @@
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details at <http://www.gnu.org/licenses/>.
 
-from ctui.commands import Ctui
+from ctui.application import Ctui
 import os
 
 myapp = Ctui()

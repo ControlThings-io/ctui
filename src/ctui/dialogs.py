@@ -20,7 +20,7 @@ from prompt_toolkit.widgets import Button, Dialog, Label, TextArea
 
 
 class TextInputDialog(object):
-    def __init__(self, title='', label_text='', completer=None):
+    def __init__(self, title='', text='', completer=None):
         self.future = Future()
 
         def accept_text(buf):
@@ -46,7 +46,7 @@ class TextInputDialog(object):
         self.dialog = Dialog(
             title=title,
             body=HSplit([
-                Label(text=label_text),
+                Label(text=text),
                 self.text_area
             ]),
             buttons=[ok_button, cancel_button],
@@ -112,31 +112,20 @@ def show_dialog_as_float(dialog):
 #     """
 
 
-# def input_dialog(title='', text='', ok_text='OK', cancel_text='Cancel',
-#                  completer=None, password=False, style=None, async_=False):
-#     """
-#     Display a text input box.
-#     Return the given text, or None when cancelled.
-#     """
-# def do_open_file():
-#     def coroutine():
-#         global current_path
-#         open_dialog = TextInputDialog(
-#             title='Open file',
-#             label_text='Enter the path of a file:',
-#             completer=PathCompleter())
-#
-#         path = yield From(show_dialog_as_float(open_dialog))
-#         current_path = path
-#
-#         if path is not None:
-#             try:
-#                 with open(path, 'rb') as f:
-#                     text_field.text = f.read().decode('utf-8', errors='ignore')
-#             except IOError as e:
-#                 show_message('Error', '{}'.format(e))
-#
-#     ensure_future(coroutine())
+def input_dialog(title='', text='', ok_text='OK', cancel_text='Cancel',
+                 completer=None, password=False, style=None, async_=False):
+    """
+    Display a text input box.
+    Return the given text, or None when cancelled.
+    """
+    output_text = ''
+    def coroutine():
+        global output_text
+        open_dialog = TextInputDialog(title, text, completer)
+
+        output_text = yield From(show_dialog_as_float(open_dialog))
+    ensure_future(coroutine())
+    return output_text
 
 
 def message_dialog(title='', text='', ok_text='Ok', style=None, async_=False):
