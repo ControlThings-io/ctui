@@ -1,6 +1,6 @@
 # Control Things Serial
 
-ctui is a library for creating terminal-based user interfaces, and is used in all the ControlThings tools at controlthings.io
+ctui is a library for creating terminal-based user interfaces, and is used in all the ControlThings tools at controlthings.io.  It is similar to using Python's standard cmd library, but with a curses-like interface written in pure Python.
 
 # Installation:
 

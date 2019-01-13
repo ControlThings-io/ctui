@@ -22,7 +22,7 @@ from prompt_toolkit.filters import has_focus
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.search import start_search, SearchDirection
 from prompt_toolkit.completion import WordCompleter
-import datetime
+from datetime import datetime
 import traceback
 
 
@@ -35,7 +35,8 @@ def get_key_bindings(ctui):
     @kb.add('c-q')
     def _(event):
         " Pressing Ctrl-Q will exit the user interface. "
-        ctui.do_exit(input_field.text, output_field.text, event)
+        # ctui.do_exit(input_field.text, output_field.text, event)
+        get_app().exit()
 
     @kb.add('c-m')
     def _(event):
@@ -53,23 +54,27 @@ def get_key_bindings(ctui):
 
     @kb.add('enter', filter=has_focus(input_field))
     def _(event):
-        # Process commands on prompt after hitting enter key
-        input_field.buffer.completer = WordCompleter(ctui.commands(), meta_dict=ctui.meta_dict(), ignore_case=True)
         if len(input_field.text) == 0:
             return
-        try:
-            output_text = ctui.execute(input_field.text, output_field.text, event)
-        except AssertionError as error:
-            message_dialog(title='Error', text=str(error))
-        except:
-            message_dialog(title='Error', text=traceback.format_exc())
+        # Process commands on prompt after hitting enter key
+        # input_field.buffer.completer = WordCompleter(ctui.commands(), meta_dict=ctui.meta_dict(), ignore_case=True)
+        do_function, args = ctui._extract_do_function(input_field.text)
+
+        if do_function:
+            try:
+                output_text = ctui._execute(do_function, args, output_field.text)
+            except AssertionError as error:
+                message_dialog(title='Error', text=str(error))
+            except:
+                message_dialog(title='Error', text=traceback.format_exc(),
+                               scrollbar=True)
 
         # For invalid commands forcing users to correct them
         if 'output_text' not in locals() or output_text == False:
             return
 
-        date, time = str(datetime.datetime.today()).split()
-        get_app().ctui.history.insert({'Date': date, 'Time': time, 'Command': input_field.text})
+        date, time = str(datetime.today()).split()
+        ctui.history.insert({'Date': date, 'Time': time.split('.')[0], 'Command': input_field.text})
         input_field.buffer.reset(append_to_history=True)
 
         # For commands that do not have output_text

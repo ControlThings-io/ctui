@@ -101,7 +101,7 @@ def show_help():
     ctui = get_app().ctui
     dialog = ctui.help_message
     table = []
-    for key, value in ctui.meta_dict().items():
+    for key, value in ctui._meta_dict().items():
         table.append([key, value])
     dialog += tabulate(table, tablefmt='plain')
     message_dialog('Help', dialog)

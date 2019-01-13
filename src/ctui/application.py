@@ -19,7 +19,9 @@ from .style import CtuiStyle
 from pathlib import Path
 from prompt_toolkit.application import Application
 from prompt_toolkit.application.current import get_app
+from .dialogs import yes_no_dialog
 from prompt_toolkit.layout.layout import Layout
+from datetime import datetime
 from tinydb import TinyDB, Query
 
 
@@ -32,7 +34,7 @@ class Ctui(Commands):
     # Returning a False does nothing, forcing users to correct mistakes
     name = 'ctui'
     version = ''
-    description = ''
+    description = 'Curses-like, pure python, cross-platform, as easy as Python cmd'
     prompt = '> '
     welcome = ''
     help_message = ''
@@ -42,6 +44,7 @@ class Ctui(Commands):
 
     # sets various defaults if not overriden with subclass
     def __init__(self, layout=None):
+        assert(type(self.version) == str), 'Version must be a string'
         if self.welcome == '':
             self.welcome = 'Welcome to ' + self.name + ' ' + str(self.version) + '\n' + self.description + '\n'
         if self.help_message == '':
@@ -57,13 +60,14 @@ class Ctui(Commands):
         self.project_path = '{}{}.{}'.format(self.project_folder, self.project_name, self.name)
         if Path(self.project_path).exists():
             Path.unlink(Path(self.project_path))
-        self.init_db()
+        self._init_db()
 
         # Setup python_prompt applction elements
         self.layout = CtuiLayout(self)
         self.style = CtuiStyle()
 
-    def init_db(self):
+
+    def _init_db(self):
         """setup database storage"""
         self.db = TinyDB(self.project_path)
         self.settings = self.db.table('settings')
@@ -73,13 +77,14 @@ class Ctui(Commands):
 
     def run(self):
         """Start the python_prompt application with ctui's default settings"""
+        self._mode = 'python_prompt'
         layout = Layout(
             self.layout.root_container,
             focused_element=self.layout.input_field)
         application = CtuiApplication(
             layout=layout,
             key_bindings=get_key_bindings(self),
-            style=self.style.get(),
+            style=self.style.dark_theme,
             enable_page_navigation_bindings=False,
             mouse_support=True,
             full_screen=True)
@@ -87,39 +92,57 @@ class Ctui(Commands):
         application.run()
 
 
-    def execute(self, input_text, output_text, event):
-        """Extract command and call appropriate function."""
-        parts = input_text.strip().split(maxsplit=1)
-        command = parts[0].lower()
-        if len(parts) == 2:
-            arg = parts[1]
-        else:
-            arg = ''
-        try:
-            func = getattr(self, 'do_' + command)
-        except AttributeError:
-            return False
-        return func(arg, output_text, event)
+    def _execute(self, do_function, args, output_text):
+        """Execute do_function."""
+        return do_function(args, output_text)
 
 
-    def commands(self):
+    def _extract_do_function(self, input_text):
+        """Extract command arguments."""
+        parts = input_text.strip().split()
+        # try the the longest combination of parts to the smallest combination
+        do_function = None
+        for i in range(len(parts),0,-1):
+            command = 'do_' + '_'.join(parts[:i])
+            args = ' '.join(parts[i:])
+            try:
+                do_function = getattr(self, command)
+                break
+            except:
+                pass
+        return do_function, args
+
+
+    def _commands(self):
         """Generate list of user commands from function names"""
         commands = [a[3:] for a in dir(self.__class__) if a.startswith('do_')]
         return commands
 
 
-    def meta_dict(self):
+    def _meta_dict(self):
         """Generate a dictionary of commands to populate Ctui completer"""
         meta_dict = {}
-        for command in self.commands():
+        for command in self._commands():
             # TODO: find a better way to do this than eval
             meta_dict[command] = eval('self.do_' + command + '.__doc__')
         return meta_dict
 
 
-    def quit(self):
+    def _log_and_exit(self):
+        date, time = str(datetime.today()).split()
+        self.history.insert({'Date': date, 'Time': time.split('.')[0], 'Command': 'exit'})
         self.db.close()
         get_app().exit()
+
+
+    def exit(self):
+        if self._mode == 'python_prompt' and self.project_name == 'default':
+            yes_no_dialog(
+                title = 'Warning',
+                text = 'Exit without saving project?',
+                yes_func = self._log_and_exit )
+        else:
+            self._log_and_exit()
 
 
 
@@ -134,7 +157,3 @@ class CtuiApplication(Application):
         self.header_field = ctui.layout.header_field
         self.output_field = ctui.layout.output_field
         project_file = None
-        self.db = ctui.db
-        self.settings = ctui.settings
-        self.storage = ctui.storage
-        self.history = ctui.history

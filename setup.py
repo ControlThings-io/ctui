@@ -22,9 +22,9 @@ def read(*names, **kwargs):
 
 setup(
     name='ctui',
-    version='0.5',
+    version='0.6',
     license='GPLv3',
-    description='ctui is a libary similer to Python\'s cmd, but with curses-like user interface',
+    description='ctui is a libary similer to Python\'s cmd, but with a curses-like user interface',
     long_description=open('README.md').read(),
     author='Justin Searle',
     author_email='justin@meeas.com',

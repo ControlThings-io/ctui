@@ -10,7 +10,6 @@
 # details at <http://www.gnu.org/licenses/>.
 
 from ctui.application import Ctui
-import os
 
 myapp = Ctui()
 myapp.run()

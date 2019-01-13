@@ -28,7 +28,7 @@ class CtuiLayout(object):
 
     def __init__(self, ctui, input_field=None, output_field=None, statusbar=None, root_container=None):
         """Stores layout of the app returns root_container"""
-        completer = WordCompleter(ctui.commands(), meta_dict=ctui.meta_dict(), ignore_case=True)
+        completer = WordCompleter(ctui._commands(), meta_dict=ctui._meta_dict(), ignore_case=True)
         history = FileHistory("{}/.{}_history".format(Path.home(), ctui.name))
         search_field = SearchToolbar()
 
@@ -45,11 +45,11 @@ class CtuiLayout(object):
             style='class:line')
 
         self.output_field = TextArea(
-            scrollbar=True,
+            text='',
             # search_field=search_field,
             style='class:output_field',
             wrap_lines=ctui.wrap_lines,
-            text='')
+            scrollbar=True )
 
         self.statusbar = Window(
             content = FormattedTextControl(self._get_statusbar_text(ctui)),
@@ -57,7 +57,7 @@ class CtuiLayout(object):
             style='class:statusbar'  )
 
         # Organization of windows
-        body = FloatContainer(
+        self.body = FloatContainer(
             HSplit([
                 self.input_field,
                 self.header_field,
@@ -71,7 +71,7 @@ class CtuiLayout(object):
 
         # Adding menus
         self.root_container = MenuContainer(
-            body=body,
+            body=self.body,
             menu_items=[
                 MenuItem('Session ', children=[
                     MenuItem('Connect'),
