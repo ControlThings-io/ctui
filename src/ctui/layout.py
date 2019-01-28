@@ -28,7 +28,7 @@ class CtuiLayout(object):
 
     def __init__(self, ctui, input_field=None, output_field=None, statusbar=None, root_container=None):
         """Stores layout of the app returns root_container"""
-        completer = WordCompleter(ctui._commands(), meta_dict=ctui._meta_dict(), ignore_case=True)
+        completer = WordCompleter(ctui._commands(), meta_dict=ctui._meta_dict(), sentence=True, ignore_case=True)
         history = FileHistory("{}/.{}_history".format(Path.home(), ctui.name))
         search_field = SearchToolbar()
 
