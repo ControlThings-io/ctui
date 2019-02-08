@@ -12,67 +12,64 @@ Control Things User Interface, aka ctui.py
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details at <http://www.gnu.org/licenses/>.
 """
-from .base import TextArea
-from .functions import show_help
+from ctui.completion import CommandCompleter
+from ctui.functions import show_help
 from pathlib import Path
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.layout.containers import HSplit, VSplit, Window, FloatContainer, Float
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.layout.menus import CompletionsMenu
-from prompt_toolkit.widgets import MenuContainer, MenuItem, SearchToolbar
-from prompt_toolkit.completion import WordCompleter
+from prompt_toolkit.lexers import Lexer
+from prompt_toolkit.widgets import MenuContainer, MenuItem, SearchToolbar, TextArea
 
 
 class CtuiLayout(object):
-    """Class to facility access to different layout elements"""
+    """Class to facilitate editing and accessing different layout elements"""
 
-    def __init__(self, ctui, input_field=None, output_field=None, statusbar=None, root_container=None):
-        """Stores layout of the app returns root_container"""
-        completer = WordCompleter(ctui._commands(), meta_dict=ctui._meta_dict(), ignore_case=True)
-        history = FileHistory("{}/.{}_history".format(Path.home(), ctui.name))
-        search_field = SearchToolbar()
+    def __init__(self, ctui=None, input_field=None, output_field=None,
+                 statusbar=None, root_container=None):
+        self.ctui = ctui
 
-        self.input_field = TextArea(
-            height=1,
-            prompt=ctui.prompt,
-            style='class:input_field',
-            completer=completer,
-            history=history)
+        self._completer = CommandCompleter(ctui.commands)
 
-        self.header_field = Window(
-            height=1,
-            char='-',
-            style='class:line')
+        self._history = FileHistory(
+            "{}/.{}_history".format(Path.home(), self.ctui.name))
 
-        self.output_field = TextArea(
-            text='',
-            # search_field=search_field,
-            style='class:output_field',
-            wrap_lines=ctui.wrap_lines,
-            scrollbar=True )
+        self._input_field = TextArea(
+            height = 1,
+            prompt = self.ctui.prompt,
+            style = 'class:input_field',
+            completer = self.completer,
+            history = self.history)
 
-        self.statusbar = Window(
-            content = FormattedTextControl(self._get_statusbar_text(ctui)),
-            height=1,
-            style='class:statusbar'  )
+        self._header_field = Window(
+            height = 1,
+            char = '-',
+            style = 'class:line')
 
-        # Organization of windows
-        self.body = FloatContainer(
+        self._output_field = TextArea(
+            text = '',
+            style = 'class:output_field',
+            wrap_lines = self.ctui.wrap_lines,
+            scrollbar = True )
+
+        self._statusbar = Window(
+            content = FormattedTextControl(self.statusbar_text),
+            height = 1,
+            style = 'class:statusbar'  )
+
+        self._body = FloatContainer(
             HSplit([
                 self.input_field,
                 self.header_field,
                 self.output_field,
-                search_field,
                 self.statusbar ]),
-            floats=[
-                Float(xcursor=True,
-                      ycursor=True,
-                      content=CompletionsMenu(max_height=16, scroll_offset=1)) ] )
+            floats = [Float(xcursor=True, ycursor=True,
+                content=CompletionsMenu(max_height=16, scroll_offset=1) )] )
 
-        # Adding menus
-        self.root_container = MenuContainer(
-            body=self.body,
-            menu_items=[
+        self._root_container = MenuContainer(
+            body = self.body,
+            menu_items = [
                 MenuItem('Session ', children=[
                     MenuItem('Connect'),
                     MenuItem('Disconnect'),
@@ -86,12 +83,54 @@ class CtuiLayout(object):
                 MenuItem('Help ', children=[
                     MenuItem('Help', handler=show_help),
                     MenuItem('About'),  ]),  ],
-            floats=[
+            floats = [
                 Float(xcursor=True,
                       ycursor=True,
                       content=CompletionsMenu(max_height=16, scroll_offset=1)),  ])
 
 
-    def _get_statusbar_text(self, ctui):
-        text = ctui.statusbar
-        return text
+    @property
+    def completer(self):
+        return self._completer
+
+
+    @property
+    def history(self):
+        return self._history
+
+
+    @property
+    def input_field(self):
+        return self._input_field
+
+
+    @property
+    def header_field(self):
+        return self._header_field
+
+
+    @property
+    def output_field(self):
+        return self._output_field
+
+
+    @property
+    def statusbar_text(self):
+        return self.ctui._statusbar
+
+
+    @property
+    def statusbar(self):
+        return self._statusbar
+
+
+    # Organization of windows
+    @property
+    def body(self):
+        return self._body
+
+
+    # Adding menus
+    @property
+    def root_container(self):
+        return self._root_container

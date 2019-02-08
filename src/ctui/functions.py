@@ -14,12 +14,10 @@ Control Things User Interface, aka ctui.py
 """
 import time
 from .dialogs import message_dialog
-from prompt_toolkit.application.current import get_app
 from prompt_toolkit.document import Document
 from prompt_toolkit.filters import has_focus
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.search import start_search, SearchDirection
-from prompt_toolkit.completion import WordCompleter
 from tabulate import tabulate
 import datetime
 
@@ -97,11 +95,11 @@ def scroll_home(event):
         w.vertical_scroll = 0
     event.app.layout.focus(event.app.input_field)
 
-def show_help():
-    ctui = get_app().ctui
-    dialog = ctui.help_message
+def show_help(ctui):
+    dialog = ctui._help_message
     table = []
-    for key, value in ctui._meta_dict().items():
-        table.append([key, value])
-    dialog += tabulate(table, tablefmt='plain')
+    for command in ctui.commands:
+        if len(command.string.split()) == 1:
+            table.append((command.string, command.desc))
+    dialog += tabulate(sorted(table), tablefmt='plain')
     message_dialog('Help', dialog)

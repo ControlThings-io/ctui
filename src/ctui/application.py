@@ -12,10 +12,10 @@ Control Things User Interface, aka ctui.py
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details at <http://www.gnu.org/licenses/>.
 """
-from .keybindings import get_key_bindings
-from .commands import Commands
-from .layout import CtuiLayout
-from .style import CtuiStyle
+from ctui.keybindings import get_key_bindings
+from ctui.commands import Commands, register_defaults
+from ctui.layout import CtuiLayout
+from ctui.style import CtuiStyle
 from pathlib import Path
 from prompt_toolkit.application import Application
 from prompt_toolkit.application.current import get_app
@@ -24,108 +24,142 @@ from prompt_toolkit.layout.layout import Layout
 from datetime import datetime
 from tinydb import TinyDB, Query
 
+try:
+    import better_exceptions
+except ImportError as err:
+    pass
 
-class Ctui(Commands):
-    """Class with commands that users may use at the application prompt."""
-    # Each function representing a command must:
-    #     - start with a do_
-    #     - accept self, input_text, output_text, and event as params
-    #     - return a string to print, None, or False
-    # Returning a False does nothing, forcing users to correct mistakes
+
+class Ctui(object):
+    """
+    Class with commands that users may use at the application prompt.
+
+    Each function representing a command must:
+        - start with a do_
+        - accept self, input_text, output_text, and event as params
+        - return a string to print, None, or False
+    Returning a False does nothing, forcing users to correct mistakes
+    """
+
+    # User setable variables
     name = 'ctui'
-    version = ''
-    description = 'Curses-like, pure python, cross-platform, as easy as Python cmd'
+    version = ''            # must be string
+    description = 'Curses-like, pure python, cross-platform, as easy as Cmd or click'
     prompt = '> '
-    welcome = ''
-    help_message = ''
-    statusbar = ''
-    wrap_lines = False
-    project_folder = ''
+    wrap_lines = False      # Wrap lines in main output window or not
+
+    # Settable but defaults are probably sufficient
+    welcome = ''            # defaults to 'Welcome to app.name app.version'
+    help_message = ''       # defaults to welcome message
+    project_folder = ''     # defaults to ~/.app.name on all platforms
 
     # sets various defaults if not overriden with subclass
     def __init__(self, layout=None):
-        assert(type(self.version) == str), 'Version must be a string'
-        if self.welcome == '':
-            self.welcome = 'Welcome to ' + self.name + ' ' + str(self.version) + '\n' + self.description + '\n'
-        if self.help_message == '':
-            self.help_message = self.welcome + '\n' + 'Available commands are:' + '\n\n'
-
-        # Set up database storage
-        if self.project_folder == '':
-            self.project_folder = "{}/.{}/projects/".format(Path.home(), self.name)
-        Path(self.project_folder).mkdir(parents=True, exist_ok=True)
+        self.status_dict = {}
+        self.commands = Commands()
+        register_defaults(ctui=self)
         self.project_name = 'default'
-        self.statusbar = 'Project: {}'.format(self.project_name)
-        # start with clean default project at each start
-        self.project_path = '{}{}.{}'.format(self.project_folder, self.project_name, self.name)
-        if Path(self.project_path).exists():
-            Path.unlink(Path(self.project_path))
-        self._init_db()
 
-        # Setup python_prompt applction elements
-        self.layout = CtuiLayout(self)
-        self.style = CtuiStyle()
+
+    @property
+    def _welcome(self):
+        if self.welcome == '':
+            return f'Welcome to {self.name} {self.version}\n{self.description}\n'
+        else:
+            return self.welcome
+
+
+    @property
+    def _help_message(self):
+        if self.help_message == '':
+            return f'{self._welcome}\nAvailable commands are:\n\n'
+        else:
+            return self.help_message
+
+
+    @property
+    def _project_folder(self):
+        if self.project_folder == '':
+            return f'{Path.home()}/.{self.name}/projects/'
+        else:
+            return self.project_folder
+
+
+    @property
+    def _project_path(self):
+        return f'{self._project_folder}{self.project_name}.{self.name}'
+
+
+    @property
+    def _statusbar(self):
+        self.status_dict['Project'] = self.project_name
+        return '  '.join([f'{k}: {v}' for k,v in self.status_dict.items()])
 
 
     def _init_db(self):
         """setup database storage"""
-        self.db = TinyDB(self.project_path)
+        self.db = TinyDB(self._project_path)
         self.settings = self.db.table('settings')
         self.storage = self.db.table('storage')
         self.history = self.db.table('history')
 
 
+    def command(self, func):
+        return self.commands.register(func)
+
+
     def run(self):
         """Start the python_prompt application with ctui's default settings"""
-        self._mode = 'python_prompt'
+        Path(self._project_folder).mkdir(parents=True, exist_ok=True)
+        if Path(self._project_path).exists():    # start with clean default project at each start
+            Path.unlink(Path(self._project_path))
+        self._init_db()
+        self.layout = CtuiLayout(self)
+        self.style = CtuiStyle()
+        self._mode = 'term_ui'    # For future headless mode
         layout = Layout(
             self.layout.root_container,
             focused_element=self.layout.input_field)
-        application = CtuiApplication(
+        self.app = Application(
             layout=layout,
             key_bindings=get_key_bindings(self),
             style=self.style.dark_theme,
             enable_page_navigation_bindings=False,
             mouse_support=True,
             full_screen=True)
-        application.register_ctui(self)
-        application.run()
+        self.app.run()
 
 
-    def _execute(self, do_function, args, output_text):
-        """Execute do_function."""
-        return do_function(args, output_text)
+    # def _execute(self, do_function, args, output_text):
+    #     """Execute do_function."""
+    #     return do_function(args, output_text)
 
 
-    def _extract_do_function(self, input_text):
+    # def _extract_do_function(self, input_text):
+    #     """Extract command arguments."""
+    #     parts = input_text.strip().split()
+    #     # try the the longest combination of parts to the smallest combination
+    #     do_function = None
+    #     for i in range(len(parts),0,-1):
+    #         command = 'do_' + '_'.join(parts[:i])
+    #         args = ' '.join(parts[i:])
+    #         try:
+    #             do_function = getattr(self, command)
+    #             break
+    #         except:
+    #             pass
+    #     return do_function, args
+
+
+    def extract_command(self, input_text):
         """Extract command arguments."""
         parts = input_text.strip().split()
         # try the the longest combination of parts to the smallest combination
-        do_function = None
         for i in range(len(parts),0,-1):
-            command = 'do_' + '_'.join(parts[:i])
-            args = ' '.join(parts[i:])
-            try:
-                do_function = getattr(self, command)
-                break
-            except:
-                pass
-        return do_function, args
-
-
-    def _commands(self):
-        """Generate list of user commands from function names"""
-        commands = [a[3:] for a in dir(self.__class__) if a.startswith('do_')]
-        return commands
-
-
-    def _meta_dict(self):
-        """Generate a dictionary of commands to populate Ctui completer"""
-        meta_dict = {}
-        for command in self._commands():
-            # TODO: find a better way to do this than eval
-            meta_dict[command] = eval('self.do_' + command + '.__doc__')
-        return meta_dict
+            for command in self.commands:
+                if command.string == ' '.join(parts[:i]):
+                    return command, ' '.join(parts[i:])
+        return None, None
 
 
     def _log_and_exit(self):
@@ -136,24 +170,11 @@ class Ctui(Commands):
 
 
     def exit(self):
-        if self._mode == 'python_prompt' and self.project_name == 'default':
+        """Graceful shutdown of the prompt_toolkit application"""
+        if self._mode == 'term_ui' and self.project_name == 'default':
             yes_no_dialog(
                 title = 'Warning',
                 text = 'Exit without saving project?',
                 yes_func = self._log_and_exit )
         else:
             self._log_and_exit()
-
-
-
-
-class CtuiApplication(Application):
-    """Extends python_prompt application so ctui apps can append to it"""
-
-    def register_ctui(self, ctui):
-        """Expose various objects from ctui to get_app() for convenience"""
-        self.ctui = ctui
-        self.input_field = ctui.layout.input_field
-        self.header_field = ctui.layout.header_field
-        self.output_field = ctui.layout.output_field
-        project_file = None

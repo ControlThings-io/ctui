@@ -16,17 +16,37 @@ from prompt_toolkit.styles import Style
 
 class CtuiStyle(object):
     """Class to expose individual style values to ctui"""
+
+    def __init__(self):
+        self._theme = self.dark_theme
+
+
+    @property
+    def theme(self):
+        return self._theme
+
+
+    @theme.setter
+    def theme(self, value):
+        if value == 'dark':
+            self._theme = self.dark_theme
+        elif value == 'light':
+            self._theme = self.light_theme
+        else:
+            raise ValueError('Must be "dark" or "light"')
+
+
     dark_theme = Style.from_dict({
         # Main windows.
         'input_field':                              'bg:#101010 #e0e0e0',
         'input_field last-line':                    'nounderline',
         'line':                                     'bg:#202020 ansibrightcyan',
         'output_field':                             'bg:#202020 ansicyan',
-        'output_field scrollbar.background':         '',
-        'output_field scrollbar.button':             'bg:#000000',
-        'output_field scrollbar.arrow':              '',
-        'output_field scrollbar.start':              'nounderline',
-        'output_field scrollbar.end':                'nounderline',
+        'output_field scrollbar.background':        '',
+        'output_field scrollbar.button':            'bg:#000000',
+        'output_field scrollbar.arrow':             '',
+        'output_field scrollbar.start':             'nounderline',
+        'output_field scrollbar.end':               'nounderline',
         'line last-line':                           'nounderline',
         'statusbar':                                'bg:#AAAAAA',
 
@@ -58,5 +78,51 @@ class CtuiStyle(object):
 
         # Progress-bars.
         'progress-bar':                             'bg:#000088',
-        'progress-bar.used':                        'bg:#ff0000',
+        'progress-bar.used':                        'bg:#ff0000'
+        })
+
+
+    light_theme = Style.from_dict({
+        # Main windows.
+        'input_field':                              'bg:#101010 #e0e0e0',
+        'input_field last-line':                    'nounderline',
+        'line':                                     'bg:#202020 ansibrightcyan',
+        'output_field':                             'bg:#202020 ansicyan',
+        'output_field scrollbar.background':        '',
+        'output_field scrollbar.button':            'bg:#000000',
+        'output_field scrollbar.arrow':             '',
+        'output_field scrollbar.start':             'nounderline',
+        'output_field scrollbar.end':               'nounderline',
+        'line last-line':                           'nounderline',
+        'statusbar':                                'bg:#AAAAAA',
+
+        # Dialog windows.
+        'dialog':                                   'bg:#4444ff',
+        'dialog frame.label':                       '#ansibrightyellow bold',
+        'dialog.body':                              'bg:#111111 ansiyellow',
+        'dialog.body text-area':                    'bg:#111111 ansiyellow',
+        'dialog.body text-area last-line':          'nounderline',
+        'dialog.body scrollbar.background':         '',
+        'dialog.body scrollbar.button':             'bg:#000000',
+        'dialog.body scrollbar.arrow':              '',
+        'dialog.body scrollbar.start':              'nounderline',
+        'dialog.body scrollbar.end':                'nounderline',
+        'button':                                   '',
+        'button.arrow':                             'bold',
+        'button.focused':                           'bg:ansibrightyellow #101010',
+
+        # Menu bars.
+        'menu-bar':                                 'bg:#aaaaaa #000000',
+        'menu-bar.selected-item':                   'bg:#ffffff #000000',
+        'menu':                                     'bg:#888888 #ffffff',
+        'menu.border':                              '#aaaaaa',
+        'menu.border shadow':                       '#444444',
+
+        # Shadows.
+        'dialog shadow':                            'bg:#000088',
+        'dialog.body shadow':                       'bg:#aaaaaa',
+
+        # Progress-bars.
+        'progress-bar':                             'bg:#000088',
+        'progress-bar.used':                        'bg:#ff0000'
         })

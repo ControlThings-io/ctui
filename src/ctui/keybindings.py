@@ -16,12 +16,11 @@ import time
 from .dialogs import message_dialog
 from .functions import scroll_end, scroll_home, scroll_page_down, scroll_page_up
 from .functions import scroll_line_down, scroll_line_up
-from prompt_toolkit.application.current import get_app
 from prompt_toolkit.document import Document
 from prompt_toolkit.filters import has_focus
+from prompt_toolkit.formatted_text import HTML, to_formatted_text
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.search import start_search, SearchDirection
-from prompt_toolkit.completion import WordCompleter
 from datetime import datetime
 import traceback
 
@@ -32,15 +31,17 @@ def get_key_bindings(ctui):
     output_field = ctui.layout.output_field
     kb = KeyBindings()
 
-    @kb.add('c-q')
-    def _(event):
-        " Pressing Ctrl-Q will exit the user interface. "
-        # ctui.do_exit(input_field.text, output_field.text, event)
-        get_app().exit()
 
-    @kb.add('c-m')
+    #######################
+    # Global key bindings #
+    #######################
+
+    @kb.add('c-q')      # None-graceful shutdown, ctui.exit() is graceful
     def _(event):
-        message_dialog(title='Goodbye', text='Have a nice day!')
+        " Pressing Ctrl-Q will force quit the user interface. "
+        # ctui.do_exit(input_field.text, output_field.text, event)
+        ctui.app.exit()
+
 
     @kb.add('c-d')
     def _(event):
@@ -49,20 +50,31 @@ def get_key_bindings(ctui):
         pdb.set_trace()
 
 
-
-    # Input Field ONLY key bindings
+    #################################
+    # Input Field ONLY key bindings #
+    #################################
 
     @kb.add('enter', filter=has_focus(input_field))
     def _(event):
         if len(input_field.text) == 0:
             return
         # Process commands on prompt after hitting enter key
-        # input_field.buffer.completer = WordCompleter(ctui.commands(), meta_dict=ctui.meta_dict(), ignore_case=True)
-        do_function, args = ctui._extract_do_function(input_field.text)
+        # do_function, args = ctui._extract_do_function(input_field.text)
+        #
+        # if do_function:
+        #     try:
+        #         output_text = ctui._execute(do_function, args, output_field.text)
+        #     except AssertionError as error:
+        #         message_dialog(title='Error', text=str(error))
+        #     except:
+        #         message_dialog(title='Error', text=traceback.format_exc(),
+        #                        scrollbar=True)
 
-        if do_function:
+        command, args = ctui.extract_command(input_field.text)
+
+        if command:
             try:
-                output_text = ctui._execute(do_function, args, output_field.text)
+                output_text = command.execute(ctui, args, output_field.text)
             except AssertionError as error:
                 message_dialog(title='Error', text=str(error))
             except:
@@ -90,17 +102,17 @@ def get_key_bindings(ctui):
     def _(event):
         """Pressing Control-C will copy highlighted text to clipboard"""
         data = input_field.buffer.copy_selection()
-        get_app().clipboard.set_data(data)
+        ctui.app.clipboard.set_data(data)
 
     @kb.add('c-p', filter=has_focus(input_field))
     def _(event):
         """Pressing Control-P will paste text from clipboard"""
-        input_field.buffer.paste_clipboard_data(get_app().clipboard.get_data())
+        input_field.buffer.paste_clipboard_data(ctui.app.clipboard.get_data())
 
 
-
-
-    # Key bindings that affect the output_field
+    #############################################
+    # Key bindings that affect the output_field #
+    #############################################
 
     @kb.add('pagedown', filter=has_focus(input_field))
     def _(event):
@@ -147,7 +159,7 @@ def get_key_bindings(ctui):
     # @kb.add('q', filter=has_focus(output_field))
     # def _(event):
     #     """Quit navigation back to input_field"""
-    #     event.app.layout.focus_previous()
+    #     ctui.app.layout.focus_previous()
     #
     # @kb.add('/', filter=has_focus(output_field))
     # def _(event):
@@ -169,7 +181,7 @@ def get_key_bindings(ctui):
     # @kb.add('n', filter=has_focus(output_field))
     # def _(event):
     #     """Goto next item in output_field search"""
-    #     search_state = get_app().current_search_state
+    #     search_state = ctui.app.current_search_state
     #     cursor_position = output_field.buffer.get_search_position(
     #         search_state, include_current_position=False)
     #     output_field.buffer.cursor_position = cursor_position
@@ -177,7 +189,7 @@ def get_key_bindings(ctui):
     # @kb.add('N', filter=has_focus(output_field))
     # def _(event):
     #     """Goto previous item in output_field search"""
-    #     search_state = get_app().current_search_state
+    #     search_state = ctui.app.current_search_state
     #     cursor_position = output_field.buffer.get_search_position(
     #         ~search_state, include_current_position=True)
     #     output_field.buffer.cursor_position = cursor_position
@@ -186,7 +198,7 @@ def get_key_bindings(ctui):
     # def _(event):
     #     """Pressing Control-C will copy highlighted text to clipboard"""
     #     data = output_field.buffer.copy_selection()
-    #     get_app().clipboard.set_data(data)
+    #     ctui.app.clipboard.set_data(data)
     #
     # @kb.add('<any>', filter=has_focus(output_field))
     # @kb.add('enter', filter=has_focus(output_field))

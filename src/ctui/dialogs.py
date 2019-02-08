@@ -14,12 +14,15 @@ Control Things User Interface, aka ctui.py
 """
 from .base import Button
 from prompt_toolkit.application.current import get_app
-from prompt_toolkit.formatted_text import HTML
+from prompt_toolkit.formatted_text import HTML, to_formatted_text
+from prompt_toolkit.formatted_text.utils import fragment_list_to_text
 from prompt_toolkit.layout.containers import Float, HSplit
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.eventloop import Future, ensure_future, Return, From
 from prompt_toolkit.layout.dimension import D
 from prompt_toolkit.widgets import Dialog, Label, TextArea
+from prompt_toolkit.utils import get_cwidth
+
 
 
 class YesNoDialog(object):
@@ -99,29 +102,50 @@ class TextInputDialog(object):
 
 
 class MessageDialog(object):
-    def __init__(self, title='', text='', ok_text='Ok', shadow=False,
+    def __init__(self, title='', text='', ok_text='Ok', lexer=None,
                  width=None, wrap_lines=True, scrollbar=False):
         self.future = Future()
+        self.text = text
 
         def set_done():
             self.future.set_result(None)
 
-        text_width = len(max(text.split('\n'), key=len)) + 2
-        text_height = len(text.split('\n'))
-        app_height = get_app().ctui.layout.output_field.window.render_info.window_height - 2
+        def get_text_width():
+            if width is None:
+                text_fragments = to_formatted_text(self.text)
+                text = fragment_list_to_text(text_fragments)
+                if text:
+                    longest_line = max(get_cwidth(line) for line in text.splitlines())
+                else:
+                    return D(preferred=0)
+                return D(preferred=longest_line)
+            else:
+                return width
 
-        def dynamic_scrollbar():
-             if text_height > app_height:
-                 return True
+        # text_width = len(max(self.text.split('\n'), key=len)) + 2
+        # text_height = len(text.split('\n'))
+
+        # TODO: Add dynamic_h_scrollbar to TextArea and this Dialog
+        # def dynamic_horizontal_scrollbar():
+        #     max_text_width = get_app().renderer.output.get_size().columns - 2
+
+        def dynamic_virtical_scrollbar():
+            text_fragments = to_formatted_text(self.text)
+            text = fragment_list_to_text(text_fragments)
+            if text:
+                text_height =  len(self.text.splitlines())
+                max_text_height = get_app().renderer.output.get_size().rows - 6
+                if text_height > max_text_height:
+                     return True
 
         self.text_area = TextArea(
             text = text,
+            lexer = lexer,
             read_only = True,
-            # focus_on_click = True,
             focusable = False,
-            width = D(preferred=text_width),
+            width = get_text_width(),
             wrap_lines = wrap_lines,
-            scrollbar = dynamic_scrollbar())
+            scrollbar = dynamic_virtical_scrollbar())
 
         ok_button = Button(text='OK', handler=(lambda: set_done()))
 
@@ -198,7 +222,7 @@ def input_dialog(title='', text='', ok_text='OK', cancel_text='Cancel',
     return output_text
 
 
-def message_dialog(title='', text='', ok_text='Ok',
+def message_dialog(title='', text='', ok_text='Ok', lexer=None,
                    width=None, wrap_lines=True, scrollbar=None):
     """
     Display a simple message box and wait until the user presses enter.

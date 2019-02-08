@@ -12,162 +12,249 @@ Control Things User Interface, aka ctui.py
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details at <http://www.gnu.org/licenses/>.
 """
-from .dialogs import YesNoDialog, show_dialog, yes_no_dialog, message_dialog, input_dialog
-from .functions import show_help
-from prompt_toolkit.completion import PathCompleter
+from ctui.dialogs import YesNoDialog, show_dialog, yes_no_dialog, message_dialog, input_dialog
+from ctui.functions import show_help
 from prompt_toolkit.eventloop import ensure_future, From
+from prompt_toolkit.formatted_text import HTML, to_formatted_text
+from pygments.lexers.python import PythonLexer
 from tabulate import tabulate
 from tinydb import TinyDB, Query
 from pathlib import Path
 
 
-class Commands(object):
-    """Superclass class that contains built-in ctui commands"""
+class Command(object):
+    """Contains command object elements"""
 
-    def do_clear(self, args, output_text):
-        """Clear the screen."""
+    def __init__(self, func):
+        self.func_name = func.__name__
+        if self.func_name.startswith('do_'):    # allow users to use do_ prefix to avoid keywords
+            self.string = self.func_name[3:].replace('_', ' ')
+        else:
+            self.string = self.func_name.replace('_', ' ')    # allow users to use grouped commnands
+        self.func = func
+        self.desc = func.__doc__
+        self.parts = self.string.split()
+
+    def execute(self, ctui, args, output_text):
+        return self.func(ctui, args, output_text)
+
+    def __str__(self):
+        return f'{self.string}: {self.desc}'
+
+
+
+class Commands(object):
+    """Registers and assembles all the commands"""
+
+    def __init__(self):
+        self.commands = {}
+
+    def register(self, func):
+        command = Command(func)
+        self.commands[command.string] = command
+
+    @property
+    def strings(self):
+        command_strings = []
+        for command_string in sorted(self.commands.keys()):
+            command_strings.append(command_string)
+        return command_strings
+
+    @property
+    def descriptions(self):
+        command_descriptions = {}
+        for k,v in self.commands.items():
+            command_descriptions[k] = v.desc
+        return command_descriptions
+
+    @property
+    def func_names(self):
+        command_func_names = {}
+        for k,v in self.commands.items():
+            command_func_names[k] = v.func_name
+        return command_func_names
+
+    @property
+    def functions(self):
+        command_functions = {}
+        for k,v in self.commands.items():
+            command_functions[k] = v.func
+        return command_functions
+
+    def __getitem__(self, key):
+        return self.commands[key]
+
+    def __iter__(self):
+        for command in self.commands.values():
+            yield command
+
+    def __str__(self):
+        return str(self.descriptions)
+
+    def __repr__(self):
+        return str(self.commands)
+
+
+
+
+def register_defaults(ctui):
+
+    @ctui.command
+    def do_clear(ctui, args, output_text):
+        """Clear the screen"""
         return ''
 
 
-    def do_help(self, args, output_text):
-        """Print application help."""
-        show_help()
-        return None
+    @ctui.command
+    def do_help(ctui, args, output_text):
+        """Print application help"""
+        show_help(ctui)
 
 
-    def do_history(self, args, output_text):
-        """Print history of commands entered."""
+    @ctui.command
+    def do_history(ctui, args, output_text):
+        """Print history of commands entered"""
         if len(args) > 0:
             assert (args.isdigit()), 'History only accepts a NUM of historys to grab'
             num = int(args)
-            message = tabulate(self.history.all()[-num:], headers='keys', tablefmt='simple')
+            message = tabulate(ctui.history.all()[-num:], headers='keys', tablefmt='simple')
         else:
-            message = tabulate(self.history.all(), headers='keys', tablefmt='simple')
+            message = tabulate(ctui.history.all(), headers='keys', tablefmt='simple')
         message_dialog(title='History', text=message)
-        return None
 
 
-    def do_history_clear(self, args, output_text):
-        """Clear history of commands entered."""
-        self.db.purge_table('history')
-        self.history = self.db.table('history')
-        return None
+    @ctui.command
+    def do_history_clear(ctui, args, output_text):
+        """Clear history of commands entered"""
+        ctui.db.purge_table('history')
+        ctui.history = ctui.db.table('history')
 
 
-    def do_history_search(self, args, output_text):
-        """Search history of commands entered using regex."""
+    @ctui.command
+    def do_history_search(ctui, args, output_text):
+        """Search history of commands entered using regex"""
         History = Query()
-        search_results = self.history.search(History.Command.matches('.*' + args))
+        search_results = ctui.history.search(History.Command.matches('.*' + args))
         message = tabulate(search_results, headers='keys', tablefmt='simple')
         message_dialog(title='History Search Results', text=message)
-        return None
 
 
-    def do_project(self, args, output_text):
+    @ctui.command
+    def do_project(ctui, args, output_text):
         """Information about the current project"""
-        message =  '  Project Name:  {}\n'.format(self.project_name)
-        message += '  Project Path:  {}\n'.format(self.project_path)
-        message += '     File Size:  {} KB\n'.format(Path(self.project_path).stat().st_size)
-        message += ' History Count:  {} records\n'.format(len(self.history))
-        message += 'Settings Count:  {} records\n'.format(len(self.settings))
-        message += ' Storage Count:  {} records'.format(len(self.storage))
+        if args != '':
+            return False
+        message =  '  Project Name:  {}\n'.format(ctui.project_name)
+        message += '  Project Path:  {}\n'.format(ctui._project_path)
+        message += '     File Size:  {} KB\n'.format(Path(ctui._project_path).stat().st_size)
+        message += ' History Count:  {} records\n'.format(len(ctui.history))
+        message += 'Settings Count:  {} records\n'.format(len(ctui.settings))
+        message += ' Storage Count:  {} records'.format(len(ctui.storage))
         message_dialog(title='Project Information', text=message)
-        return None
 
 
-    def do_project_delete(self, args, output_text):
-        """Delete a saved project."""
-        assert (args != self.project_name), 'Cannot delete current project'
-        project_name = '{}.{}'.format(args, self.name)
-        project_path = Path(self.project_folder + project_name).expanduser()
-        assert (project_path.exists()), 'Project does not exist'
+    @ctui.command
+    def do_project_delete(ctui, args, output_text):
+        """Delete a saved project"""
+        assert (args != ctui.project_name), 'Cannot delete current project'
+        project_to_delete = '{}.{}'.format(args, ctui.name)
+        project_to_delete_path = Path(ctui._project_folder + project_to_delete).expanduser()
+        assert (project_to_delete_path.is_file()), 'Project does not exist'
 
         yes_no_dialog(
             title = 'Confirmation',
             text = 'Delete {} project?'.format(args),
-            yes_func = lambda: Path.unlink(Path(project_path)) )
-
-        return None
+            yes_func = lambda: Path.unlink(Path(project_to_delete_path)) )
 
 
-    def do_project_export(self, args, output_text):
-        """Export the current project to a file."""
-        export_file = Path('{}.{}'.format(args, self.name)).expanduser()
+    @ctui.command
+    def do_project_export(ctui, args, output_text):
+        """Export the current project to a file"""
+        export_file = Path('{}.{}'.format(args, ctui.name)).expanduser()
 
-        def yes_func():
-            export_file.write_bytes(Path(self.project_path).read_bytes())
+        def project_export():
+            export_file.write_bytes(Path(ctui._project_path).read_bytes())
 
-        if export_file.exists():
+        if export_file.is_file():
             yes_no_dialog(
                 title = 'File Already Exists',
                 text = 'Overwrite file?',
-                yes_func = yes_func )
+                yes_func = project_export )
         else:
-            yes_func()
+            project_export()
             message_dialog(
                 title = 'Success',
-                text = 'Project exported as "{}"'.format(args))
-
-        return None
+                text = 'Project exported as:\n"{}"'.format(export_file) )
 
 
-    def do_project_import(self, args, output_text):
-        """Import from an exported project file."""
-        import_file = Path(args).expanduser()
-        assert (import_file.exists()), 'File does not exist'
-        with open(import_file) as f:
-            assert (f.read(12) == '{"_default":'), 'Invald project file'
+    @ctui.command
+    def do_project_import(ctui, args, output_text):
+        """Import from an exported project file"""
+        project_to_import_path = Path(args).expanduser()
+        if project_to_import_path.is_file() == False:
+            project_to_import_path = Path(str(project_to_import_path) + f'.{ctui.name}')
+        assert (project_to_import_path.is_file()), 'File does not exist'
+        with open(project_to_import_path) as f:
+            assert (f.read(14) == '{"_default": {'), 'Invald or corrupted project file'
 
-        self.db.close()
-        if import_file.suffix == self.name:
-            self.project_name = import_file.stem
+        # build new project name and path
+        if project_to_import_path.suffix[1:] == ctui.name:
+            ctui.project_name = project_to_import_path.stem
         else:
-            self.project_name = import_file.name
-        self.project_path = '{}{}.{}'.format(self.project_folder, self.project_name, self.name)
-        Path(self.project_path).write_bytes(import_file.read_bytes())
-        self._init_db()
+            ctui.project_name = project_to_import_path.name
 
-        message_dialog(
-            title = 'Success',
-            text = 'Project imported as "{}"'.format(self.project_name))
+        def project_import():
+            ctui.db.close()
+            Path(ctui._project_path).write_bytes(project_to_import_path.read_bytes())
+            ctui._init_db()
 
-        return None
+        if Path(ctui._project_path).is_file():
+            yes_no_dialog(
+                title = 'WARNING',
+                text = 'Project already exists.\nOverwrite project?',
+                yes_func = project_import )
+            # TODO: use input_dialog to request new project name
+        else:
+            project_import()
+            message_dialog(
+                title = 'Success',
+                text = 'Project imported as "{}"'.format(ctui.project_name) )
 
 
-    def do_project_list(self, args, output_text):
+    @ctui.command
+    def do_project_list(ctui, args, output_text):
         """List saved projects"""
         lines = []
-        for file in list(Path(self.project_folder).glob('*.{}'.format(self.name))):
+        for file in list(Path(ctui._project_folder).glob('*.{}'.format(ctui.name))):
             lines.append({'Project': file.stem, 'Size (KB)': file.stat().st_size})
         message = tabulate(lines, headers='keys', tablefmt='simple')
         message_dialog(title='Saved Projects', text=message, scrollbar=True)
-        return None
 
 
-    def do_project_load(self, args, output_text, envent):
+    @ctui.command
+    def do_project_load(ctui, args, output_text):
         """Load saved project"""
-        project_name = args
-        project_path = '{}{}.{}'.format(self.project_folder, project_name, self.name)
-        assert (Path(project_path).exists()), '{} is not a valid project'.format(project_name)
+        project_to_load = args
+        project_to_load_path = '{}{}.{}'.format(ctui._project_folder, project_to_load, ctui.name)
+        assert (Path(project_to_load_path).is_file()), '{} is not a valid project'.format(project_to_load)
 
-        self.db.close()
-        self.project_name = project_name
-        self.project_path = project_path
-        self._init_db()
+        ctui.db.close()
+        ctui.project_name = project_to_load
+        # ctui.project_path = project_path
+        ctui._init_db()
 
         message_dialog(
             title = 'Success',
-            text = '{} project loaded.'.format(project_name))
-
-        return None
+            text = '{} project loaded.'.format(project_to_load))
 
 
-    def do_project_reset(self, args, output_text):
-        """Reset the current project file."""
+    @ctui.command
+    def do_project_reset(ctui, args, output_text):
+        """Reset the current project file"""
         def project_reset():
-            self.db.close()
-            Path.unlink(Path(self.project_path))
-            self._init_db()
+            ctui.db.close()
+            Path.unlink(Path(ctui.project_path))
+            ctui._init_db()
 
         yes_no_dialog(
             title='Warning',
@@ -176,37 +263,61 @@ class Commands(object):
             yes_func = project_reset,
             no_text = 'Cancel' )
 
-        return None
 
-
-    def do_project_saveas(self, args, output_text):
-        """Save current project as $name."""
-        # TODO: confirm before overrite existing project
-        project_name = args
-        project_path = '{}{}.{}'.format(self.project_folder, project_name, self.name)
+    @ctui.command
+    def do_project_saveas(ctui, args, output_text):
+        """Save current project as $name"""
+        project_to_save = args
+        project_to_save_path = '{}{}.{}'.format(ctui._project_folder, project_to_save, ctui.name)
 
         def project_saveas():
-            self.db.close()
-            old_project = Path(self.project_path)
-            self.project_name = args
-            self.project_path = '{}{}.{}'.format(self.project_folder, self.project_name, self.name)
-            Path(self.project_path).write_bytes(old_project.read_bytes())
-            self._init_db()
-            message_dialog(text = 'Project saved as "{}"'.format(self.project_name))
+            ctui.db.close()
+            old_project = Path(ctui._project_path)
+            ctui.project_name = args
+            Path(ctui._project_path).write_bytes(old_project.read_bytes())
+            ctui._init_db()
 
-        if Path(project_path).exists():
+        if Path(project_to_save_path).is_file():
             yes_no_dialog(
                 title='Warning',
-                text='{} project already exists!  Overwrite?'.format(project_name),
+                text='{} project already exists!  Overwrite?'.format(project_to_save),
                 yes_func = project_saveas )
         else:
             project_saveas()
+            message_dialog(text = 'Project saved as "{}"'.format(ctui.project_name))
 
-        return None
 
-
-    def do_exit(self, args, output_text):
-        """Exit the application."""
-        self.exit()
+    @ctui.command
+    def do_exit(ctui, args, output_text):
+        """Exit the application"""
+        ctui.exit()
         # Return False to prevent history write since db is already closed
         return False
+
+
+    @ctui.command
+    def do_python(ctui, args, output_text):
+        """Run python command"""
+        if args == '':
+            return False
+        def _dict(_object):
+            template = '<style fg="ansibrightcyan">{}</style> = {}'
+            return tabulate(_object.__dict__.items(), tablefmt='simple')
+            # output_list = ['{} = {}'.format(k,v) for k,v in _object.__dict__.items()]
+            # return '\n'.join(output_list)
+            # output_list = [template.format(k,v) for k,v in _object.__dict__.items()]
+            # return to_formatted_text(HTML('\n'.join(output_list)))
+        message = str(eval(args))
+        message_dialog(
+            title = 'Python Response',
+            text = message,
+            lexer = PythonLexer(),
+            scrollbar = True )
+
+
+    @ctui.command
+    def do_system(ctui, args, output_text):
+        """Run system command"""
+        if args == '':
+            return False
+        ctui.app.run_system_command(args)
