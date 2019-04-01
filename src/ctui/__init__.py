@@ -1,7 +1,7 @@
 """
 Control Things User Interface, aka ctui.py
 
-# Copyright (C) 2017-2019  Justin Searle
+# Copyright (C) 2019  Justin Searle
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -12,7 +12,8 @@ Control Things User Interface, aka ctui.py
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details at <http://www.gnu.org/licenses/>.
 """
-from .application import Ctui
+from ctui.application import Ctui
+import ctui.types
 
 __all__ = [
     'Ctui',

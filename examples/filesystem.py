@@ -10,6 +10,7 @@
 # details at <http://www.gnu.org/licenses/>.
 
 from ctui.application import Ctui
+from ctui.types import *
 import os
 
 # Add your own commands by extending the Ctui class
@@ -32,8 +33,9 @@ myapp.help_text = 'Help menu for my ctui application'
 
 # Example of a command with no arguments
 @myapp.command
-def do_ls(ctui, args, output_text):
+def do_ls():
     """Help menu for ls."""     # <--- this will be used in help messages
+    output_text = myapp.output_text           # Grab existing output text
     output_text += 'Directory contains:\n'
     # notice that we appended that text onto the existing output_text
     for item in os.listdir():
@@ -43,14 +45,18 @@ def do_ls(ctui, args, output_text):
 
 # Example of a command with 1 argument
 @myapp.command
-def do_cd(ctui, args, output_text):
-    """Help menu for cd."""
+def do_cd(dir:str):
+    """Help menu for cd.
+
+    :PARAM dir: Directory to change into
+    """
     try:
-        os.chdir(args)
+        os.chdir(dir)
     except:
         # Returning False on bad input forces users to edit their input
         return False
-    output_text = output_text + 'Directory changed to ' + args + '\n'
+    output_text = myapp.output_text           # Grab existing output text
+    output_text = output_text + 'Directory changed to ' + dir + '\n'
     return output_text
 
 

@@ -1,7 +1,7 @@
 """
 Control Things User Interface, aka ctui.py
 
-# Copyright (C) 2017-2019  Justin Searle
+# Copyright (C) 2019  Justin Searle
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -70,16 +70,17 @@ def get_key_bindings(ctui):
         #         message_dialog(title='Error', text=traceback.format_exc(),
         #                        scrollbar=True)
 
-        command, args = ctui.extract_command(input_field.text)
 
-        if command:
-            try:
-                output_text = command.execute(ctui, args, output_field.text)
-            except AssertionError as error:
-                message_dialog(title='Error', text=str(error))
-            except:
-                message_dialog(title='Error', text=traceback.format_exc(),
-                               scrollbar=True)
+        try:
+            command, kwargs = ctui.commands.extract(input_field.text)
+            if command:
+                ctui.output_text = output_field.text
+                output_text = command.execute(**kwargs)
+        except AssertionError as error:
+            message_dialog(title='Error', text=str(error))
+        except:
+            message_dialog(title='Error', text=traceback.format_exc(),
+                           scrollbar=True)
 
         # For invalid commands forcing users to correct them
         if 'output_text' not in locals() or output_text == False:

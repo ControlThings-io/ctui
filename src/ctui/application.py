@@ -1,7 +1,7 @@
 """
 Control Things User Interface, aka ctui.py
 
-# Copyright (C) 2017-2019  Justin Searle
+# Copyright (C) 2019  Justin Searle
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -13,7 +13,7 @@ Control Things User Interface, aka ctui.py
 # details at <http://www.gnu.org/licenses/>.
 """
 from ctui.keybindings import get_key_bindings
-from ctui.commands import Commands, register_defaults
+from ctui.commands import Commands, register_default_commands
 from ctui.layout import CtuiLayout
 from ctui.style import CtuiStyle
 from pathlib import Path
@@ -53,11 +53,13 @@ class Ctui(object):
     help_message = ''       # defaults to welcome message
     project_folder = ''     # defaults to ~/.app.name on all platforms
 
+    output_text = ''        # used to track current output_text
+
     # sets various defaults if not overriden with subclass
     def __init__(self, layout=None):
         self.status_dict = {}
         self.commands = Commands()
-        register_defaults(ctui=self)
+        register_default_commands(ctui=self)
         self.project_name = 'default'
 
 
@@ -128,38 +130,6 @@ class Ctui(object):
             mouse_support=True,
             full_screen=True)
         self.app.run()
-
-
-    # def _execute(self, do_function, args, output_text):
-    #     """Execute do_function."""
-    #     return do_function(args, output_text)
-
-
-    # def _extract_do_function(self, input_text):
-    #     """Extract command arguments."""
-    #     parts = input_text.strip().split()
-    #     # try the the longest combination of parts to the smallest combination
-    #     do_function = None
-    #     for i in range(len(parts),0,-1):
-    #         command = 'do_' + '_'.join(parts[:i])
-    #         args = ' '.join(parts[i:])
-    #         try:
-    #             do_function = getattr(self, command)
-    #             break
-    #         except:
-    #             pass
-    #     return do_function, args
-
-
-    def extract_command(self, input_text):
-        """Extract command arguments."""
-        parts = input_text.strip().split()
-        # try the the longest combination of parts to the smallest combination
-        for i in range(len(parts),0,-1):
-            for command in self.commands:
-                if command.string == ' '.join(parts[:i]):
-                    return command, ' '.join(parts[i:])
-        return None, None
 
 
     def _log_and_exit(self):
