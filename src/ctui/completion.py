@@ -19,8 +19,8 @@ from ctui.commands import Commands
 from prompt_toolkit.completion import Completer, Completion
 
 __all__ = [
-    'WordCompleter',
-]
+    'CommandCompleter',
+    ]
 
 
 class CommandCompleter(Completer):
@@ -59,11 +59,23 @@ class CommandCompleter(Completer):
                 if command_parts[current_part] != (parts_before_cursor[current_part]):
                     return command_parts[current_part].startswith(parts_before_cursor[current_part])
 
+        # Check all commands for matches
         for command in self.commands:
+
+            # If all command parts exactly match, suggest the user can hit enter
             if command.string_parts == parts_before_cursor:
-                yield Completion('', 0, display='<enter>', display_meta=command.desc)
+                yield Completion('', 0, display='<enter>',
+                                 display_meta=command.desc)
+
             elif previous_parts_match(command.string_parts):
+
+                # Suggest next parts (words) for commands that match so far
                 if last_part_full_match(command.string_parts):
-                    yield Completion(command.string_parts[current_part+1], 0, display_meta=command.desc)
+                    yield Completion(command.string_parts[current_part+1],
+                                     0, display_meta=command.desc)
+
+                # Keep suggesting the parts (words) for commands that still match
                 elif last_part_partial_match(command.string_parts):
-                    yield Completion(command.string_parts[current_part], 0, display_meta=command.desc)
+                    yield Completion(command.string_parts[current_part],
+                                     -len(parts_before_cursor[current_part]),
+                                     display_meta=command.desc)
