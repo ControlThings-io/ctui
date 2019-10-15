@@ -26,6 +26,17 @@ GreedyBin = NewType('GreedyBin', List[bool])
 GreedyInt = NewType('GreedyInt', List[int])
 GreedyFloat = NewType('GreedyFloat', List[float])
 
+""" Other types for possible inclusion, maybe from ctypes
+i8
+ui16
+i16
+ui16
+i32
+ui32
+i64
+ui64
+"""
+
 def is_greedy(argtype):
     return argtype in [GreedyStr, GreedyBytes, GreedyHex, GreedyBin, GreedyInt, GreedyFloat]
 
