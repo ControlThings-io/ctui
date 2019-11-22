@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """
 Control Things User Interface, aka ctui.py
 
@@ -18,3 +19,6 @@ import ctui.types
 __all__ = [
     'Ctui',
     ]
+=======
+
+>>>>>>> 9d7b3fed0232e38d0ce1fa0ce811e6f430b541bc

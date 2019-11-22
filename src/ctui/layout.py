@@ -24,6 +24,7 @@ from prompt_toolkit.widgets import MenuContainer, MenuItem, SearchToolbar, TextA
 
 
 class CtuiLayout(object):
+<<<<<<< HEAD
     """Class to facilitate editing and accessing different layout elements"""
 
     def __init__(self, ctui=None, input_field=None, output_field=None,
@@ -59,6 +60,42 @@ class CtuiLayout(object):
             style = 'class:statusbar'  )
 
         self._body = FloatContainer(
+=======
+    """Class to facility access to different layout elements"""
+
+    def __init__(self, ctui, input_field=None, output_field=None, statusbar=None, root_container=None):
+        """Stores layout of the app returns root_container"""
+        completer = WordCompleter(ctui._commands(), meta_dict=ctui._meta_dict(), sentence=True, ignore_case=True)
+        history = FileHistory("{}/.{}_history".format(Path.home(), ctui.name))
+        search_field = SearchToolbar()
+
+        self.input_field = TextArea(
+            height=1,
+            prompt=ctui.prompt,
+            style='class:input_field',
+            completer=completer,
+            history=history)
+
+        self.header_field = Window(
+            height=1,
+            char='-',
+            style='class:line')
+
+        self.output_field = TextArea(
+            text='',
+            # search_field=search_field,
+            style='class:output_field',
+            wrap_lines=ctui.wrap_lines,
+            scrollbar=True )
+
+        self.statusbar = Window(
+            content = FormattedTextControl(self._get_statusbar_text(ctui)),
+            height=1,
+            style='class:statusbar'  )
+
+        # Organization of windows
+        self.body = FloatContainer(
+>>>>>>> 9d7b3fed0232e38d0ce1fa0ce811e6f430b541bc
             HSplit([
                 self.input_field,
                 self.header_field,
