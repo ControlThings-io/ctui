@@ -134,4 +134,5 @@ class CtuiLayout(object):
     # Adding menus
     @property
     def root_container(self):
-        return self._root_container
+        return self._body
+        #return self._root_container

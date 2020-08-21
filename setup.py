@@ -22,7 +22,7 @@ def read(*names, **kwargs):
 
 setup(
     name='ctui',
-    version='0.7',
+    version='0.7.1',
     license='GPLv3',
     description='ctui is a libary similer to Python\'s cmd, but with a curses-like user interface',
     long_description=open('README.md').read(),
@@ -57,7 +57,7 @@ setup(
         'terminal', 'interface', 'ui', 'curses', 'ControlThingsTools', 'ControlThingsPlatform',
     ],
     install_requires=[
-        'prompt_toolkit>=2.0.1',
+        'prompt_toolkit>=2.0.1, <3.0.0',
         'pygments',
         'tabulate',
         'tinydb'
