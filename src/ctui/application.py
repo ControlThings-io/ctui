@@ -19,8 +19,8 @@ from ctui.style import CtuiStyle
 from pathlib import Path
 from prompt_toolkit.application import Application
 from prompt_toolkit.application.current import get_app
-from .dialogs import yes_no_dialog
 from prompt_toolkit.layout.layout import Layout
+from prompt_toolkit.shortcuts.dialogs import yes_no_dialog
 from datetime import datetime
 from tinydb import TinyDB, Query
 
@@ -145,6 +145,6 @@ class Ctui(object):
             yes_no_dialog(
                 title = 'Warning',
                 text = 'Exit without saving project?',
-                yes_func = self._log_and_exit )
+                yes_func = self._log_and_exit ).run()
         else:
             self._log_and_exit()

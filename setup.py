@@ -22,7 +22,7 @@ def read(*names, **kwargs):
 
 setup(
     name='ctui',
-    version='0.7',
+    version='0.8.0',
     license='GPLv3',
     description='ctui is a libary similer to Python\'s cmd, but with a curses-like user interface',
     long_description=open('README.md').read(),
@@ -60,7 +60,8 @@ setup(
         'prompt_toolkit>=2.0.1',
         'pygments',
         'tabulate',
-        'tinydb'
+        'tinydb',
+        'six'
     ],
     extras_require={
         # eg:

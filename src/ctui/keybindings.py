@@ -13,13 +13,13 @@ Control Things User Interface, aka ctui.py
 # details at <http://www.gnu.org/licenses/>.
 """
 import time
-from .dialogs import message_dialog
 from .functions import scroll_end, scroll_home, scroll_page_down, scroll_page_up
 from .functions import scroll_line_down, scroll_line_up
 from prompt_toolkit.document import Document
 from prompt_toolkit.filters import has_focus
 from prompt_toolkit.formatted_text import HTML, to_formatted_text
 from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.shortcuts.dialogs import message_dialog
 from prompt_toolkit.search import start_search, SearchDirection
 from datetime import datetime
 import traceback
@@ -79,8 +79,7 @@ def get_key_bindings(ctui):
         except AssertionError as error:
             message_dialog(title='Error', text=str(error))
         except:
-            message_dialog(title='Error', text=traceback.format_exc(),
-                           scrollbar=True)
+            message_dialog(title='Error', text=traceback.format_exc())
 
         # For invalid commands forcing users to correct them
         if 'output_text' not in locals() or output_text == False:

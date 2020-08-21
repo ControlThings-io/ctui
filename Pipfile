@@ -1,0 +1,18 @@
+[[source]]
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+six = "*"
+prompt-toolkit = "*"
+pygments = "*"
+tabulate = "*"
+tinydb = "*"
+
+[requires]
+python_version = "3.8"
+
+[dev-packages.e1839a8]
+path = "."
+editable = true

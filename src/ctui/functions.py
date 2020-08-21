@@ -13,11 +13,11 @@ Control Things User Interface, aka ctui.py
 # details at <http://www.gnu.org/licenses/>.
 """
 import time
-from .dialogs import message_dialog
-from prompt_toolkit.document import Document
 from prompt_toolkit.filters import has_focus
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.search import start_search, SearchDirection
+from prompt_toolkit.shortcuts.dialogs import message_dialog
+from prompt_toolkit.document import Document
 from tabulate import tabulate
 import datetime
 

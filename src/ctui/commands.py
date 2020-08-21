@@ -14,11 +14,9 @@ Control Things User Interface, aka ctui.py
 """
 from ctui.types import *
 import shlex
-from ctui.dialogs import YesNoDialog, show_dialog, yes_no_dialog, message_dialog, input_dialog
 from ctui.functions import show_help
-#from ctui.application import Ctui
-from prompt_toolkit.eventloop import ensure_future, From
 from prompt_toolkit.formatted_text import HTML, to_formatted_text
+from prompt_toolkit.shortcuts.dialogs import yes_no_dialog, message_dialog, input_dialog
 from pygments.lexers.python import PythonLexer
 from tabulate import tabulate
 from tinydb import TinyDB, Query
@@ -351,7 +349,7 @@ def register_default_commands(ctui):
         for file in list(Path(ctui._project_folder).glob(f'*.{ctui.name}')):
             lines.append({'Project': file.stem, 'Size (KB)': file.stat().st_size})
         message = tabulate(lines, headers='keys', tablefmt='simple')
-        message_dialog(title='Saved Projects', text=message, scrollbar=True)
+        message_dialog(title='Saved Projects', text=message)
 
 
     @ctui.command

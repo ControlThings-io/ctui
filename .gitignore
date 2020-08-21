@@ -1,5 +1,6 @@
 .vscode
 .DS_Store
+.venv
 dist/
 .mypy_cache/
 *.pyc
