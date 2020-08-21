@@ -7,9 +7,7 @@ ctui is a library for creating terminal-based user interfaces, and is used in al
 As long as you have git and Python 3.5 or later installed, all you should need to do is:
 
 ```
-git clone https://github.com/ControlThingsTools/ctui.git
-cd ctui
-pip3 install -r requirements.txt
+pip3 install ctui
 ```
 
 # Usage:
@@ -23,7 +21,7 @@ myapp = Ctui()
 myapp.run()
 ```
 
-Of course you can configure you app in a number of different ways by modifying your app's attributes or by adding your own custom commands.   Check out the examples folder to walk you through some of these.  For more complex examples how to use ctui, check out the various ControlThings Tools, most of which use ctui.  You can find these at https://github.com/ControlThingsTools.
+Of course you can configure you app in a number of different ways by modifying your app's attributes or by adding your own custom commands.   Check out the `examples` folder to walk you through some of these.  For more complex examples how to use ctui, check out the various ControlThings Tools, most of which use ctui.  You can find these at https://github.com/ControlThingsTools.
 
 # Platform Independence
 
