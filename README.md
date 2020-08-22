@@ -4,7 +4,7 @@ ctui is a library for creating terminal-based user interfaces, and is used in al
 
 # Installation:
 
-As long as you have git and Python 3.5 or later installed, all you should need to do is:
+As long as you have git and Python 3.6 or later installed, all you should need to do is:
 
 ```
 pip3 install ctui
