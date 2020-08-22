@@ -26,6 +26,7 @@ setup(
     license='GPLv3',
     description='ctui is a library similar to Python\'s cmd, but with a curses-like user interface',
     long_description=open('README.md').read(),
+    long_description_content_type="text/markdown",
     author='Justin Searle',
     author_email='justin@meeas.com',
     url='https://github.com/ControlThingsTools/ctui',
