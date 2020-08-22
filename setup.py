@@ -22,7 +22,7 @@ def read(*names, **kwargs):
 
 setup(
     name='ctui',
-    version='0.7.1',
+    version='0.7.2',
     license='GPLv3',
     description='The ctui is a library similar to Python\'s cmd, but with a curses-like user interface',
     long_description=open('README.md').read(),
