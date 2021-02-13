@@ -5,7 +5,8 @@ name = "pypi"
 
 [packages]
 
-[requires]
+[dev-packages]
+pylint = "*"
 
 [dev-packages.e1839a8]
 path = "."
