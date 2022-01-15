@@ -7,7 +7,4 @@ name = "pypi"
 
 [dev-packages]
 pylint = "*"
-
-[dev-packages.e1839a8]
-path = "."
-editable = true
+ctui = {editable = true, path = "."}
