@@ -17,7 +17,6 @@ import shlex
 from ctui.dialogs import YesNoDialog, show_dialog, yes_no_dialog, message_dialog, input_dialog
 from ctui.functions import show_help
 #from ctui.application import Ctui
-from prompt_toolkit.eventloop import ensure_future, From
 from prompt_toolkit.formatted_text import HTML, to_formatted_text
 from pygments.lexers.python import PythonLexer
 from tabulate import tabulate
