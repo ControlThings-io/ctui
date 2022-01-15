@@ -57,10 +57,11 @@ setup(
     ],
     python_requires='>=3.6,<4',
     install_requires=[
-        'prompt_toolkit>=2.0.1, <3.0.0',
+        'prompt_toolkit>=3.0.0',
         'pygments',
         'tabulate',
-        'tinydb'
+        'tinydb',
+        'six'
     ],
     extras_require={
         # eg:
