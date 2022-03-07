@@ -12,13 +12,14 @@ Control Things User Interface, aka ctui.py
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details at <http://www.gnu.org/licenses/>.
 """
+from asyncio import Future, ensure_future
+
 from .base import Button
 from prompt_toolkit.application.current import get_app
 from prompt_toolkit.formatted_text import HTML, to_formatted_text
 from prompt_toolkit.formatted_text.utils import fragment_list_to_text
 from prompt_toolkit.layout.containers import Float, HSplit
 from prompt_toolkit.layout.controls import FormattedTextControl
-from prompt_toolkit.eventloop import Future, ensure_future, Return, From
 from prompt_toolkit.layout.dimension import D
 from prompt_toolkit.widgets import Dialog, Label, TextArea
 from prompt_toolkit.utils import get_cwidth
@@ -167,13 +168,13 @@ def show_dialog(dialog):
     app.layout.container.floats.insert(0, float_)
     focused_before = app.layout.current_window
     app.layout.focus(dialog)
-    result = yield dialog.future
+    result = yield from dialog.future
     app.layout.focus(focused_before)
 
     if float_ in app.layout.container.floats:
         app.layout.container.floats.remove(float_)
 
-    raise Return(result)
+    return result
 
 
 
@@ -191,7 +192,7 @@ def yes_no_dialog(title='', text='', yes_text='Yes', yes_func=func_pass,
     def coroutine():
         dialog = YesNoDialog(title=title, text=text, yes_text=yes_text,
                              no_text=no_text)
-        result = yield From(show_dialog(dialog))
+        result = yield from show_dialog(dialog)
         if result == True:
             yes_func()
         else:
@@ -217,7 +218,7 @@ def input_dialog(title='', text='', ok_text='OK', cancel_text='Cancel',
         global output_text
         open_dialog = TextInputDialog(title, text, completer)
 
-        output_text = yield From(show_dialog(open_dialog))
+        output_text = yield from show_dialog(open_dialog)
     ensure_future(coroutine())
     return output_text
 
@@ -231,7 +232,7 @@ def message_dialog(title='', text='', ok_text='Ok', lexer=None,
         dialog = MessageDialog(title=title, text=text, ok_text=ok_text,
                                width=width, wrap_lines=wrap_lines,
                                scrollbar=scrollbar)
-        yield From(show_dialog(dialog))
+        yield from show_dialog(dialog)
     ensure_future(coroutine())
 
 
