@@ -21,7 +21,7 @@ myapp = Ctui()
 myapp.run()
 ```
 
-Of course you can configure you app in a number of different ways by modifying your app's attributes or by adding your own custom commands.   Check out the `examples` folder to walk you through some of these.  For more complex examples how to use ctui, check out the various ControlThings Tools, most of which use ctui.  You can find these at https://github.com/ControlThingsTools.
+Of course you can configure you app in a number of different ways by modifying your app's attributes or by adding your own custom commands.   Check out the `examples` folder to walk you through some of these.  For more complex examples how to use ctui, check out the various ControlThings Tools, most of which use ctui.  You can find these at <https://www.controlthings.io/tools>.
 
 # Developing
 
