@@ -1,4 +1,4 @@
-# Control Things Serial
+# Control Things Library UI
 
 The `ctui` is a library for creating terminal-based user interfaces, and is used in all the ControlThings tools at controlthings.io.  It is similar to using Click or Python's standard Cmd library, but with a curses-like interface written in pure Python.
 
