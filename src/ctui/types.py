@@ -76,7 +76,7 @@ def to_type(value, kwarg):
             raw_bin = re.sub('[\\\\b ]', '', data)
             list_bool = []
             for bit in raw_bin:
-                list_bool.append(bool(bit))
+                list_bool.append(bool(int(bit)))
             return list_bool
         else:
             raise AssertionError(f'{kwarg.name} must be sequence of 1s and 0s')
