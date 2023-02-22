@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.6"
 prompt-toolkit = "^3.0.36"
 Pygments = "^2.14.0"
 tabulate = "^0.8.0"
