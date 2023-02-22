@@ -9,18 +9,20 @@
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details at <http://www.gnu.org/licenses/>.
 
-from ctui.application import Ctui
-from ctui.types import *
 import os
+
+from ctui.application import Ctui
+
+# from ctui.types import *
 
 # Add your own commands by extending the Ctui class
 myapp = Ctui()
 
-myapp.name = 'ctui_filesystem'
-myapp.version = '0.1'
-myapp.description = 'Example filesystem application using ctui'
-myapp.prompt = 'fs> '
-myapp.help_text = 'Help menu for my ctui application'
+myapp.name = "ctui_filesystem"
+myapp.version = "0.1"
+myapp.description = "Example filesystem application using ctui"
+myapp.prompt = "fs> "
+myapp.help_message = "Type your Linux commands on top...\nresults appear on the bottom."
 
 # Each function representing a command must:
 #     - start with a do_
@@ -34,29 +36,29 @@ myapp.help_text = 'Help menu for my ctui application'
 # Example of a command with no arguments
 @myapp.command
 def do_ls():
-    """Help menu for ls."""     # <--- this will be used in help messages
-    output_text = myapp.output_text           # Grab existing output text
-    output_text += 'Directory contains:\n'
+    """Help menu for ls."""  # <--- this will be used in help messages
+    output_text = myapp.output_text  # Grab existing output text
+    output_text += "Contents of " + os.getcwd() + ":\n"
     # notice that we appended that text onto the existing output_text
     for item in os.listdir():
-        output_text += ' ' + item + '\n'
+        output_text += " " + item + "\n"
     return output_text
 
 
 # Example of a command with 1 argument
 @myapp.command
-def do_cd(dir:str):
+def do_cd(directory: str):
     """Help menu for cd.
 
     :PARAM dir: Directory to change into
     """
     try:
-        os.chdir(dir)
-    except:
+        os.chdir(directory)
+    except FileNotFoundError:
         # Returning False on bad input forces users to edit their input
         return False
-    output_text = myapp.output_text           # Grab existing output text
-    output_text = output_text + 'Directory changed to ' + dir + '\n'
+    output_text = myapp.output_text  # Grab existing output text
+    output_text = output_text + "Directory changed to " + os.getcwd() + "\n"
     return output_text
 
 

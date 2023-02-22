@@ -14,21 +14,28 @@ Control Things User Interface, aka ctui.py
 """
 from asyncio import Future, ensure_future
 
-from .base import Button
 from prompt_toolkit.application.current import get_app
-from prompt_toolkit.formatted_text import HTML, to_formatted_text
+from prompt_toolkit.formatted_text import to_formatted_text
 from prompt_toolkit.formatted_text.utils import fragment_list_to_text
 from prompt_toolkit.layout.containers import Float, HSplit
-from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.layout.dimension import D
-from prompt_toolkit.widgets import Dialog, Label, TextArea
 from prompt_toolkit.utils import get_cwidth
+from prompt_toolkit.widgets import Dialog, Label, TextArea
 
+from .base import Button
 
 
 class YesNoDialog(object):
-    def __init__(self, title='', text='', yes_text='Yes', no_text='No',
-                 width=None, wrap_lines=True, scrollbar=False):
+    def __init__(
+        self,
+        title="",
+        text="",
+        yes_text="Yes",
+        no_text="No",
+        width=None,
+        wrap_lines=True,
+        scrollbar=False,
+    ):
         self.future = Future()
 
         def yes_handler():
@@ -37,33 +44,43 @@ class YesNoDialog(object):
         def no_handler():
             self.future.set_result(False)
 
-        text_width = len(max(text.split('\n'), key=len)) + 2
+        text_width = len(max(text.split("\n"), key=len)) + 2
 
         self.text_area = TextArea(
-            text = text,
-            read_only = True,
+            text=text,
+            read_only=True,
             # focus_on_click = True,
-            focusable = False,
-            width = D(preferred=text_width),
-            wrap_lines = wrap_lines,
-            scrollbar = scrollbar )
+            focusable=False,
+            width=D(preferred=text_width),
+            wrap_lines=wrap_lines,
+            scrollbar=scrollbar,
+        )
 
         self.dialog = Dialog(
             title=title,
             body=self.text_area,
             buttons=[
                 Button(text=yes_text, width=1, handler=yes_handler),
-                Button(text=no_text, width=1, handler=no_handler) ],
+                Button(text=no_text, width=1, handler=no_handler),
+            ],
             with_background=True,
-            modal=True)
+            modal=True,
+        )
 
     def __pt_container__(self):
         return self.dialog
 
 
 class TextInputDialog(object):
-    def __init__(self, title='', text='', ok_text='Ok',
-                 width=None, wrap_lines=True, scrollbar=False):
+    def __init__(
+        self,
+        title="",
+        text="",
+        ok_text="Ok",
+        width=None,
+        wrap_lines=True,
+        scrollbar=False,
+    ):
         self.future = Future()
 
         def accept_text(buf):
@@ -77,34 +94,41 @@ class TextInputDialog(object):
         def cancel():
             self.future.set_result(None)
 
-        text_width = len(max(text.split('\n'), key=len)) + 2
+        text_width = len(max(text.split("\n"), key=len)) + 2
 
         self.text_area = TextArea(
-            completer=completer,
+            # completer=completer,
             multiline=False,
-            width = D(preferred=text_width),
-            accept_handler=accept_text)
+            width=D(preferred=text_width),
+            accept_handler=accept_text,
+        )
 
-        ok_button = Button(text='OK', handler=accept)
-        cancel_button = Button(text='Cancel', handler=cancel)
+        ok_button = Button(text="OK", handler=accept)
+        cancel_button = Button(text="Cancel", handler=cancel)
 
         self.dialog = Dialog(
             title=title,
-            body=HSplit([
-                Label(text=text),
-                self.text_area
-            ]),
+            body=HSplit([Label(text=text), self.text_area]),
             buttons=[ok_button, cancel_button],
-            width = width,
-            modal=True)
+            width=width,
+            modal=True,
+        )
 
     def __pt_container__(self):
         return self.dialog
 
 
 class MessageDialog(object):
-    def __init__(self, title='', text='', ok_text='Ok', lexer=None,
-                 width=None, wrap_lines=True, scrollbar=False):
+    def __init__(
+        self,
+        title="",
+        text="",
+        ok_text="Ok",
+        lexer=None,
+        width=None,
+        wrap_lines=True,
+        scrollbar=False,
+    ):
         self.future = Future()
         self.text = text
 
@@ -134,35 +158,37 @@ class MessageDialog(object):
             text_fragments = to_formatted_text(self.text)
             text = fragment_list_to_text(text_fragments)
             if text:
-                text_height =  len(self.text.splitlines())
+                text_height = len(self.text.splitlines())
                 max_text_height = get_app().renderer.output.get_size().rows - 6
                 if text_height > max_text_height:
-                     return True
+                    return True
 
         self.text_area = TextArea(
-            text = text,
-            lexer = lexer,
-            read_only = True,
-            focusable = False,
-            width = get_text_width(),
-            wrap_lines = wrap_lines,
-            scrollbar = dynamic_virtical_scrollbar())
+            text=text,
+            lexer=lexer,
+            read_only=True,
+            focusable=False,
+            width=get_text_width(),
+            wrap_lines=wrap_lines,
+            scrollbar=dynamic_virtical_scrollbar(),
+        )
 
-        ok_button = Button(text='OK', handler=(lambda: set_done()))
+        ok_button = Button(text="OK", handler=(lambda: set_done()))
 
         self.dialog = Dialog(
             title=title,
             body=self.text_area,
             buttons=[ok_button],
             width=width,
-            modal=True)
+            modal=True,
+        )
 
     def __pt_container__(self):
         return self.dialog
 
 
 def show_dialog(dialog):
-    " Coroutine. "
+    "Coroutine."
     app = get_app()
     float_ = Float(content=dialog)
     app.layout.container.floats.insert(0, float_)
@@ -177,26 +203,34 @@ def show_dialog(dialog):
     return result
 
 
-
 # Functions that use dialog classes and return results
+
 
 def func_pass():
     pass
 
-def yes_no_dialog(title='', text='', yes_text='Yes', yes_func=func_pass,
-                  no_text='No', no_func=func_pass):
+
+def yes_no_dialog(
+    title="",
+    text="",
+    yes_text="Yes",
+    yes_func=func_pass,
+    no_text="No",
+    no_func=func_pass,
+):
     """
     Display a Yes/No dialog.
     Execute a passed function.
     """
+
     def coroutine():
-        dialog = YesNoDialog(title=title, text=text, yes_text=yes_text,
-                             no_text=no_text)
+        dialog = YesNoDialog(title=title, text=text, yes_text=yes_text, no_text=no_text)
         result = yield from show_dialog(dialog)
         if result == True:
             yes_func()
         else:
             no_func()
+
     ensure_future(coroutine())
 
 
@@ -207,32 +241,54 @@ def yes_no_dialog(title='', text='', yes_text='Yes', yes_func=func_pass,
 #     """
 
 
-def input_dialog(title='', text='', ok_text='OK', cancel_text='Cancel',
-                 completer=None, password=False):
+def input_dialog(
+    title="",
+    text="",
+    ok_text="OK",
+    cancel_text="Cancel",
+    completer=None,
+    password=False,
+):
     """
     Display a text input box.
     Return the given text, or None when cancelled.
     """
-    output_text = ''
+    output_text = ""
+
     def coroutine():
         global output_text
         open_dialog = TextInputDialog(title, text, completer)
 
         output_text = yield from show_dialog(open_dialog)
+
     ensure_future(coroutine())
     return output_text
 
 
-def message_dialog(title='', text='', ok_text='Ok', lexer=None,
-                   width=None, wrap_lines=True, scrollbar=None):
+def message_dialog(
+    title="",
+    text="",
+    ok_text="Ok",
+    lexer=None,
+    width=None,
+    wrap_lines=True,
+    scrollbar=None,
+):
     """
     Display a simple message box and wait until the user presses enter.
     """
+
     def coroutine():
-        dialog = MessageDialog(title=title, text=text, ok_text=ok_text,
-                               width=width, wrap_lines=wrap_lines,
-                               scrollbar=scrollbar)
+        dialog = MessageDialog(
+            title=title,
+            text=text,
+            ok_text=ok_text,
+            width=width,
+            wrap_lines=wrap_lines,
+            scrollbar=scrollbar,
+        )
         yield from show_dialog(dialog)
+
     ensure_future(coroutine())
 
 
