@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ctui"
-version = "0.7.5"
+version = "0.7.6"
 description = "The ctui library is similar to Python's built in cmd library, but with a curses-like user interface"
 authors = ["Justin Searle <justin@controlthings.io>"]
 license = "LGPL"
