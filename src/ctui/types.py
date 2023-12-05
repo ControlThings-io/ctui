@@ -82,10 +82,7 @@ def to_type(value, kwarg):
         data = value.lower().replace("0b", "")
         if re.match("^[01\\\\b ]+$", data):
             raw_bin = re.sub("[\\\\b ]", "", data)
-            list_bool = []
-            for bit in raw_bin:
-                list_bool.append(bool(int(bit)))
-            return list_bool
+            return [False if bit == "0" else True for bit in raw_bin]
         else:
             raise AssertionError(f"{kwarg.name} must be sequence of 1s and 0s")
 
