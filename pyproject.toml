@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ctui"
-version = "0.7.6"
+version = "0.7.5"
 description = "The ctui library is similar to Python's built in cmd library, but with a curses-like user interface"
 authors = ["Justin Searle <justin@controlthings.io>"]
 license = "LGPL"
@@ -13,7 +13,7 @@ classifiers = [
     'Intended Audience :: Developers',
     'Intended Audience :: Information Technology',
     'Intended Audience :: Manufacturing',
-    'Intended Audience :: Other Audience',    
+    'Intended Audience :: Other Audience',
     'Intended Audience :: Science/Research',
     'Operating System :: Unix',
     'Operating System :: POSIX',
@@ -51,4 +51,3 @@ force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
 line_length = 88
-
