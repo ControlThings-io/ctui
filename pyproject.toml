@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ctui"
-version = "0.7.8"
+version = "0.7.9"
 description = "The ctui library is similar to Python's built in cmd library, but with a curses-like user interface"
 authors = ["Justin Searle <justin@controlthings.io>"]
 license = "LGPL"
@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = ">= 3.8, < 3.12"
+python = "^3.8"
 prompt-toolkit = "^3.0.36"
 Pygments = "^2.14.0"
 tabulate = "^0.8.0"
