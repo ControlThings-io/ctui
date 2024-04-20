@@ -187,14 +187,14 @@ class MessageDialog(object):
         return self.dialog
 
 
-def show_dialog(dialog):
+async def show_dialog(dialog):
     "Coroutine."
     app = get_app()
     float_ = Float(content=dialog)
     app.layout.container.floats.insert(0, float_)
     focused_before = app.layout.current_window
     app.layout.focus(dialog)
-    result = yield from dialog.future
+    result = await dialog.future
     app.layout.focus(focused_before)
 
     if float_ in app.layout.container.floats:
@@ -223,9 +223,9 @@ def yes_no_dialog(
     Execute a passed function.
     """
 
-    def coroutine():
+    async def coroutine():
         dialog = YesNoDialog(title=title, text=text, yes_text=yes_text, no_text=no_text)
-        result = yield from show_dialog(dialog)
+        result = await show_dialog(dialog)
         if result == True:
             yes_func()
         else:
@@ -255,11 +255,11 @@ def input_dialog(
     """
     output_text = ""
 
-    def coroutine():
+    async def coroutine():
         global output_text
         open_dialog = TextInputDialog(title, text, completer)
 
-        output_text = yield from show_dialog(open_dialog)
+        output_text = await show_dialog(open_dialog)
 
     ensure_future(coroutine())
     return output_text
@@ -278,7 +278,7 @@ def message_dialog(
     Display a simple message box and wait until the user presses enter.
     """
 
-    def coroutine():
+    async def coroutine():
         dialog = MessageDialog(
             title=title,
             text=text,
@@ -287,7 +287,7 @@ def message_dialog(
             wrap_lines=wrap_lines,
             scrollbar=scrollbar,
         )
-        yield from show_dialog(dialog)
+        await show_dialog(dialog)
 
     ensure_future(coroutine())
 
