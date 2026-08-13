@@ -70,10 +70,10 @@ class Ctui(object):
     # TODO: Fix broken status bar
     @property
     def _statusbar(self):
-        self.status_dict["Project"] = self.project_name
+        self.status_dict["PROJECT"] = self.project_name
         status = "  ".join([f"{k}: {v}" for k, v in self.status_dict.items()])
-        footer = self.footer() if callable(self.footer) else self.footer
-        return "  ".join(part for part in (status, footer) if part)
+        footer = self.footer() if callable(self.footer) else status
+        return footer
 
     def _init_db(self):
         """setup database storage"""
