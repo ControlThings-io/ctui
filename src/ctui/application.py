@@ -46,14 +46,14 @@ class Ctui(object):
     prompt = "> "
     help_message = "Commands go on top, results appear on the bottom."
     wrap_lines = False  # Wrap lines in main output window or not
-    footer = ""  # String or zero-argument callable evaluated when the UI renders
+    # statusbar = lambda: f"PROJECT: {self.project_name}"  # zero-argument callable evaluated when the UI renders
 
     # sets various defaults if not overriden with subclass
     def __init__(self, layout=None):
-        self.status_dict = {}
         self.commands = Commands()
         register_default_commands(ctui=self)
         self.project_name = "default"
+        self.statusbar = lambda: f"PROJECT: {self.project_name}"
 
     @property
     def welcome(self):
@@ -67,13 +67,10 @@ class Ctui(object):
     def _project_path(self):
         return f"{self.project_folder}{self.project_name}.{self.name}"
 
-    # TODO: Fix broken status bar
     @property
     def _statusbar(self):
-        self.status_dict["PROJECT"] = self.project_name
-        status = "  ".join([f"{k}: {v}" for k, v in self.status_dict.items()])
-        footer = self.footer() if callable(self.footer) else status
-        return footer
+        statusbar = self.statusbar if callable(self.statusbar) else lambda: 'ERROR: .statusbar must be callable such as "lambda: f"PROJECT: {self.project_name}""'
+        return statusbar
 
     def _init_db(self):
         """setup database storage"""

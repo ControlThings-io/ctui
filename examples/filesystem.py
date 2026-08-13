@@ -23,8 +23,9 @@ myapp.version = "0.1"
 myapp.description = "Example filesystem application using ctui"
 myapp.prompt = "fs> "
 myapp.help_message = "Type your Linux commands on top...\nresults appear on the bottom."
-# If you don't set a footer, the default will be "PROJECT: <project_name>"
-myapp.footer = lambda: f"PROJECT: {myapp.project_name} | CWD: {os.getcwd()}"
+# If you don't set a statusbar, the default will be "lambda: f"PROJECT: {myapp.project_name}"
+# Statusbar must be callable
+myapp.statusbar = lambda: f"PROJECT: {myapp.project_name} | CWD: {os.getcwd()}"
 
 # Each function representing a command must:
 #     - start with a do_
