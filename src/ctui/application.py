@@ -57,7 +57,7 @@ class Ctui(object):
 
     @property
     def welcome(self):
-        return f"Welcome to {self.name}{self.version}\n\n{self.description}"
+        return f"Welcome to {self.name} {self.version}\n\n{self.description}"
 
     @property
     def project_folder(self):
