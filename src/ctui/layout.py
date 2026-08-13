@@ -68,7 +68,7 @@ class CtuiLayout(object):
         )
 
         self._statusbar = Window(
-            content=FormattedTextControl(self.statusbar_text),
+            content=FormattedTextControl(lambda: self.statusbar_text),
             height=1,
             style="class:statusbar",
         )

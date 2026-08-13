@@ -46,6 +46,7 @@ class Ctui(object):
     prompt = "> "
     help_message = "Commands go on top, results appear on the bottom."
     wrap_lines = False  # Wrap lines in main output window or not
+    footer = ""  # String or zero-argument callable evaluated when the UI renders
 
     # sets various defaults if not overriden with subclass
     def __init__(self, layout=None):
@@ -70,7 +71,9 @@ class Ctui(object):
     @property
     def _statusbar(self):
         self.status_dict["Project"] = self.project_name
-        return "  ".join([f"{k}: {v}" for k, v in self.status_dict.items()])
+        status = "  ".join([f"{k}: {v}" for k, v in self.status_dict.items()])
+        footer = self.footer() if callable(self.footer) else self.footer
+        return "  ".join(part for part in (status, footer) if part)
 
     def _init_db(self):
         """setup database storage"""

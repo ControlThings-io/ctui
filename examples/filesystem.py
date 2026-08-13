@@ -23,6 +23,7 @@ myapp.version = "0.1"
 myapp.description = "Example filesystem application using ctui"
 myapp.prompt = "fs> "
 myapp.help_message = "Type your Linux commands on top...\nresults appear on the bottom."
+myapp.footer = lambda: f"CWD: {os.getcwd()}"
 
 # Each function representing a command must:
 #     - start with a do_
