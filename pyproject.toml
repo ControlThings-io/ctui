@@ -1,42 +1,53 @@
-[tool.poetry]
+[project]
 name = "ctui"
-version = "0.7.9"
+version = "0.8.0"
 description = "The ctui library is similar to Python's built in cmd library, but with a curses-like user interface"
-authors = ["Justin Searle <justin@controlthings.io>"]
-license = "LGPL"
+authors = [{ name = "Justin Searle", email = "justin@controlthings.io" }]
+requires-python = ">=3.8,<4"
 readme = "README.md"
-homepage = "https://www.controlthings.io"
-repository = "https://github.com/ControlThings-io/ctserial"
+license = "LGPL-3.0-or-later"
 keywords = ["serial", "fieldbus", "ICS", "control", "ControlThings"]
 classifiers = [
-    'Development Status :: 5 - Production/Stable',
-    'Intended Audience :: Developers',
-    'Intended Audience :: Information Technology',
-    'Intended Audience :: Manufacturing',
-    'Intended Audience :: Other Audience',
-    'Intended Audience :: Science/Research',
-    'Operating System :: Unix',
-    'Operating System :: POSIX',
-    'Operating System :: Microsoft :: Windows',
-    'Topic :: Utilities',
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Manufacturing",
+    "Intended Audience :: Other Audience",
+    "Intended Audience :: Science/Research",
+    "Operating System :: Unix",
+    "Operating System :: POSIX",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: Utilities",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "prompt-toolkit>=3.0.36,<4",
+    "Pygments>=2.14.0,<3",
+    "tabulate>=0.8.0,<0.9",
+    "tinydb>=4.7.1,<5",
+    "six>=1.16.0,<2",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.8"
-prompt-toolkit = "^3.0.36"
-Pygments = "^2.14.0"
-tabulate = "^0.8.0"
-tinydb = "^4.7.1"
-six = "^1.16.0"
+[project.urls]
+Homepage = "https://www.controlthings.io"
+Repository = "https://github.com/ControlThings-io/ctserial"
 
-[tool.poetry.group.dev.dependencies]
-pylint = "^2.16.2"
-black = "^23.1.0"
-isort = "^5.12.0"
+[dependency-groups]
+dev = ["pylint>=2.16.2,<3", "black>=23.1.0,<24", "isort>=5.12.0,<6"]
+
+[tool.uv]
+default-groups = "all"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.12.3,<0.13.0"]
+build-backend = "uv_build"
 
 [tool.pylint.messages_control]
 disable = "C0330, C0326"
