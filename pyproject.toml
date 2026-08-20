@@ -1,6 +1,6 @@
 [project]
 name = "ctui"
-version = "0.8.0"
+version = "0.8.1"
 description = "The ctui library is similar to Python's built in cmd library, but with a curses-like user interface"
 authors = [{ name = "Justin Searle", email = "justin@controlthings.io" }]
 requires-python = ">=3.8,<4"
