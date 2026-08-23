@@ -2,6 +2,7 @@
 
 Run: uv run examples/03_types_and_options.py
 Try: greet Justin
+Try: greet "Justin Searle"
 Try: greet Justin excited
 Try: greet Justin --style excited --uppercase
 """

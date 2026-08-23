@@ -41,6 +41,7 @@ class CompletionItem:
     """Describe insertable completion text and its dropdown help message."""
     value: str
     help: str = ""
+    display: str | None = None
 
 
 @dataclass(frozen=True)
@@ -364,6 +365,13 @@ class Command:
             x if isinstance(x, CompletionItem) else CompletionItem(str(x))
             for x in items
         ]
+        if not normalized and not word.startswith("--"):
+            type_name = getattr(annotation, "__name__", str(annotation))
+            label = config.metavar or parameter.name.upper()
+            detail = config.help or (
+                "quoted text may contain spaces" if annotation is str else type_name
+            )
+            return [CompletionItem("", detail, f"<{label}: {type_name}>")]
         valid = []
         for item in normalized:
             if not item.value.startswith(word):
@@ -378,6 +386,31 @@ class Command:
                     continue
             valid.append(item)
         return valid
+
+    async def expand_unique_arguments(self, text: str, app=None) -> str:
+        """Expand unique prefixes for constrained argument values.
+
+        Free-form strings and numbers remain unchanged. Choices supplied by
+        annotations, configuration, or completion providers participate.
+        """
+        try:
+            tokens = shlex.split(text)
+        except ValueError as error:
+            raise CommandValidationError(str(error)) from error
+        expanded: list[str] = []
+        for token in tokens:
+            prefix = shlex.join(expanded)
+            if prefix:
+                prefix += " "
+            matches = [
+                item.value
+                for item in await self.complete(prefix, token, app)
+                if item.value
+            ]
+            if len(matches) == 1:
+                token = matches[0]
+            expanded.append(token)
+        return shlex.join(expanded)
 
 
 class Commands:
@@ -442,6 +475,23 @@ class Commands:
         for name in sorted(all_names, key=lambda x: len(x.split()), reverse=True):
             if stripped == name or stripped.startswith(name + " "):
                 return all_names[name], stripped[len(name) :].lstrip()
+        try:
+            tokens = shlex.split(stripped)
+        except ValueError as error:
+            raise CommandNotFound(str(error)) from error
+        matches = []
+        for name, item in all_names.items():
+            parts = name.split()
+            if len(tokens) >= len(parts) and all(
+                part.startswith(token) for token, part in zip(tokens, parts)
+            ):
+                matches.append((name, item, len(parts)))
+        if len({id(item) for _, item, _ in matches}) == 1:
+            _, item, count = max(matches, key=lambda match: match[2])
+            return item, shlex.join(tokens[count:])
+        if matches:
+            names = ", ".join(sorted(name for name, _, _ in matches))
+            raise CommandNotFound(f"Ambiguous command; matches: {names}")
         raise CommandNotFound(f"Unknown command: {stripped}")
 
     def extract(self, text):

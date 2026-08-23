@@ -1,9 +1,34 @@
 """Context-aware command and argument completion."""
 
 from __future__ import annotations
-import shlex
 from prompt_toolkit.completion import Completer, Completion
 from ctui.commands import CommandNotFound, Commands
+
+
+def _argument_state(text: str) -> tuple[list[str], str, bool]:
+    """Split partial input while preserving quoted spaces and cursor state."""
+    completed, current, quote, escaped = [], [], None, False
+    for character in text:
+        if escaped:
+            current.append(character)
+            escaped = False
+        elif character == "\\":
+            escaped = True
+        elif quote:
+            if character == quote:
+                quote = None
+            else:
+                current.append(character)
+        elif character in ("'", '"'):
+            quote = character
+        elif character.isspace():
+            if current:
+                completed.append("".join(current))
+                current = []
+        else:
+            current.append(character)
+    boundary = bool(text) and text[-1].isspace() and quote is None
+    return completed, "" if boundary else "".join(current), boundary
 
 
 class CommandCompleter(Completer):
@@ -38,26 +63,33 @@ class CommandCompleter(Completer):
     async def get_completions_async(self, document, complete_event):
         """Yield command or asynchronously generated argument completions."""
         text = document.text_before_cursor
+        stripped = text.lstrip()
+        command_matches = list(self._command_completions(stripped))
+        if command_matches and not text.endswith(tuple(" \t\r\n")):
+            for result in command_matches:
+                yield result
+            return
         try:
             item, argument_text = self.commands.resolve(text)
         except CommandNotFound:
             for result in self._command_completions(text.lstrip()):
                 yield result
             return
-        trailing = text.endswith(" ")
-        try:
-            tokens = shlex.split(argument_text)
-        except ValueError:
-            tokens = argument_text.split()
-        word = "" if trailing or not tokens else tokens[-1]
-        completion_text = (
-            argument_text
-            if trailing
-            else argument_text[: max(0, len(argument_text) - len(word))]
-        )
+        _, _, input_at_boundary = _argument_state(text)
+        if input_at_boundary:
+            argument_text += " "
+        completed, word, _ = _argument_state(argument_text)
+        import shlex
+
+        completion_text = shlex.join(completed)
+        if completion_text:
+            completion_text += " "
         for result in await item.complete(completion_text, word, self.app):
             yield Completion(
-                result.value, start_position=-len(word), display_meta=result.help
+                result.value,
+                start_position=-len(word),
+                display=result.display or result.value,
+                display_meta=result.help,
             )
 
 

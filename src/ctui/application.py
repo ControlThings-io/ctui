@@ -136,6 +136,7 @@ class CtuiApp:
         """
         await self.events.emit("command_submitted", text=text)
         item, argument_text = self.commands.resolve(text)
+        argument_text = await item.expand_unique_arguments(argument_text, self)
         kwargs = item.parse_args(argument_text)
         await self.events.emit("command_started", command=item, arguments=kwargs)
         try:

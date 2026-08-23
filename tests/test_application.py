@@ -52,6 +52,35 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(CommandNotFound):
             await Demo().dispatch("missing")
 
+    async def test_unique_command_and_argument_prefixes(self):
+        app = Demo()
+        result = await app.dispatch("gr Ad")
+        self.assertEqual(result.output, "Hello Ada")
+
+    async def test_ambiguous_command_prefix_is_rejected(self):
+        app = CtuiApp(register_defaults=False)
+
+        @app.command
+        def deploy():
+            return "deploy"
+
+        @app.command
+        def delete():
+            return "delete"
+
+        with self.assertRaisesRegex(CommandNotFound, "Ambiguous command"):
+            await app.dispatch("de")
+
+    async def test_quoted_string_arguments_can_contain_spaces(self):
+        app = CtuiApp(register_defaults=False)
+
+        @app.command
+        def echo(message: str):
+            return message
+
+        result = await app.dispatch('ec "hello new developer"')
+        self.assertEqual(result.output, "hello new developer")
+
     def test_constructor_and_optional_services(self):
         storage = MemoryStorage()
         app = Demo(name="Demo", prompt="demo> ", history=NullHistory(), storage=storage)

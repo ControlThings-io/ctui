@@ -2,6 +2,7 @@
 
 Run: uv run examples/04_completion_and_validation.py
 Type ``deploy `` and use the completion menu.
+Try the unique abbreviations: ``dep dev dev-1``.
 """
 
 from ctui import Argument, CtuiApp, command

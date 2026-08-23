@@ -59,6 +59,15 @@ such as `--environment` are also completed.
 Supported annotations include `str`, `int`, `float`, `bool`, `Path`, `Enum`,
 `Literal`, `Optional`, and comma-separated collections.
 
+Command names and constrained choices accept unique prefixes. For example,
+`dep dev web-1` can select `deploy development web-1` when each prefix has one
+match. Ambiguous prefixes produce validation help instead of guessing. Quote
+free-form strings to include spaces: `greet "Ada Lovelace"`.
+
+The dropdown stays on the current argument until an unquoted space is typed.
+Free-form values show a typed aid such as `<NAME: str>` or `<COUNT: int>`;
+typing a space advances the menu to the next argument.
+
 ## Events, lifecycle, and services
 
 `on_start`, `on_ready`, and `on_stop` may be sync or async. The event bus emits
