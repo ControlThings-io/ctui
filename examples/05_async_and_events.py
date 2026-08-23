@@ -28,7 +28,7 @@ class DownloadTool(CtuiApp):
         for percent in (11, 22, 33, 44, 55, 66, 77, 88, 99, 100):
             await asyncio.sleep(0.5)
             await ctx.emit("progress", percent=percent)
-        return f"Downloaded {filename}"
+        return f"{self.output_text}\nDownloaded {filename}"
 
 
 if __name__ == "__main__":
