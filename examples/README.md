@@ -3,14 +3,13 @@
 Each example introduces only a small part of the library. Read and run them in
 this order:
 
-1. `default.py` — create the smallest possible application.
-2. `01_first_command.py` — register a function with `@app.command`.
-3. `02_class_application.py` — organize commands in a `CtuiApp` subclass.
-4. `03_types_and_options.py` — parse types, defaults, choices, and flags.
-5. `04_completion_and_validation.py` — create safe dropdown suggestions.
-6. `05_async_and_events.py` — perform async work and publish events.
-7. `06_headless_testing.py` — dispatch commands from tests or scripts.
-8. `filesystem.py` — combine several features in a practical tool.
+1. `01_first_command.py` — register a function with `@app.command`.
+2. `02_class_application.py` — organize commands in a `CtuiApp` subclass.
+3. `03_types_and_options.py` — parse types, defaults, choices, and flags.
+4. `04_completion_and_validation.py` — create safe dropdown suggestions.
+5. `05_async_and_events.py` — perform async work and publish events.
+6. `06_headless_testing.py` — dispatch commands from tests or scripts.
+7. `filesystem.py` — combine several features in a practical tool.
 
 Run an example from the repository root:
 

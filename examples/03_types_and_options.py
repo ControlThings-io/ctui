@@ -1,8 +1,9 @@
 """Use type annotations, defaults, choices, and named options.
 
 Run: uv run examples/03_types_and_options.py
-Try: greet Ada
-Try: greet Ada --style excited --uppercase
+Try: greet Justin
+Try: greet Justin excited
+Try: greet Justin --style excited --uppercase
 """
 
 from typing import Literal
@@ -15,7 +16,7 @@ class Greeter(CtuiApp):
 
     @command
     def greet(
-        self,
+        self,  # Note: self is required when creating a command on a CtuiApp subclass
         name: str,
         style: Literal["friendly", "excited"] = "friendly",
         uppercase: bool = False,

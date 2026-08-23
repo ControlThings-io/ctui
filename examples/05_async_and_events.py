@@ -25,7 +25,7 @@ class DownloadTool(CtuiApp):
     @command
     async def download(self, ctx: CommandContext, filename: str) -> str:
         """Pretend to download a file in three asynchronous steps."""
-        for percent in (25, 50, 100):
+        for percent in (11, 22, 33, 44, 55, 66, 77, 88, 99, 100):
             await asyncio.sleep(0.5)
             await ctx.emit("progress", percent=percent)
         return f"Downloaded {filename}"

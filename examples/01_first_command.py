@@ -1,6 +1,7 @@
 """Register and run a command on an application instance.
 
 Run: uv run examples/01_first_command.py
+Try: help
 Try: hello Ada
 """
 
