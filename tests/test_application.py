@@ -47,6 +47,9 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertFalse((await app.dispatch("no")).accepted)
         self.assertTrue((await app.dispatch("clear")).clear_output)
+        appended = CommandResult.append("next line")
+        self.assertTrue(appended.append_output)
+        self.assertEqual(appended.output, "next line")
 
     async def test_unknown_command(self):
         with self.assertRaises(CommandNotFound):

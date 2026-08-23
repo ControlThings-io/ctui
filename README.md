@@ -72,8 +72,12 @@ typing a space advances the menu to the next argument.
 
 `on_start`, `on_ready`, and `on_stop` may be sync or async. The event bus emits
 `command_submitted`, `command_started`, `command_finished`, and
-`command_failed`. A command with a `ctx: CommandContext` parameter can emit
-custom events with `await ctx.emit("download_progress", percent=50)`.
+`command_failed`. Commands defined as application methods can emit custom events
+directly with `await self.events.emit("download_progress", percent=50)`.
+
+For advanced standalone commands, an optional parameter named `ctx` receives a
+`CommandContext` created by the framework. It is dependency-injected and is not
+typed by the terminal user. Application methods generally do not need it.
 
 History and storage are injected instead of automatically writing project files.
 Memory and null implementations are included. Override `compose()` for a custom
@@ -82,6 +86,10 @@ prompt-toolkit container; stable component aliases are available in
 
 The historical `Ctui` name, `do_` prefix, instance `@app.command` decorator,
 and string/`None`/`False` results remain supported.
+
+Return `CommandResult.append("Finished")` when output should be added below
+previous command output instead of replacing it. This is safe for overlapping
+async commands because the append is applied when each command finishes.
 
 ## Development
 

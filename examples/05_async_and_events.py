@@ -2,11 +2,12 @@
 
 Run: uv run examples/05_async_and_events.py
 Try: download report.csv
+While it runs, try: download photo.jpg
 """
 
 import asyncio
 
-from ctui import CommandContext, CtuiApp, command
+from ctui import CommandResult, CtuiApp, command
 
 
 class DownloadTool(CtuiApp):
@@ -14,21 +15,32 @@ class DownloadTool(CtuiApp):
 
     def __init__(self):
         super().__init__()
-        self.progress = "Ready"
-        self.footer = lambda: self.progress
+        self.progress: dict[str, int] = {}
+        self.footer = self.progress_text
         self.on("progress", self.show_progress)
 
-    def show_progress(self, percent: int) -> None:
-        """Update text that the status bar reads dynamically."""
-        self.progress = f"Downloading: {percent}%"
+    def progress_text(self) -> str:
+        """Format every active or completed download for the status bar."""
+        if not self.progress:
+            return "Ready"
+        return " | ".join(
+            f"{filename}: {percent}%" for filename, percent in self.progress.items()
+        )
+
+    def show_progress(self, filename: str, percent: int) -> None:
+        """Store one file's progress and request an immediate redraw."""
+        self.progress[filename] = percent
+        if hasattr(self, "app"):
+            self.app.invalidate()
 
     @command
-    async def download(self, ctx: CommandContext, filename: str) -> str:
+    async def download(self, filename: str) -> CommandResult:
         """Pretend to download a file in three asynchronous steps."""
+        await self.events.emit("progress", filename=filename, percent=0)
         for percent in (11, 22, 33, 44, 55, 66, 77, 88, 99, 100):
             await asyncio.sleep(0.5)
-            await ctx.emit("progress", percent=percent)
-        return f"{self.output_text}\nDownloaded {filename}"
+            await self.events.emit("progress", filename=filename, percent=percent)
+        return CommandResult.append(f"Downloaded {filename}")
 
 
 if __name__ == "__main__":

@@ -65,6 +65,16 @@ def get_key_bindings(ctui):
         if len(input_field.text) == 0:
             return
         submitted = input_field.text
+        submission_id = getattr(ctui, "_submission_id", 0) + 1
+        ctui._submission_id = submission_id
+        # Clear immediately so another command can be entered while this one runs.
+        input_field.buffer.reset(append_to_history=True)
+        input_field.text = ""
+
+        def restore_if_latest():
+            """Restore rejected input only when no newer command replaced it."""
+            if ctui._submission_id == submission_id and not input_field.text:
+                input_field.text = submitted
 
         async def execute():
             """Dispatch input and apply its normalized result to the widgets."""
@@ -72,19 +82,23 @@ def get_key_bindings(ctui):
                 ctui.output_text = output_field.text
                 result = await ctui.dispatch(submitted)
             except CommandError as error:
+                restore_if_latest()
                 message_dialog(title="Error", text=str(error))
                 return
             except Exception:
+                restore_if_latest()
                 message_dialog(title="Error", text=traceback.format_exc(), scrollbar=True)
                 return
             if not result.accepted:
+                restore_if_latest()
                 return
-            input_field.buffer.reset(append_to_history=True)
-            input_field.text = ""
             if result.clear_output:
                 output_field.text = ""
             elif result.output is not None:
-                output_field.buffer.document = Document(result.output, len(result.output))
+                output = result.output
+                if result.append_output and output_field.text:
+                    output = f"{output_field.text.rstrip()}\n{output}"
+                output_field.buffer.document = Document(output, len(output))
             if result.exit_requested:
                 ctui.exit()
 

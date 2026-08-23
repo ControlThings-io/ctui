@@ -89,6 +89,7 @@ class CommandResult:
     """Describe how a completed command should affect the user interface."""
     output: str | None = None
     clear_output: bool = False
+    append_output: bool = False
     exit_requested: bool = False
     accepted: bool = True
 
@@ -96,6 +97,11 @@ class CommandResult:
     def success(cls, output: str | None = None):
         """Create an accepted result with optional output text."""
         return cls(output=output)
+
+    @classmethod
+    def append(cls, output: str):
+        """Create a result that appends text to the current output."""
+        return cls(output=output, append_output=True)
 
     @classmethod
     def rejected(cls):
