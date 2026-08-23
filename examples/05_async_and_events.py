@@ -16,7 +16,7 @@ class DownloadTool(CtuiApp):
     def __init__(self):
         super().__init__()
         self.progress: dict[str, int] = {}
-        self.footer = self.progress_text
+        self.statusbar = self.progress_text
         self.on("progress", self.show_progress)
 
     def progress_text(self) -> str:

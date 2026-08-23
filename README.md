@@ -1,8 +1,9 @@
 # ControlThings User Interface
 
-`ctui` is an event-driven Python framework for full-screen command tools. Write
+`ctui` is an event-driven Python framework for command tools that work both as
+full-screen terminal interfaces and traditional command-line programs. Write
 ordinary typed functions; ctui supplies parsing, validation, async execution,
-completion, history, layout, and terminal rendering.
+completion, history, layout, and automatic CLI routing.
 
 ## Quick start
 
@@ -29,6 +30,41 @@ FileTool().run()
 Commands can be sync or async. Applications already inside an event loop can
 use `await app.run_async()`. Test without a terminal using
 `await app.dispatch("list files . --order size")`.
+
+## Automatic command-line mode
+
+Every `CtuiApp` supports both interfaces without application-specific argument
+parsing. Calling the program without arguments opens the full-screen UI:
+
+```bash
+python my_tool.py
+```
+
+Help is printed directly in the terminal with any standard help form:
+
+```bash
+python my_tool.py help
+python my_tool.py -h
+python my_tool.py --help
+```
+
+Use `-c` or `--command` to run commands without opening the UI. Repeat the
+option to execute several commands sequentially:
+
+```bash
+python my_tool.py -c "list files ." -c "list files /tmp --order size"
+```
+
+Use `-f` or `--file` to read commands from a UTF-8 text file. Blank lines and
+lines beginning with `#` are ignored. Command and file options may be mixed;
+they execute in the order supplied:
+
+```bash
+python my_tool.py -c "list files ." --file nightly-commands.txt
+```
+
+Invalid terminal options, command names, and arguments print an error followed
+by generated help and exit with status 2.
 
 ## Completion and validation
 
@@ -75,17 +111,10 @@ typing a space advances the menu to the next argument.
 `command_failed`. Commands defined as application methods can emit custom events
 directly with `await self.events.emit("download_progress", percent=50)`.
 
-For advanced standalone commands, an optional parameter named `ctx` receives a
-`CommandContext` created by the framework. It is dependency-injected and is not
-typed by the terminal user. Application methods generally do not need it.
-
 History and storage are injected instead of automatically writing project files.
 Memory and null implementations are included. Override `compose()` for a custom
 prompt-toolkit container; stable component aliases are available in
 `ctui.widgets`.
-
-The historical `Ctui` name, `do_` prefix, instance `@app.command` decorator,
-and string/`None`/`False` results remain supported.
 
 Return `CommandResult.append("Finished")` when output should be added below
 previous command output instead of replacing it. This is safe for overlapping

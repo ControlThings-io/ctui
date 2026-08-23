@@ -45,7 +45,6 @@ def get_key_bindings(ctui):
     @kb.add("c-q")  # None-graceful shutdown, ctui.exit() is graceful
     def _(event):
         "Pressing Ctrl-Q will force quit the user interface."
-        # ctui.do_exit(input_field.text, output_field.text, event)
         ctui.app.exit()
 
     @kb.add("c-d")

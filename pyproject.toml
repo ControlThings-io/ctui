@@ -1,7 +1,7 @@
 [project]
 name = "ctui"
-version = "0.8.1"
-description = "The ctui library is similar to Python's built in cmd library, but with a curses-like user interface"
+version = "1.0.0"
+description = "Build typed, asynchronous terminal UIs and command-line tools from one Python application"
 authors = [{ name = "Justin Searle", email = "justin@controlthings.io" }]
 requires-python = ">=3.10,<4"
 readme = "README.md"
@@ -29,7 +29,6 @@ dependencies = [
     "prompt-toolkit>=3.0.36,<4",
     "Pygments>=2.14.0,<3",
     "tabulate>=0.8.0,<0.9",
-    "tinydb>=4.7.1,<5",
     "six>=1.16.0,<2",
 ]
 

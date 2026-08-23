@@ -6,10 +6,11 @@ Try: multiply 4 5
 """
 
 from ctui import CtuiApp, command
+from ctui.commands import CommandResult
 
 
 class Calculator(CtuiApp):
-    """Offer a pair of commands that share application configuration."""
+    """Multiple commands and appending output."""
 
     name = "Calculator"
     prompt = "calc> "
@@ -18,14 +19,14 @@ class Calculator(CtuiApp):
     def add(self, first: int, second: int) -> str:
         """Add two whole numbers."""
         answer = str(first + second)
-        return f"{self.output_text}{first} + {second} = {answer}\n"
+        return CommandResult.append(f"{first} + {second} = {answer}")
         
 
     @command
     def multiply(self, first: int, second: int) -> str:
         """Multiply two whole numbers."""
         answer = str(first * second)
-        return f"{self.output_text}{first} * {second} = {answer}\n"
+        return CommandResult.append(f"{first} * {second} = {answer}")
 
 
 if __name__ == "__main__":

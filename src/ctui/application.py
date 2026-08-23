@@ -1,10 +1,15 @@
 """The event-driven ctui application."""
 
 from __future__ import annotations
+
 import inspect
-from typing import Any
+import sys
+from pathlib import Path
+from typing import Any, TextIO
+
 from prompt_toolkit.application import Application
 from prompt_toolkit.layout.layout import Layout
+
 from ctui.commands import (
     CommandError,
     CommandResult,
@@ -23,7 +28,7 @@ class CtuiApp:
 
     name, version, description = "MyApp", "0.1.0", "My App does something..."
     prompt = "> "
-    help_message = "Commands go on top, results appear on the bottom."
+    help_message = "Currently supported commands:"
     wrap_lines = False
 
     def __init__(
@@ -61,8 +66,9 @@ class CtuiApp:
         self.commands, self.events = Commands(), EventBus()
         self.history = history if history is not None else MemoryHistory()
         self.storage = storage if storage is not None else NullStorage()
-        self.theme, self.project_name = theme, "default"
-        self.footer, self.statusbar, self.output_text = "", None, ""
+        self.theme = theme
+        self.statusbar = lambda: self.name
+        self.output_text = ""
         if register_defaults:
             register_default_commands(self)
         self._register_class_commands()
@@ -84,16 +90,9 @@ class CtuiApp:
 
     @property
     def _statusbar(self):
-        """Resolve the current status-bar text, including legacy footers."""
-        if self.statusbar is not None:
-            value = self.statusbar() if callable(self.statusbar) else self.statusbar
-            return str(value)
-        value = self.footer() if callable(self.footer) else self.footer
-        return f"Project: {self.project_name}" + (f"  {value}" if value else "")
-
-    def command(self, func=None, **options):
-        """Register a function as a command, directly or as a decorator."""
-        return self.commands.register(func, **options)
+        """Resolve the current application-defined status-bar text."""
+        value = self.statusbar() if callable(self.statusbar) else self.statusbar
+        return str(value)
 
     def on(self, event, handler=None):
         """Register an event listener, directly or as a decorator."""
@@ -119,6 +118,29 @@ class CtuiApp:
     def compose(self):
         """Return a prompt_toolkit root container, or None for the standard UI."""
         return None
+
+    def format_help(self):
+        """Return application help shared by the UI and terminal modes."""
+        return "\n".join(
+            [self.welcome, "", self.help_message, ""]
+            + [f"{item.name:<20} {item.desc}" for item in self.commands]
+        )
+
+    def format_cli_help(self, program=None):
+        """Return terminal usage followed by the standard application help."""
+        program = program or Path(sys.argv[0]).name
+        usage = [
+            f"Usage: {program} [help | -h | --help]",
+            f"       {program} [-c COMMAND | --command COMMAND] ...",
+            f"       {program} [-f FILE | --file FILE] ...",
+            "",
+            "Terminal options:",
+            "  -c, --command COMMAND  Run a command; may be repeated.",
+            "  -f, --file FILE        Run nonblank commands from a file in order.",
+            "  -h, --help             Print this help page.",
+            "",
+        ]
+        return "\n".join(usage) + "\n" + self.format_help()
 
     async def dispatch(self, text):
         """Parse and execute one command without requiring a terminal.
@@ -146,12 +168,13 @@ class CtuiApp:
             raise
         if isinstance(raw, CommandResult):
             result = raw
-        elif raw is False:
-            result = CommandResult.rejected()
-        elif raw is None:
-            result = CommandResult()
-        else:
+        elif isinstance(raw, str):
             result = CommandResult(output=str(raw))
+        else:
+            raise TypeError(
+                f'Command "{item.name}" must return str or CommandResult, '
+                f"not {type(raw).__name__}"
+            )
         if result.accepted:
             self.history.append(text)
             await self.events.emit("command_finished", command=item, result=result)
@@ -183,16 +206,88 @@ class CtuiApp:
             await self._hook(self.on_stop)
             self.storage.close()
 
-    def run(self):
-        """Create an event loop and run the application synchronously."""
+    @staticmethod
+    def _parse_cli_operations(arguments):
+        """Parse ordered command and file operations without losing their order."""
+        operations = []
+        index = 0
+        while index < len(arguments):
+            token = arguments[index]
+            if token in ("help", "-h", "--help"):
+                return True, []
+            if token.startswith("--command="):
+                operations.append(("command", token.split("=", 1)[1]))
+            elif token.startswith("--file="):
+                operations.append(("file", token.split("=", 1)[1]))
+            elif token in ("-c", "--command", "-f", "--file"):
+                if index + 1 >= len(arguments):
+                    raise CommandError(f"{token} requires a value")
+                index += 1
+                kind = "command" if token in ("-c", "--command") else "file"
+                operations.append((kind, arguments[index]))
+            else:
+                raise CommandError(
+                    f"Unknown terminal argument: {token!r}; use -c or --command"
+                )
+            index += 1
+        return False, operations
+
+    async def run_cli(self, arguments, *, stdout: TextIO | None = None,
+                      stderr: TextIO | None = None, program=None):
+        """Execute terminal arguments and return a conventional exit status."""
+        stdout, stderr = stdout or sys.stdout, stderr or sys.stderr
+        try:
+            show_help, operations = self._parse_cli_operations(list(arguments))
+        except CommandError as error:
+            print(f"Error: {error}\n", file=stderr)
+            print(self.format_cli_help(program), file=stderr)
+            return 2
+        if show_help:
+            print(self.format_cli_help(program), file=stdout)
+            return 0
+        commands = []
+        try:
+            for kind, value in operations:
+                if kind == "command":
+                    commands.append(value)
+                    continue
+                path = Path(value).expanduser()
+                for line in path.read_text(encoding="utf-8").splitlines():
+                    line = line.strip()
+                    if line and not line.startswith("#"):
+                        commands.append(line)
+        except OSError as error:
+            print(f"Error: {error}\n", file=stderr)
+            print(self.format_cli_help(program), file=stderr)
+            return 2
+
+        await self._hook(self.on_start)
+        try:
+            for text in commands:
+                try:
+                    result = await self.dispatch(text)
+                except (CommandError, TypeError) as error:
+                    print(f"Error while running {text!r}: {error}\n", file=stderr)
+                    return 2
+                if result.output is not None:
+                    print(result.output, file=stdout)
+                if result.exit_requested:
+                    break
+            return 0
+        finally:
+            await self._hook(self.on_stop)
+            self.storage.close()
+
+    def run(self, argv=None):
+        """Open the UI without arguments, otherwise run terminal operations."""
         import asyncio
 
-        return asyncio.run(self.run_async())
+        arguments = list(sys.argv[1:] if argv is None else argv)
+        if not arguments:
+            return asyncio.run(self.run_async())
+        raise SystemExit(asyncio.run(self.run_cli(arguments)))
 
     def exit(self):
         """Request termination when the terminal application is running."""
         if hasattr(self, "app"):
             self.app.exit()
-
-
-Ctui = CtuiApp

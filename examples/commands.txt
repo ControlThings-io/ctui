@@ -1,0 +1,4 @@
+# Blank lines and comments are ignored.
+greet Ada --enthusiastic
+add 12 30
+count-words "commands can come from files"

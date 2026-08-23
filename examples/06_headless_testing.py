@@ -1,27 +1,41 @@
-"""Call commands from Python without opening the terminal interface.
+"""Use any CtuiApp automatically as a traditional command-line program.
 
-Run: uv run examples/06_headless_testing.py
-This pattern is useful in tests, scripts, and other frontends.
+Try these from the repository root:
+
+    uv run examples/06_headless_testing.py --help
+    uv run examples/06_headless_testing.py -c "greet Ada --enthusiastic"
+    uv run examples/06_headless_testing.py -c "add 12 30" -c "count-words 'hello world'"
+    uv run examples/06_headless_testing.py --file examples/commands.txt
+
+Run without arguments to open the same application's full-screen interface.
 """
 
-import asyncio
-
-from ctui import CtuiApp
+from ctui import CtuiApp, command
 
 
-async def main() -> None:
-    """Register a command, dispatch it, and inspect its result."""
-    app = CtuiApp(register_defaults=False)
+class CommandLineTool(CtuiApp):
+    """Offer commands in both the full-screen UI and ordinary shell mode."""
 
-    @app.command
-    async def double(number: int) -> int:
-        """Double a whole number."""
-        return number * 2
+    name = "Command Line Example"
+    description = "One application that automatically supports two interfaces."
 
-    result = await app.dispatch("double 21")
-    print(result.output)
-    print("History:", app.history.all()[0].command)
+    @command
+    def greet(self, name: str, enthusiastic: bool = False) -> str:
+        """Greet a person by name."""
+        punctuation = "!" if enthusiastic else "."
+        return f"Hello, {name}{punctuation}"
+
+    @command
+    def add(self, first: float, second: float) -> str:
+        """Add two numbers."""
+        return f"{first} + {second} = {first + second}"
+
+    @command(name="count-words")
+    def count_words(self, text: str) -> str:
+        """Count words in quoted text."""
+        count = len(text.split())
+        return f"{count} word{'s' if count != 1 else ''}"
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    CommandLineTool().run()

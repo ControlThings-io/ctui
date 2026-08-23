@@ -71,19 +71,6 @@ class CompletionContext:
     app: Any = None
 
 
-@dataclass
-class CommandContext:
-    """Expose application state and event publication to a running command."""
-    app: Any
-    command: "Command"
-    raw_input: str
-    arguments: Mapping[str, Any]
-
-    async def emit(self, event: str, **data: Any) -> None:
-        """Publish a custom application event with keyword payload data."""
-        await self.app.events.emit(event, **data)
-
-
 @dataclass(frozen=True)
 class CommandResult:
     """Describe how a completed command should affect the user interface."""
@@ -112,7 +99,7 @@ class CommandResult:
 def _name(func):
     """Derive a terminal command name from a Python function name."""
     value = func.__name__
-    return (value[3:] if value.startswith("do_") else value).replace("_", " ")
+    return value.replace("_", " ")
 
 
 def _convert(value: str, annotation: Any, name: str) -> Any:
@@ -201,11 +188,11 @@ class Command:
 
     @property
     def parameters(self):
-        """Return user-supplied parameters, excluding ``self`` and ``ctx``."""
+        """Return user-supplied parameters, excluding the bound ``self``."""
         return [
             p
             for p in self.signature.parameters.values()
-            if p.name not in ("self", "ctx")
+            if p.name != "self"
         ]
 
     @property
@@ -317,10 +304,7 @@ class Command:
 
     async def execute(self, app=None, raw_input="", **kwargs):
         """Invoke the command and resolve synchronous or awaitable results."""
-        call = dict(kwargs)
-        if "ctx" in self.signature.parameters:
-            call["ctx"] = CommandContext(app, self, raw_input, kwargs)
-        result = self.func(**call)
+        result = self.func(**kwargs)
         return await result if inspect.isawaitable(result) else result
 
     async def complete(self, text: str, word: str, app=None):
@@ -500,14 +484,6 @@ class Commands:
             raise CommandNotFound(f"Ambiguous command; matches: {names}")
         raise CommandNotFound(f"Unknown command: {stripped}")
 
-    def extract(self, text):
-        """Compatibility helper returning a command and parsed arguments."""
-        try:
-            item, rest = self.resolve(text)
-            return item, item.parse_args(rest)
-        except CommandNotFound:
-            return None, None
-
     def __iter__(self):
         """Iterate over commands in registration order."""
         return iter(self.commands.values())
@@ -539,27 +515,24 @@ def command(func=None, *, name=None, aliases=(), arguments=None, description="")
 
 def register_default_commands(app):
     """Install the standard clear, help, history, and exit commands."""
-    @app.command
+    @app.commands.register
     def clear():
         """Clear the output."""
         return CommandResult(clear_output=True)
 
-    @app.command
+    @app.commands.register
     def help():
         """Show application help."""
-        return "\n".join(
-            [app.welcome, "", app.help_message, ""]
-            + [f"{c.name:<20} {c.desc}" for c in app.commands]
-        )
+        return CommandResult.success(app.format_help())
 
-    @app.command
+    @app.commands.register
     def history(count: int = 0):
         """Show recent command history."""
         entries = app.history.all()
         entries = entries[-count:] if count else entries
-        return "\n".join(x.command for x in entries)
+        return CommandResult.success("\n".join(x.command for x in entries))
 
-    @app.command
+    @app.commands.register
     async def exit():
         """Exit the application."""
         return CommandResult(exit_requested=True)

@@ -23,7 +23,7 @@ class FilesystemApp(CtuiApp):
 
     def __init__(self):
         super().__init__()
-        self.footer = lambda: f"CWD: {Path.cwd()}"
+        self.statusbar = lambda: f"CWD: {Path.cwd()}"
 
     @command
     async def list(self, directory: Path = Path(".")) -> str:

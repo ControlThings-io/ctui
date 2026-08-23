@@ -34,18 +34,13 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(history.all()[0].command, "greet Ada")
         self.assertEqual(seen, ["Ada"])
 
-    async def test_result_and_legacy_return_normalization(self):
+    async def test_string_and_structured_results(self):
         app = CtuiApp(register_defaults=False)
 
-        @app.command
-        def no():
-            return False
-
-        @app.command
+        @app.commands.register
         def clear():
             return CommandResult(clear_output=True)
 
-        self.assertFalse((await app.dispatch("no")).accepted)
         self.assertTrue((await app.dispatch("clear")).clear_output)
         appended = CommandResult.append("next line")
         self.assertTrue(appended.append_output)
@@ -63,11 +58,11 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
     async def test_ambiguous_command_prefix_is_rejected(self):
         app = CtuiApp(register_defaults=False)
 
-        @app.command
+        @app.commands.register
         def deploy():
             return "deploy"
 
-        @app.command
+        @app.commands.register
         def delete():
             return "delete"
 
@@ -77,12 +72,22 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
     async def test_quoted_string_arguments_can_contain_spaces(self):
         app = CtuiApp(register_defaults=False)
 
-        @app.command
+        @app.commands.register
         def echo(message: str):
             return message
 
         result = await app.dispatch('ec "hello new developer"')
         self.assertEqual(result.output, "hello new developer")
+
+    async def test_unsupported_command_result_is_rejected(self):
+        app = CtuiApp(register_defaults=False)
+
+        @app.commands.register
+        def invalid():
+            return None
+
+        with self.assertRaisesRegex(TypeError, "must return str or CommandResult"):
+            await app.dispatch("invalid")
 
     def test_constructor_and_optional_services(self):
         storage = MemoryStorage()
