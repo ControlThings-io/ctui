@@ -1,6 +1,6 @@
 import unittest
 from ctui import CtuiApp, CommandResult, command
-from ctui.commands import Argument, CommandNotFound
+from ctui.commands import Argument, CommandNotFound, CommandValidationError
 from ctui.services import MemoryHistory, MemoryStorage, NullHistory
 
 
@@ -88,6 +88,29 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
 
         with self.assertRaisesRegex(TypeError, "must return str or CommandResult"):
             await app.dispatch("invalid")
+
+    async def test_validation_error_points_to_argument_start(self):
+        app = CtuiApp(register_defaults=False)
+
+        @app.commands.register
+        def add(first: int, second: int):
+            return str(first + second)
+
+        with self.assertRaises(CommandValidationError) as raised:
+            await app.dispatch("add 10 wrong")
+        self.assertEqual(raised.exception.argument, "second")
+        self.assertEqual(raised.exception.position, len("add 10 "))
+
+    async def test_missing_argument_points_to_end_of_input(self):
+        app = CtuiApp(register_defaults=False)
+
+        @app.commands.register
+        def add(first: int, second: int):
+            return str(first + second)
+
+        with self.assertRaises(CommandValidationError) as raised:
+            await app.dispatch("add 10")
+        self.assertEqual(raised.exception.position, len("add 10"))
 
     def test_constructor_and_optional_services(self):
         storage = MemoryStorage()

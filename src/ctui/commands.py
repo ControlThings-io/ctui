@@ -33,7 +33,20 @@ class CommandNotFound(CommandError):
 
 class CommandValidationError(CommandError):
     """Indicate that command arguments could not be parsed or validated."""
-    pass
+
+    def __init__(self, message, *, position=None, argument=None):
+        """Store a user-facing message and optional source location."""
+        super().__init__(message)
+        self.position = position
+        self.argument = argument
+
+    def locate(self, position, argument=None):
+        """Attach a source location unless one is already available."""
+        if self.position is None:
+            self.position = position
+        if self.argument is None:
+            self.argument = argument
+        return self
 
 
 @dataclass(frozen=True)
@@ -100,6 +113,37 @@ def _name(func):
     """Derive a terminal command name from a Python function name."""
     value = func.__name__
     return value.replace("_", " ")
+
+
+def _token_starts(text: str) -> list[int]:
+    """Return source offsets for shell-like tokens, including quoted tokens."""
+    starts = []
+    quote = None
+    escaped = False
+    in_token = False
+    for index, character in enumerate(text):
+        if escaped:
+            escaped = False
+            continue
+        if character == "\\":
+            if not in_token:
+                starts.append(index)
+                in_token = True
+            escaped = True
+        elif quote:
+            if character == quote:
+                quote = None
+        elif character in ("'", '"'):
+            if not in_token:
+                starts.append(index)
+                in_token = True
+            quote = character
+        elif character.isspace():
+            in_token = False
+        elif not in_token:
+            starts.append(index)
+            in_token = True
+    return starts
 
 
 def _convert(value: str, annotation: Any, name: str) -> Any:
@@ -224,9 +268,23 @@ class Command:
         try:
             tokens = shlex.split(text)
         except ValueError as error:
-            raise CommandValidationError(str(error)) from error
-        values, positional, pending = {}, [], None
+            raise CommandValidationError(str(error), position=len(text)) from error
+        starts = _token_starts(text)
+        values, value_positions, positional, pending = {}, {}, [], None
         options = {"--" + p.name.replace("_", "-"): p for p in self.parameters}
+
+        def convert_at(raw, parameter, token_index):
+            """Convert a token and enrich failures with its source position."""
+            try:
+                return _convert(
+                    raw,
+                    self.hints.get(parameter.name, parameter.annotation),
+                    parameter.name,
+                )
+            except CommandValidationError as error:
+                error.locate(starts[token_index], parameter.name)
+                raise
+
         index = 0
         while index < len(tokens):
             token = tokens[index]
@@ -236,33 +294,34 @@ class Command:
                 if not parameter:
                     if partial:
                         break
-                    raise CommandValidationError(f"Unknown option: {option}")
+                    raise CommandValidationError(
+                        f"Unknown option: {option}", position=starts[index]
+                    )
                 annotation = self.hints.get(parameter.name, parameter.annotation)
                 if annotation is bool and not equals:
                     values[parameter.name] = True
+                    value_positions[parameter.name] = starts[index]
                 elif equals:
-                    values[parameter.name] = _convert(
-                        inline, annotation, parameter.name
-                    )
+                    values[parameter.name] = convert_at(inline, parameter, index)
+                    value_positions[parameter.name] = starts[index]
                 elif index + 1 < len(tokens):
                     index += 1
-                    values[parameter.name] = _convert(
-                        tokens[index], annotation, parameter.name
-                    )
+                    values[parameter.name] = convert_at(tokens[index], parameter, index)
+                    value_positions[parameter.name] = starts[index]
                 else:
                     pending = parameter
             else:
-                positional.append(token)
+                positional.append((token, index))
             index += 1
         available = [p for p in self.parameters if p.name not in values]
-        for raw, parameter in zip(positional, available):
-            values[parameter.name] = _convert(
-                raw,
-                self.hints.get(parameter.name, parameter.annotation),
-                parameter.name,
-            )
+        for (raw, token_index), parameter in zip(positional, available):
+            values[parameter.name] = convert_at(raw, parameter, token_index)
+            value_positions[parameter.name] = starts[token_index]
         if len(positional) > len(available) and not partial:
-            raise CommandValidationError(f"Too many arguments\n\n{self.help}")
+            extra_index = positional[len(available)][1]
+            raise CommandValidationError(
+                f"Too many arguments\n\n{self.help}", position=starts[extra_index]
+            )
         if not partial:
             for parameter in self.parameters:
                 if (
@@ -270,7 +329,9 @@ class Command:
                     and parameter.default is inspect.Parameter.empty
                 ):
                     raise CommandValidationError(
-                        f"Missing argument: {parameter.name}\n\n{self.help}"
+                        f"Missing argument: {parameter.name}\n\n{self.help}",
+                        position=len(text),
+                        argument=parameter.name,
                     )
                 if parameter.name in values:
                     config, value = (
@@ -286,7 +347,9 @@ class Command:
                         str(x) for x in choices
                     }:
                         raise CommandValidationError(
-                            f"{parameter.name} must be one of: {', '.join(map(str, choices))}"
+                            f"{parameter.name} must be one of: {', '.join(map(str, choices))}",
+                            position=value_positions[parameter.name],
+                            argument=parameter.name,
                         )
                     if config.validator:
                         valid = config.validator(value)
@@ -294,7 +357,9 @@ class Command:
                             raise CommandValidationError(
                                 valid
                                 if isinstance(valid, str)
-                                else f"Invalid {parameter.name}: {value}"
+                                else f"Invalid {parameter.name}: {value}",
+                                position=value_positions[parameter.name],
+                                argument=parameter.name,
                             )
             return values
         next_parameter = pending or (

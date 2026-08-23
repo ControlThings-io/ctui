@@ -62,7 +62,10 @@ class CliTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(status, 2)
         self.assertEqual(output.getvalue(), "")
-        self.assertIn("Error while running", errors.getvalue())
+        lines = errors.getvalue().splitlines()
+        self.assertEqual(lines[0], "add wrong 2")
+        self.assertEqual(lines[1], "    ^")
+        self.assertIn("Error: first must be int", lines[2])
         self.assertIn("Usage: tool", errors.getvalue())
 
     async def test_missing_file_prints_error_and_help(self):

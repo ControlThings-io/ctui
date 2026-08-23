@@ -14,6 +14,8 @@ from ctui.commands import (
     CommandError,
     CommandResult,
     Commands,
+    CommandValidationError,
+    _token_starts,
     register_default_commands,
 )
 from ctui.events import EventBus
@@ -142,6 +144,13 @@ class CtuiApp:
         ]
         return "\n".join(usage) + "\n" + self.format_help()
 
+    @staticmethod
+    def format_command_error(text, error):
+        """Format a command, source-position caret, and error message."""
+        position = getattr(error, "position", None)
+        position = 0 if position is None else max(0, min(position, len(text)))
+        return f"{text}\n{' ' * position}^\nError: {error}"
+
     async def dispatch(self, text):
         """Parse and execute one command without requiring a terminal.
 
@@ -158,8 +167,24 @@ class CtuiApp:
         """
         await self.events.emit("command_submitted", text=text)
         item, argument_text = self.commands.resolve(text)
-        argument_text = await item.expand_unique_arguments(argument_text, self)
-        kwargs = item.parse_args(argument_text)
+        source_starts = _token_starts(text)
+        argument_starts = source_starts[len(item.name.split()) :]
+        try:
+            argument_text = await item.expand_unique_arguments(argument_text, self)
+            kwargs = item.parse_args(argument_text)
+        except CommandValidationError as error:
+            expanded_starts = _token_starts(argument_text)
+            if error.position is not None and error.position >= len(argument_text):
+                error.position = len(text)
+            elif error.position is not None and argument_starts:
+                token_number = sum(
+                    start <= error.position for start in expanded_starts
+                ) - 1
+                token_number = max(0, min(token_number, len(argument_starts) - 1))
+                error.position = argument_starts[token_number]
+            elif error.position is not None:
+                error.position = len(text)
+            raise
         await self.events.emit("command_started", command=item, arguments=kwargs)
         try:
             raw = await item.execute(app=self, raw_input=text, **kwargs)
@@ -267,7 +292,7 @@ class CtuiApp:
                 try:
                     result = await self.dispatch(text)
                 except (CommandError, TypeError) as error:
-                    print(f"Error while running {text!r}: {error}\n", file=stderr)
+                    print(f"{self.format_command_error(text, error)}\n", file=stderr)
                     return 2
                 if result.output is not None:
                     print(result.output, file=stdout)

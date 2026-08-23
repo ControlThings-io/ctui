@@ -74,6 +74,8 @@ def get_key_bindings(ctui):
             """Restore rejected input only when no newer command replaced it."""
             if ctui._submission_id == submission_id and not input_field.text:
                 input_field.text = submitted
+                return True
+            return False
 
         async def execute():
             """Dispatch input and apply its normalized result to the widgets."""
@@ -81,7 +83,11 @@ def get_key_bindings(ctui):
                 ctui.output_text = output_field.text
                 result = await ctui.dispatch(submitted)
             except CommandError as error:
-                restore_if_latest()
+                restored = restore_if_latest()
+                if restored and getattr(error, "position", None) is not None:
+                    input_field.buffer.cursor_position = min(
+                        error.position, len(input_field.text)
+                    )
                 message_dialog(title="Error", text=str(error))
                 return
             except Exception:

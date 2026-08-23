@@ -64,7 +64,17 @@ python my_tool.py -c "list files ." --file nightly-commands.txt
 ```
 
 Invalid terminal options, command names, and arguments print an error followed
-by generated help and exit with status 2.
+by generated help and exit with status 2. Command argument errors include the
+submitted command and a caret pointing to the invalid argument:
+
+```text
+add wrong 2
+    ^
+Error: first must be float: 'wrong'
+```
+
+In the full-screen UI, an invalid command is restored to the input field and the
+cursor moves to the beginning of the argument that needs correction.
 
 ## Completion and validation
 
