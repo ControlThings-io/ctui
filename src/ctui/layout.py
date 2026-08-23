@@ -40,6 +40,7 @@ class CtuiLayout(object):
         statusbar=None,
         root_container=None,
     ):
+        """Build the standard input, output, completion, and status layout."""
         self.ctui = ctui
 
         self._completer = CommandCompleter(ctui.commands, ctui)
@@ -122,39 +123,48 @@ class CtuiLayout(object):
 
     @property
     def completer(self):
+        """Return the command-aware prompt completer."""
         return self._completer
 
     @property
     def history(self):
+        """Return prompt-toolkit's in-session editing history."""
         return self._history
 
     @property
     def input_field(self):
+        """Return the single-line command input widget."""
         return self._input_field
 
     @property
     def header_field(self):
+        """Return the separator between input and output."""
         return self._header_field
 
     @property
     def output_field(self):
+        """Return the scrollable command output widget."""
         return self._output_field
 
     @property
     def statusbar_text(self):
+        """Resolve status text dynamically from the application."""
         return self.ctui._statusbar
 
     @property
     def statusbar(self):
+        """Return the status-bar window."""
         return self._statusbar
 
     # Organization of windows
     @property
     def body(self):
+        """Return the standard vertically arranged body container."""
         return self._body
 
     # Adding menus
     @property
     def root_container(self):
+        """Return the root prompt-toolkit container used by default."""
         return self._body
         # return self._root_container

@@ -119,6 +119,7 @@ def scroll_home(event):
 
 
 def show_help(ctui):
+    """Display a dialog listing top-level commands for *ctui*."""
     dialog = "{}\n\n{}\n\nAvaiable commands are:\n\n".format(
         ctui.welcome, ctui.help_message
     )

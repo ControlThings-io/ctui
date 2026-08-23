@@ -63,6 +63,7 @@ class Button(object):
     """
 
     def __init__(self, text, handler=None, width=12):
+        """Create a focusable button with a minimum display width."""
         assert isinstance(text, six.text_type)
         assert handler is None or callable(handler)
         assert isinstance(width, int)
@@ -77,6 +78,7 @@ class Button(object):
         )
 
         def get_style():
+            """Return the style class appropriate to the current focus state."""
             if get_app().layout.has_focus(self):
                 return "class:button.focused"
             else:
@@ -93,9 +95,11 @@ class Button(object):
         )
 
     def _get_text_fragments(self):
+        """Build styled text fragments and their mouse callback."""
         text = ("{:^%s}" % (self.width - 2)).format(self.text)
 
         def handler(mouse_event):
+            """Invoke the button handler after a mouse-button release."""
             if mouse_event.event_type == MouseEventType.MOUSE_UP:
                 self.handler()
 
@@ -113,10 +117,12 @@ class Button(object):
         @kb.add(" ")
         @kb.add("enter")
         def _(event):
+            """Invoke the configured handler from the keyboard."""
             if self.handler is not None:
                 self.handler()
 
         return kb
 
     def __pt_container__(self):
+        """Expose the underlying window to prompt-toolkit."""
         return self.window

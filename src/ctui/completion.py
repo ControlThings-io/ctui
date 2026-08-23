@@ -7,10 +7,13 @@ from ctui.commands import CommandNotFound, Commands
 
 
 class CommandCompleter(Completer):
+    """Complete command names, options, and validated argument values."""
     def __init__(self, commands: Commands, app=None):
+        """Bind completion to a command registry and optional application."""
         self.commands, self.app = commands, app
 
     def _command_completions(self, text):
+        """Yield command and alias completions matching *text*."""
         for item in self.commands:
             if item.name.startswith(text):
                 yield Completion(
@@ -25,6 +28,7 @@ class CommandCompleter(Completer):
                 )
 
     def get_completions(self, document, complete_event):
+        """Yield synchronous command-name completions for prompt-toolkit."""
         text = document.text_before_cursor
         try:
             self.commands.resolve(text)
@@ -32,6 +36,7 @@ class CommandCompleter(Completer):
             yield from self._command_completions(text.lstrip())
 
     async def get_completions_async(self, document, complete_event):
+        """Yield command or asynchronously generated argument completions."""
         text = document.text_before_cursor
         try:
             item, argument_text = self.commands.resolve(text)

@@ -27,6 +27,7 @@ GreedyFloat = NewType("GreedyFloat", List[float])
 
 
 def is_greedy(argtype):
+    """Return whether a legacy type consumes all remaining argument text."""
     return argtype in [
         GreedyStr,
         GreedyBytes,
@@ -38,6 +39,11 @@ def is_greedy(argtype):
 
 
 def to_type(value, kwarg):
+    """Convert text using the legacy ``KwArgs`` type declaration.
+
+    Raises:
+        AssertionError: If conversion is unsupported or the value is invalid.
+    """
     if kwarg.type == str:
         return value
 

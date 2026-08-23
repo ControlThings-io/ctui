@@ -19,14 +19,21 @@ class CtuiStyle(object):
     """Class to expose individual style values to ctui"""
 
     def __init__(self):
+        """Select the dark theme initially."""
         self._theme = self.dark_theme
 
     @property
     def theme(self):
+        """Return the currently selected prompt-toolkit style."""
         return self._theme
 
     @theme.setter
     def theme(self, value):
+        """Select a built-in theme by name.
+
+        Raises:
+            ValueError: If *value* is neither ``"dark"`` nor ``"light"``.
+        """
         if value == "dark":
             self._theme = self.dark_theme
         elif value == "light":

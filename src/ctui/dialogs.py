@@ -26,6 +26,7 @@ from .base import Button
 
 
 class YesNoDialog(object):
+    """Display a modal confirmation with affirmative and negative actions."""
     def __init__(
         self,
         title="",
@@ -36,12 +37,15 @@ class YesNoDialog(object):
         wrap_lines=True,
         scrollbar=False,
     ):
+        """Construct a confirmation dialog and its result future."""
         self.future = Future()
 
         def yes_handler():
+            """Resolve the dialog with an affirmative result."""
             self.future.set_result(True)
 
         def no_handler():
+            """Resolve the dialog with a negative result."""
             self.future.set_result(False)
 
         text_width = len(max(text.split("\n"), key=len)) + 2
@@ -68,10 +72,12 @@ class YesNoDialog(object):
         )
 
     def __pt_container__(self):
+        """Expose the underlying dialog to prompt-toolkit."""
         return self.dialog
 
 
 class TextInputDialog(object):
+    """Collect a single line of text in a modal dialog."""
     def __init__(
         self,
         title="",
@@ -81,17 +87,21 @@ class TextInputDialog(object):
         wrap_lines=True,
         scrollbar=False,
     ):
+        """Construct a text-input dialog and its result future."""
         self.future = Future()
 
         def accept_text(buf):
+            """Move focus to confirmation after accepting the input buffer."""
             get_app().layout.focus(ok_button)
             buf.complete_state = None
             return True
 
         def accept():
+            """Resolve the dialog with the entered text."""
             self.future.set_result(self.text_area.text)
 
         def cancel():
+            """Resolve the dialog with ``None`` to indicate cancellation."""
             self.future.set_result(None)
 
         text_width = len(max(text.split("\n"), key=len)) + 2
@@ -115,10 +125,12 @@ class TextInputDialog(object):
         )
 
     def __pt_container__(self):
+        """Expose the underlying dialog to prompt-toolkit."""
         return self.dialog
 
 
 class MessageDialog(object):
+    """Display read-only text in a modal dialog."""
     def __init__(
         self,
         title="",
@@ -129,13 +141,16 @@ class MessageDialog(object):
         wrap_lines=True,
         scrollbar=False,
     ):
+        """Construct a message dialog sized to its content."""
         self.future = Future()
         self.text = text
 
         def set_done():
+            """Resolve the dialog result after acknowledgement."""
             self.future.set_result(None)
 
         def get_text_width():
+            """Calculate the preferred width from formatted message text."""
             if width is None:
                 text_fragments = to_formatted_text(self.text)
                 text = fragment_list_to_text(text_fragments)
@@ -155,6 +170,7 @@ class MessageDialog(object):
         #     max_text_width = get_app().renderer.output.get_size().columns - 2
 
         def dynamic_virtical_scrollbar():
+            """Enable scrolling when content exceeds the terminal height."""
             text_fragments = to_formatted_text(self.text)
             text = fragment_list_to_text(text_fragments)
             if text:
@@ -184,6 +200,7 @@ class MessageDialog(object):
         )
 
     def __pt_container__(self):
+        """Expose the underlying dialog to prompt-toolkit."""
         return self.dialog
 
 
@@ -207,6 +224,7 @@ async def show_dialog(dialog):
 
 
 def func_pass():
+    """Provide a no-operation default dialog callback."""
     pass
 
 
@@ -224,6 +242,7 @@ def yes_no_dialog(
     """
 
     async def coroutine():
+        """Show the confirmation and invoke the selected callback."""
         dialog = YesNoDialog(title=title, text=text, yes_text=yes_text, no_text=no_text)
         result = await show_dialog(dialog)
         if result == True:
@@ -256,6 +275,7 @@ def input_dialog(
     output_text = ""
 
     async def coroutine():
+        """Show the input dialog and capture its result."""
         global output_text
         open_dialog = TextInputDialog(title, text, completer)
 
@@ -279,6 +299,7 @@ def message_dialog(
     """
 
     async def coroutine():
+        """Show the message dialog until it is acknowledged."""
         dialog = MessageDialog(
             title=title,
             text=text,

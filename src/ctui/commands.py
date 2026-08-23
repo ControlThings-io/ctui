@@ -27,15 +27,18 @@ class CommandError(Exception):
 
 
 class CommandNotFound(CommandError):
+    """Indicate that input did not match a registered command or alias."""
     pass
 
 
 class CommandValidationError(CommandError):
+    """Indicate that command arguments could not be parsed or validated."""
     pass
 
 
 @dataclass(frozen=True)
 class CompletionItem:
+    """Describe insertable completion text and its dropdown help message."""
     value: str
     help: str = ""
 
@@ -59,6 +62,7 @@ class Argument:
 
 @dataclass(frozen=True)
 class CompletionContext:
+    """Describe the command-line state supplied to a completion provider."""
     command: "Command"
     parameter: inspect.Parameter
     word: str
@@ -68,17 +72,20 @@ class CompletionContext:
 
 @dataclass
 class CommandContext:
+    """Expose application state and event publication to a running command."""
     app: Any
     command: "Command"
     raw_input: str
     arguments: Mapping[str, Any]
 
     async def emit(self, event: str, **data: Any) -> None:
+        """Publish a custom application event with keyword payload data."""
         await self.app.events.emit(event, **data)
 
 
 @dataclass(frozen=True)
 class CommandResult:
+    """Describe how a completed command should affect the user interface."""
     output: str | None = None
     clear_output: bool = False
     exit_requested: bool = False
@@ -86,19 +93,28 @@ class CommandResult:
 
     @classmethod
     def success(cls, output: str | None = None):
+        """Create an accepted result with optional output text."""
         return cls(output=output)
 
     @classmethod
     def rejected(cls):
+        """Create a result that preserves the user's current input."""
         return cls(accepted=False)
 
 
 def _name(func):
+    """Derive a terminal command name from a Python function name."""
     value = func.__name__
     return (value[3:] if value.startswith("do_") else value).replace("_", " ")
 
 
 def _convert(value: str, annotation: Any, name: str) -> Any:
+    """Convert one textual value according to a parameter annotation.
+
+    Raises:
+        CommandValidationError: If conversion fails or a constrained value does
+            not match its annotation.
+    """
     if annotation in (inspect.Parameter.empty, Any, str):
         return value
     origin, args = get_origin(annotation), get_args(annotation)
@@ -148,6 +164,7 @@ def _convert(value: str, annotation: Any, name: str) -> Any:
 
 @dataclass
 class Command:
+    """Store callable metadata and perform parsing, execution, and completion."""
     func: Callable[..., Any]
     name: str | None = None
     aliases: tuple[str, ...] = ()
@@ -155,6 +172,7 @@ class Command:
     description: str = ""
 
     def __post_init__(self):
+        """Derive command metadata and validate argument configuration."""
         self.name = self.name or _name(self.func)
         self.string, self.string_parts, self.func_name = (
             self.name,
@@ -176,6 +194,7 @@ class Command:
 
     @property
     def parameters(self):
+        """Return user-supplied parameters, excluding ``self`` and ``ctx``."""
         return [
             p
             for p in self.signature.parameters.values()
@@ -184,6 +203,7 @@ class Command:
 
     @property
     def help(self):
+        """Return a compact usage line followed by the command description."""
         args = " ".join(
             ("[" if p.default is not inspect.Parameter.empty else "<")
             + (self.arguments.get(p.name, Argument()).metavar or p.name.upper())
@@ -193,6 +213,20 @@ class Command:
         return f"{self.name} {args}\n\n{self.desc}".strip()
 
     def parse_args(self, text: str, partial: bool = False):
+        """Parse and validate command arguments.
+
+        Args:
+            text: Argument text following the resolved command name.
+            partial: Permit missing or unfinished arguments for completion.
+
+        Returns:
+            Parsed keyword arguments. In partial mode, returns those arguments
+            together with the parameter currently being entered.
+
+        Raises:
+            CommandValidationError: If syntax, conversion, arity, choices, or a
+                custom validator rejects the input.
+        """
         try:
             tokens = shlex.split(text)
         except ValueError as error:
@@ -275,6 +309,7 @@ class Command:
         return values, next_parameter
 
     async def execute(self, app=None, raw_input="", **kwargs):
+        """Invoke the command and resolve synchronous or awaitable results."""
         call = dict(kwargs)
         if "ctx" in self.signature.parameters:
             call["ctx"] = CommandContext(app, self, raw_input, kwargs)
@@ -282,6 +317,13 @@ class Command:
         return await result if inspect.isawaitable(result) else result
 
     async def complete(self, text: str, word: str, app=None):
+        """Return type-checked and validator-approved completion items.
+
+        Args:
+            text: Completed argument text before the current word.
+            word: Partial word to complete.
+            app: Optional application passed to dynamic providers.
+        """
         values, parameter = self.parse_args(text, partial=True)
         if word.startswith("--"):
             options = []
@@ -339,13 +381,28 @@ class Command:
 
 
 class Commands:
+    """Register commands and resolve input using longest-prefix matching."""
     def __init__(self):
+        """Create an empty command and alias registry."""
         self.commands, self.aliases = {}, {}
 
     def register(
         self, func=None, *, name=None, aliases=(), arguments=None, description=""
     ):
+        """Register a callable, directly or as a configurable decorator.
+
+        Args:
+            func: Callable to register when used without parentheses.
+            name: Explicit terminal name; otherwise derived from the callable.
+            aliases: Alternative names accepted by the resolver.
+            arguments: Per-parameter completion and validation configuration.
+            description: Explicit help summary overriding the docstring.
+
+        Returns:
+            The original callable, allowing normal decorator behavior.
+        """
         def decorate(target):
+            """Create and store command metadata for a decorated callable."""
             meta = getattr(target, "__ctui_command__", {})
             item = Command(
                 target,
@@ -367,13 +424,20 @@ class Commands:
 
     @property
     def strings(self):
+        """Return registered command names in alphabetical order."""
         return sorted(self.commands)
 
     @property
     def descriptions(self):
+        """Map registered command names to their help summaries."""
         return {k: v.desc for k, v in self.commands.items()}
 
     def resolve(self, text):
+        """Return the matching command and its unparsed argument text.
+
+        Raises:
+            CommandNotFound: If no registered command or alias matches.
+        """
         stripped, all_names = text.strip(), {**self.commands, **self.aliases}
         for name in sorted(all_names, key=lambda x: len(x.split()), reverse=True):
             if stripped == name or stripped.startswith(name + " "):
@@ -381,6 +445,7 @@ class Commands:
         raise CommandNotFound(f"Unknown command: {stripped}")
 
     def extract(self, text):
+        """Compatibility helper returning a command and parsed arguments."""
         try:
             item, rest = self.resolve(text)
             return item, item.parse_args(rest)
@@ -388,16 +453,23 @@ class Commands:
             return None, None
 
     def __iter__(self):
+        """Iterate over commands in registration order."""
         return iter(self.commands.values())
 
     def __getitem__(self, key):
+        """Return the command registered under *key*."""
         return self.commands[key]
 
 
 def command(func=None, *, name=None, aliases=(), arguments=None, description=""):
-    """Mark a class method for registration by CtuiApp."""
+    """Mark a class method for automatic registration by ``CtuiApp``.
+
+    The decorator supports both ``@command`` and ``@command(...)`` forms and
+    leaves the decorated function callable outside the framework.
+    """
 
     def decorate(target):
+        """Attach declarative command metadata to *target*."""
         target.__ctui_command__ = {
             "name": name,
             "aliases": tuple(aliases),
@@ -410,6 +482,7 @@ def command(func=None, *, name=None, aliases=(), arguments=None, description="")
 
 
 def register_default_commands(app):
+    """Install the standard clear, help, history, and exit commands."""
     @app.command
     def clear():
         """Clear the output."""

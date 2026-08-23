@@ -61,11 +61,13 @@ def get_key_bindings(ctui):
 
     @kb.add("enter", filter=has_focus(input_field))
     def _(event):
+        """Schedule the current command without blocking terminal rendering."""
         if len(input_field.text) == 0:
             return
         submitted = input_field.text
 
         async def execute():
+            """Dispatch input and apply its normalized result to the widgets."""
             try:
                 ctui.output_text = output_field.text
                 result = await ctui.dispatch(submitted)
