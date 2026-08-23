@@ -18,14 +18,14 @@ class Calculator(CtuiApp):
     def add(self, first: int, second: int) -> str:
         """Add two whole numbers."""
         answer = str(first + second)
-        return f"{self.output_text}\n{first} + {second} = {answer}"
+        return f"{self.output_text}{first} + {second} = {answer}\n"
         
 
     @command
     def multiply(self, first: int, second: int) -> str:
         """Multiply two whole numbers."""
         answer = str(first * second)
-        return f"{self.output_text}\n{first} * {second} = {answer}"
+        return f"{self.output_text}{first} * {second} = {answer}\n"
 
 
 if __name__ == "__main__":
