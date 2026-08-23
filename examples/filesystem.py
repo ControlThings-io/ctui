@@ -1,4 +1,9 @@
-"""A small async, typed ctui application."""
+"""Combine typed paths, async commands, completion, and validation.
+
+Run: uv run examples/filesystem.py
+Try: list
+Try: change directory .
+"""
 
 import asyncio
 from pathlib import Path
@@ -6,11 +11,14 @@ from ctui import Argument, CommandError, CtuiApp, command
 
 
 async def directory_names(context):
+    """Suggest directories found under the current working directory."""
     await asyncio.sleep(0)
     return [str(path) for path in Path.cwd().iterdir() if path.is_dir()]
 
 
 class FilesystemApp(CtuiApp):
+    """Browse directories using several ctui features together."""
+
     name, version, prompt = "files", "1.0", "files> "
 
     def __init__(self):

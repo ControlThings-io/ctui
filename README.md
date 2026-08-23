@@ -76,6 +76,9 @@ and string/`None`/`False` results remain supported.
 
 ## Development
 
+The [`examples`](examples/README.md) directory contains a progressive tutorial.
+Each file is intentionally short and concentrates on one or two features.
+
 ```bash
 uv sync
 uv run python -m unittest discover -s tests -v
