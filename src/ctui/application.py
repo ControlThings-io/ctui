@@ -1,126 +1,159 @@
-"""
-Control Things User Interface, aka ctui.py
+"""The event-driven ctui application."""
 
-# Copyright (C) 2019  Justin Searle
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or any later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-# details at <http://www.gnu.org/licenses/>.
-"""
-from datetime import datetime
-from pathlib import Path
-
+from __future__ import annotations
+import inspect
+from typing import Any
 from prompt_toolkit.application import Application
-from prompt_toolkit.application.current import get_app
 from prompt_toolkit.layout.layout import Layout
-from tinydb import TinyDB
-
-from ctui.commands import Commands, register_default_commands
+from ctui.commands import (
+    CommandError,
+    CommandResult,
+    Commands,
+    register_default_commands,
+)
+from ctui.events import EventBus
 from ctui.keybindings import get_key_bindings
 from ctui.layout import CtuiLayout
+from ctui.services import MemoryHistory, NullStorage
 from ctui.style import CtuiStyle
 
-from .dialogs import yes_no_dialog
 
+class CtuiApp:
+    """Base class for synchronous or asynchronous terminal applications."""
 
-class Ctui(object):
-    """
-    Class with commands that users may use at the application prompt.
-
-    Each function representing a command must:
-        - start with a do_
-        - accept self, input_text, output_text, and event as params
-        - return a string to print, None, or False
-    Returning a False does nothing, forcing users to correct mistakes
-    """
-
-    # User setable variables
-    name = "MyApp"
-    version = "0.1.0"  # must be string
-    description = "My App does something..."
+    name, version, description = "MyApp", "0.1.0", "My App does something..."
     prompt = "> "
     help_message = "Commands go on top, results appear on the bottom."
-    wrap_lines = False  # Wrap lines in main output window or not
-    # statusbar = lambda: f"PROJECT: {self.project_name}"  # zero-argument callable evaluated when the UI renders
+    wrap_lines = False
 
-    # sets various defaults if not overriden with subclass
-    def __init__(self, layout=None):
-        self.commands = Commands()
-        register_default_commands(ctui=self)
-        self.project_name = "default"
-        self.statusbar = lambda: f"PROJECT: {self.project_name}"
+    def __init__(
+        self,
+        *,
+        name=None,
+        version=None,
+        description=None,
+        prompt=None,
+        history=None,
+        storage=None,
+        theme="dark",
+        register_defaults=True,
+    ):
+        if name is not None:
+            self.name = name
+        if version is not None:
+            self.version = version
+        if description is not None:
+            self.description = description
+        if prompt is not None:
+            self.prompt = prompt
+        self.commands, self.events = Commands(), EventBus()
+        self.history = history if history is not None else MemoryHistory()
+        self.storage = storage if storage is not None else NullStorage()
+        self.theme, self.project_name = theme, "default"
+        self.footer, self.statusbar, self.output_text = "", None, ""
+        if register_defaults:
+            register_default_commands(self)
+        self._register_class_commands()
+
+    def _register_class_commands(self):
+        discovered = {}
+        for cls in reversed(type(self).mro()):
+            for name, value in vars(cls).items():
+                if hasattr(value, "__ctui_command__"):
+                    discovered[name] = value.__ctui_command__
+        for name, meta in discovered.items():
+            self.commands.register(getattr(self, name), **meta)
 
     @property
     def welcome(self):
         return f"Welcome to {self.name} {self.version}\n\n{self.description}"
 
     @property
-    def project_folder(self):
-        return f"{Path.home()}/.{self.name}/projects/"
-
-    @property
-    def _project_path(self):
-        return f"{self.project_folder}{self.project_name}.{self.name}"
-
-    @property
     def _statusbar(self):
-        statusbar = self.statusbar if callable(self.statusbar) else lambda: 'ERROR: .statusbar must be callable such as "lambda: f"PROJECT: {self.project_name}""'
-        return statusbar
+        if self.statusbar is not None:
+            value = self.statusbar() if callable(self.statusbar) else self.statusbar
+            return str(value)
+        value = self.footer() if callable(self.footer) else self.footer
+        return f"Project: {self.project_name}" + (f"  {value}" if value else "")
 
-    def _init_db(self):
-        """setup database storage"""
-        self.db = TinyDB(self._project_path)
-        self.settings = self.db.table("settings")
-        self.storage = self.db.table("storage")
-        self.history = self.db.table("history")
+    def command(self, func=None, **options):
+        return self.commands.register(func, **options)
 
-    def command(self, func):
-        return self.commands.register(func)
+    def on(self, event, handler=None):
+        return self.events.on(event, handler)
 
-    def run(self):
-        """Start the python_prompt application with ctui's default settings"""
-        Path(self.project_folder).mkdir(parents=True, exist_ok=True)
-        if Path(
-            self._project_path
-        ).exists():  # start with clean default project at each start
-            Path.unlink(Path(self._project_path))
-        self._init_db()
+    async def _hook(self, func):
+        result = func()
+        return await result if inspect.isawaitable(result) else result
+
+    async def on_start(self):
+        pass
+
+    async def on_ready(self):
+        pass
+
+    async def on_stop(self):
+        pass
+
+    def compose(self):
+        """Return a prompt_toolkit root container, or None for the standard UI."""
+        return None
+
+    async def dispatch(self, text):
+        await self.events.emit("command_submitted", text=text)
+        item, argument_text = self.commands.resolve(text)
+        kwargs = item.parse_args(argument_text)
+        await self.events.emit("command_started", command=item, arguments=kwargs)
+        try:
+            raw = await item.execute(app=self, raw_input=text, **kwargs)
+        except CommandError:
+            await self.events.emit("command_failed", command=item)
+            raise
+        if isinstance(raw, CommandResult):
+            result = raw
+        elif raw is False:
+            result = CommandResult.rejected()
+        elif raw is None:
+            result = CommandResult()
+        else:
+            result = CommandResult(output=str(raw))
+        if result.accepted:
+            self.history.append(text)
+            await self.events.emit("command_finished", command=item, result=result)
+        return result
+
+    def _build_application(self):
         self.layout = CtuiLayout(self)
-        self.style = CtuiStyle()
-        self._mode = "term_ui"  # For future headless mode
-        layout = Layout(
-            self.layout.root_container, focused_element=self.layout.input_field
-        )
+        root = self.compose() or self.layout.root_container
+        style = CtuiStyle()
+        style.theme = self.theme
         self.app = Application(
-            layout=layout,
+            layout=Layout(root, focused_element=self.layout.input_field),
             key_bindings=get_key_bindings(self),
-            style=self.style.dark_theme,
+            style=style.theme,
             enable_page_navigation_bindings=False,
             mouse_support=True,
             full_screen=True,
         )
-        self.app.run()
 
-    def _log_and_exit(self):
-        date, time = str(datetime.today()).split()
-        self.history.insert(
-            {"Date": date, "Time": time.split(".")[0], "Command": "exit"}
-        )
-        self.db.close()
-        get_app().exit()
+    async def run_async(self):
+        await self._hook(self.on_start)
+        self._build_application()
+        await self._hook(self.on_ready)
+        try:
+            return await self.app.run_async()
+        finally:
+            await self._hook(self.on_stop)
+            self.storage.close()
+
+    def run(self):
+        import asyncio
+
+        return asyncio.run(self.run_async())
 
     def exit(self):
-        """Graceful shutdown of the prompt_toolkit application"""
-        if self._mode == "term_ui" and self.project_name == "default":
-            yes_no_dialog(
-                title="Warning",
-                text="Exit without saving project?",
-                yes_func=self._log_and_exit,
-            )
-        else:
-            self._log_and_exit()
+        if hasattr(self, "app"):
+            self.app.exit()
+
+
+Ctui = CtuiApp

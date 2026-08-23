@@ -1,49 +1,83 @@
 # ControlThings User Interface
 
-The `ctui` is a library for creating terminal-based user interfaces, and is used in all the ControlThings tools at controlthings.io.  It is similar to using Click or Python's standard Cmd library, but with a curses-like interface written in pure Python.
+`ctui` is an event-driven Python framework for full-screen command tools. Write
+ordinary typed functions; ctui supplies parsing, validation, async execution,
+completion, history, layout, and terminal rendering.
 
-# Installation
+## Quick start
 
-Ctui is primarily developed on Linux, but should work in both Mac and Windows as well.
+```python
+from pathlib import Path
+from typing import Literal
+from ctui import CommandError, CtuiApp, command
 
-As long as you have git and Python 3.8 or later installed, all you should need to do is:
+class FileTool(CtuiApp):
+    name = "files"
+    prompt = "files> "
 
+    @command(aliases=("ls",))
+    async def list_files(self, directory: Path = Path("."),
+                         order: Literal["name", "size"] = "name") -> str:
+        """List files in a directory."""
+        if not directory.is_dir():
+            raise CommandError(f"Not a directory: {directory}")
+        return "\n".join(item.name for item in directory.iterdir())
+
+FileTool().run()
 ```
-pip3 install ctui
+
+Commands can be sync or async. Applications already inside an event loop can
+use `await app.run_async()`. Test without a terminal using
+`await app.dispatch("list files . --order size")`.
+
+## Completion and validation
+
+`Literal` and `Enum` annotations automatically produce completion choices. Use
+`Argument` for tool-specific choices, validation, and sync or async providers:
+
+```python
+async def server_names(context):
+    return ["web-1", "web-2", "db-1"]
+
+@command(arguments={
+    "environment": Argument(
+        choices={"dev": "Development", "prod": "Production"},
+        help="Deployment environment"),
+    "server": Argument(
+        completer=server_names,
+        validator=lambda value: value != "db-1" or "db-1 is read-only"),
+})
+async def deploy(self, environment: str, server: str): ...
 ```
 
-# Usage
+A provider receives `CompletionContext`: the command, current parameter,
+partial word, parsed arguments, and app. It may return strings or
+`CompletionItem` values with dropdown help. Results pass through type conversion
+and validation, so the menu does not recommend invalid input. Named options
+such as `--environment` are also completed.
 
-Import the library, instantiate a Ctui object, and start the ctui application, like:
+Supported annotations include `str`, `int`, `float`, `bool`, `Path`, `Enum`,
+`Literal`, `Optional`, and comma-separated collections.
 
+## Events, lifecycle, and services
+
+`on_start`, `on_ready`, and `on_stop` may be sync or async. The event bus emits
+`command_submitted`, `command_started`, `command_finished`, and
+`command_failed`. A command with a `ctx: CommandContext` parameter can emit
+custom events with `await ctx.emit("download_progress", percent=50)`.
+
+History and storage are injected instead of automatically writing project files.
+Memory and null implementations are included. Override `compose()` for a custom
+prompt-toolkit container; stable component aliases are available in
+`ctui.widgets`.
+
+The historical `Ctui` name, `do_` prefix, instance `@app.command` decorator,
+and string/`None`/`False` results remain supported.
+
+## Development
+
+```bash
+uv sync
+uv run python -m unittest discover -s tests -v
+uv run examples/filesystem.py
 ```
-from ctui import Ctui
-
-myapp = Ctui()
-myapp.run()
-```
-
-Of course you can configure you app in a number of different ways by modifying your app's attributes or by adding your own custom commands.   Check out the `examples` folder to walk you through some of these.  For more complex examples how to use `ctui`, check out the various ControlThings Tools, most of which use `ctui`.  You can find these at <https://github.com/ControlThingsTools>.
-
-# Fork and Develop
-
-To set up a development environment for `ctui`, you will first need to install [uv](<https://docs.astral.sh/uv/>) which is used to manage all the project dependencies and publish the pypi packages.  I strongly recommend checking out the website and at least reading through the [Basic Project Concepts](https://docs.astral.sh/uv/concepts/projects/) page, but if you want the TLDR, just run the following command to install `uv`:
-
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-
-Once `uv` is installed, pull the `ctui` repo and :
-
-    git clone https://github.com/ControlThings-io/ctui.git
-    cd ctui
-    uv sync
-
-To try out the project examples files, run:
-
-    uv run examples/default.py
-    uv run examples/filesystem.py
-
-That last command will open a shell in a python virtual environment where you can do live edits to the code.  If you are a VS Code user, VS Code will automatically load the repo configs with all the linting rules I use through the repo, and should automatically open the debug tools and terminal inside the virtual environment.
-
-# Author
-
-* Justin Searle <justin@controlthings.io>

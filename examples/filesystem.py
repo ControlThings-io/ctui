@@ -1,68 +1,46 @@
-# Copyright (C) 2018  Justin Searle
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or any later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-# details at <http://www.gnu.org/licenses/>.
+"""A small async, typed ctui application."""
 
-import os
-
-from ctui.application import Ctui
-
-# from ctui.types import *
-
-# Add your own commands by extending the Ctui class
-myapp = Ctui()
-
-myapp.name = "ctui_filesystem"
-myapp.version = "0.1"
-myapp.description = "Example filesystem application using ctui"
-myapp.prompt = "fs> "
-myapp.help_message = "Type your Linux commands on top...\nresults appear on the bottom."
-# If you don't set a statusbar, the default will be "lambda: f"PROJECT: {myapp.project_name}"
-# Statusbar must be callable
-myapp.statusbar = lambda: f"PROJECT: {myapp.project_name} | CWD: {os.getcwd()}"
-
-# Each function representing a command must:
-#     - start with a do_
-#     - accept (self, args, output_text) as params
-#         args:         is the text the user passed to your command
-#         output_text:  is the current text in the window
-#     - return a string to print, None, or False
-# Returning a False does nothing, forcing users to correct mistakes
+import asyncio
+from pathlib import Path
+from ctui import Argument, CommandError, CtuiApp, command
 
 
-# Example of a command with no arguments
-@myapp.command
-def do_ls():
-    """Help menu for ls."""  # <--- this will be used in help messages
-    output_text = myapp.output_text  # Grab existing output text
-    output_text += "Contents of " + os.getcwd() + ":\n"
-    # notice that we appended that text onto the existing output_text
-    for item in os.listdir():
-        output_text += " " + item + "\n"
-    return output_text
+async def directory_names(context):
+    await asyncio.sleep(0)
+    return [str(path) for path in Path.cwd().iterdir() if path.is_dir()]
 
 
-# Example of a command with 1 argument
-@myapp.command
-def do_cd(directory: str):
-    """Help menu for cd.
+class FilesystemApp(CtuiApp):
+    name, version, prompt = "files", "1.0", "files> "
 
-    :PARAM dir: Directory to change into
-    """
-    try:
+    def __init__(self):
+        super().__init__()
+        self.footer = lambda: f"CWD: {Path.cwd()}"
+
+    @command
+    async def list(self, directory: Path = Path(".")) -> str:
+        """List a directory without blocking the terminal UI."""
+        await asyncio.sleep(0)
+        if not directory.is_dir():
+            raise CommandError(f"Not a directory: {directory}")
+        return "\n".join(sorted(item.name for item in directory.iterdir()))
+
+    @command(
+        arguments={
+            "directory": Argument(
+                help="Existing directory",
+                completer=directory_names,
+                validator=lambda path: path.is_dir() or f"Not a directory: {path}",
+            )
+        }
+    )
+    def change_directory(self, directory: Path) -> str:
+        """Change the working directory."""
+        import os
+
         os.chdir(directory)
-    except FileNotFoundError:
-        # Returning False on bad input forces users to edit their input
-        return False
-    output_text = myapp.output_text  # Grab existing output text
-    output_text = output_text + "Directory changed to " + os.getcwd() + "\n"
-    return output_text
+        return f"Changed to {Path.cwd()}"
 
 
-myapp.run()
+if __name__ == "__main__":
+    FilesystemApp().run()

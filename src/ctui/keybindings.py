@@ -12,9 +12,7 @@ Control Things User Interface, aka ctui.py
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details at <http://www.gnu.org/licenses/>.
 """
-import time
 import traceback
-from datetime import datetime
 
 from prompt_toolkit.document import Document
 from prompt_toolkit.filters import has_focus
@@ -23,6 +21,7 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.search import SearchDirection, start_search
 
 from .dialogs import message_dialog
+from .commands import CommandError
 from .functions import (
     scroll_end,
     scroll_home,
@@ -64,47 +63,30 @@ def get_key_bindings(ctui):
     def _(event):
         if len(input_field.text) == 0:
             return
-        # Process commands on prompt after hitting enter key
-        # do_function, args = ctui._extract_do_function(input_field.text)
-        #
-        # if do_function:
-        #     try:
-        #         output_text = ctui._execute(do_function, args, output_field.text)
-        #     except AssertionError as error:
-        #         message_dialog(title='Error', text=str(error))
-        #     except:
-        #         message_dialog(title='Error', text=traceback.format_exc(),
-        #                        scrollbar=True)
+        submitted = input_field.text
 
-        try:
-            command, kwargs = ctui.commands.extract(input_field.text)
-            if command:
+        async def execute():
+            try:
                 ctui.output_text = output_field.text
-                output_text = command.execute(**kwargs)
-        except AssertionError as error:
-            message_dialog(title="Error", text=str(error))
-        except:
-            message_dialog(title="Error", text=traceback.format_exc(), scrollbar=True)
-
-        # For invalid commands forcing users to correct them
-        if "output_text" not in locals() or output_text == False:
-            return
-
-        date, time = str(datetime.today()).split()
-        ctui.history.insert(
-            {"Date": date, "Time": time.split(".")[0], "Command": input_field.text}
-        )
-        input_field.buffer.reset(append_to_history=True)
-
-        # For commands that do not have output_text
-        if output_text == None:
+                result = await ctui.dispatch(submitted)
+            except CommandError as error:
+                message_dialog(title="Error", text=str(error))
+                return
+            except Exception:
+                message_dialog(title="Error", text=traceback.format_exc(), scrollbar=True)
+                return
+            if not result.accepted:
+                return
+            input_field.buffer.reset(append_to_history=True)
             input_field.text = ""
-            return
-        else:
-            output_field.buffer.document = Document(
-                text=output_text, cursor_position=len(output_text)
-            )
-            input_field.text = ""
+            if result.clear_output:
+                output_field.text = ""
+            elif result.output is not None:
+                output_field.buffer.document = Document(result.output, len(result.output))
+            if result.exit_requested:
+                ctui.exit()
+
+        event.app.create_background_task(execute())
 
     @kb.add("c-c", filter=has_focus(input_field))
     def _(event):
