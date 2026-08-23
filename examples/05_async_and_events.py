@@ -1,46 +1,45 @@
-"""Keep the interface responsive during asynchronous work.
+"""Run several asynchronous commands at the same time.
 
 Run: uv run examples/05_async_and_events.py
 Try: download report.csv
-While it runs, try: download photo.jpg
+Before it completes, try: download photo.jpg
+
+Each simulated download randomly takes between 2 and 10 seconds. The immediate
+Started and Completed messages make it easy to see that commands overlap.
 """
 
 import asyncio
+import random
 
 from ctui import CommandResult, CtuiApp, command
 
 
 class DownloadTool(CtuiApp):
-    """Report progress from an async command through the event bus."""
+    """Demonstrate concurrent commands using async functions and events."""
 
     def __init__(self):
         super().__init__()
-        self.progress: dict[str, int] = {}
-        self.statusbar = self.progress_text
-        self.on("progress", self.show_progress)
+        self.on("message", self.show_message)
 
-    def progress_text(self) -> str:
-        """Format every active or completed download for the status bar."""
-        if not self.progress:
-            return "Ready"
-        return " | ".join(
-            f"{filename}: {percent}%" for filename, percent in self.progress.items()
-        )
-
-    def show_progress(self, filename: str, percent: int) -> None:
-        """Store one file's progress and request an immediate redraw."""
-        self.progress[filename] = percent
-        if hasattr(self, "app"):
-            self.app.invalidate()
+    def show_message(self, text: str) -> None:
+        """Append an event message immediately to the UI or command line."""
+        if not hasattr(self, "layout"):
+            print(text)
+            return
+        previous = self.layout.output_field.text.rstrip()
+        self.layout.output_field.text = f"{previous}\n{text}".lstrip()
+        self.app.invalidate()
 
     @command
     async def download(self, filename: str) -> CommandResult:
-        """Pretend to download a file in three asynchronous steps."""
-        await self.events.emit("progress", filename=filename, percent=0)
-        for percent in (11, 22, 33, 44, 55, 66, 77, 88, 99, 100):
-            await asyncio.sleep(0.5)
-            await self.events.emit("progress", filename=filename, percent=percent)
-        return CommandResult.append(f"Downloaded {filename}")
+        """Simulate an asynchronous file download."""
+        delay = random.randint(2, 10)
+        await self.events.emit(
+            "message", text=f"Started {filename} ({delay} seconds)"
+        )
+        await asyncio.sleep(delay)
+        await self.events.emit("message", text=f"Completed {filename}")
+        return CommandResult.success()
 
 
 if __name__ == "__main__":

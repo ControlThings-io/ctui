@@ -293,6 +293,7 @@ class CtuiApp:
                     result = await self.dispatch(text)
                 except (CommandError, TypeError) as error:
                     print(f"{self.format_command_error(text, error)}\n", file=stderr)
+                    print(self.format_cli_help(program), file=stderr)
                     return 2
                 if result.output is not None:
                     print(result.output, file=stdout)

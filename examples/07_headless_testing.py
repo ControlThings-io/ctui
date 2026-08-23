@@ -2,10 +2,10 @@
 
 Try these from the repository root:
 
-    uv run examples/06_headless_testing.py --help
-    uv run examples/06_headless_testing.py -c "greet Ada --enthusiastic"
-    uv run examples/06_headless_testing.py -c "add 12 30" -c "count-words 'hello world'"
-    uv run examples/06_headless_testing.py --file examples/commands.txt
+    uv run examples/07_headless_testing.py --help
+    uv run examples/07_headless_testing.py -c "greet Ada --enthusiastic"
+    uv run examples/07_headless_testing.py -c "add 12 30" -c "count-words 'hello world'"
+    uv run examples/07_headless_testing.py --file examples/commands.txt
 
 Run without arguments to open the same application's full-screen interface.
 """
