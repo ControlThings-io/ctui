@@ -32,6 +32,7 @@ class CtuiApp:
     prompt = "> "
     help_message = "Currently supported commands:"
     wrap_lines = False
+    mouse_support = False
 
     def __init__(
         self,
@@ -71,6 +72,7 @@ class CtuiApp:
         self.theme = theme
         self.statusbar = lambda: self.name
         self.output_text = ""
+        self.shortcuts = []
         if register_defaults:
             register_default_commands(self)
         self._register_class_commands()
@@ -99,6 +101,21 @@ class CtuiApp:
     def on(self, event, handler=None):
         """Register an event listener, directly or as a decorator."""
         return self.events.on(event, handler)
+
+    def add_shortcut(self, *keys, handler, description=""):
+        """Register an application-wide keyboard shortcut.
+
+        Args:
+            *keys: One or more prompt-toolkit key names, such as ``"f2"`` or
+                ``"c-t"``. Multiple values form a key sequence.
+            handler: Synchronous or asynchronous zero-argument callable.
+            description: Optional human-readable explanation.
+        """
+        if not keys:
+            raise ValueError("A shortcut requires at least one key")
+        if not callable(handler):
+            raise TypeError("A shortcut handler must be callable")
+        self.shortcuts.append((tuple(keys), handler, description))
 
     async def _hook(self, func):
         """Call a lifecycle hook and await it when necessary."""
@@ -216,7 +233,7 @@ class CtuiApp:
             key_bindings=get_key_bindings(self),
             style=style.theme,
             enable_page_navigation_bindings=False,
-            mouse_support=True,
+            mouse_support=self.mouse_support,
             full_screen=True,
         )
 

@@ -1,6 +1,16 @@
 import unittest
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 from ctui.application import CtuiApp
+from ctui.functions import (
+    scroll_end,
+    scroll_home,
+    scroll_line_down,
+    scroll_line_up,
+    scroll_page_down,
+    scroll_page_up,
+)
 from ctui.layout import CtuiLayout
 
 
@@ -30,6 +40,53 @@ class StatusbarTests(unittest.TestCase):
         self.assertEqual(layout.statusbar.content.text(), "first")
         status[0] = "second"
         self.assertEqual(layout.statusbar.content.text(), "second")
+
+    def test_output_is_read_only_and_does_not_take_focus(self):
+        layout = CtuiLayout(CtuiApp())
+        self.assertTrue(layout.output_field.buffer.read_only())
+        self.assertFalse(layout.output_field.control.focusable())
+        self.assertFalse(layout.output_field.control.focus_on_click())
+
+    def test_framework_can_update_read_only_output(self):
+        layout = CtuiLayout(CtuiApp())
+        layout.set_output("First result")
+        self.assertEqual(layout.output_field.text, "First result")
+        layout.set_output("Second result")
+        self.assertEqual(layout.output_field.text, "Second result")
+
+    def test_output_scroll_helpers_adjust_viewport_without_focus(self):
+        render_info = SimpleNamespace(
+            ui_content=SimpleNamespace(line_count=20),
+            window_height=5,
+            first_visible_line=lambda: 3,
+        )
+        window = SimpleNamespace(render_info=render_info, vertical_scroll=3)
+        document = SimpleNamespace(
+            translate_row_col_to_index=lambda row, column: row * 10 + column
+        )
+        buffer = SimpleNamespace(document=document, cursor_position=0)
+        output = SimpleNamespace(window=window, buffer=buffer)
+        event = SimpleNamespace(app=SimpleNamespace(invalidate=Mock()))
+
+        scroll_line_down(event, output)
+        self.assertEqual(window.vertical_scroll, 4)
+        self.assertEqual(buffer.cursor_position, 80)
+        scroll_line_up(event, output)
+        self.assertEqual(window.vertical_scroll, 2)
+        self.assertEqual(buffer.cursor_position, 20)
+        scroll_page_down(event, output)
+        self.assertEqual(window.vertical_scroll, 8)
+        self.assertEqual(buffer.cursor_position, 120)
+        scroll_page_up(event, output)
+        self.assertEqual(window.vertical_scroll, 0)
+        self.assertEqual(buffer.cursor_position, 0)
+        scroll_end(event, output)
+        self.assertEqual(window.vertical_scroll, 15)
+        self.assertEqual(buffer.cursor_position, 190)
+        scroll_home(event, output)
+        self.assertEqual(window.vertical_scroll, 0)
+        self.assertEqual(buffer.cursor_position, 0)
+        self.assertEqual(event.app.invalidate.call_count, 6)
 
 
 if __name__ == "__main__":

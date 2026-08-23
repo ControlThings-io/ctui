@@ -126,6 +126,23 @@ Memory and null implementations are included. Override `compose()` for a custom
 prompt-toolkit container; stable component aliases are available in
 `ctui.widgets`.
 
+Register application-wide keyboard shortcuts with
+`app.add_shortcut("f2", handler=callback)`. Ctui leaves mouse selection and the
+clipboard to your terminal. Drag across output to select it, then use your
+terminal's copy and paste shortcuts (commonly Ctrl-Shift-C/Ctrl-Shift-V on Linux
+and Windows, or Command-C/Command-V on macOS). The command input keeps focus.
+
+The input line includes familiar terminal editing shortcuts:
+
+- Ctrl-A / Ctrl-E: move to the beginning / end of the input line.
+- Ctrl-U / Ctrl-K: delete to the beginning / end.
+- Ctrl-W: delete the previous word.
+- Ctrl-C: cancel and clear the current input.
+- Ctrl-D: delete the next character, or exit on an empty line.
+- Ctrl-L: clear the output pane.
+- Home / End: jump to the beginning / end of the output.
+- Page Up / Page Down and Ctrl-Up / Ctrl-Down: scroll output.
+
 Return `CommandResult.append("Finished")` when output should be added below
 previous command output instead of replacing it. This is safe for overlapping
 async commands because the append is applied when each command finishes.

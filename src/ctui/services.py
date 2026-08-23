@@ -5,6 +5,20 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
+from .commands import CommandError
+
+
+_MISSING = object()
+
+
+class StorageKeyError(CommandError, KeyError):
+    """Indicate that a required application-storage key does not exist."""
+
+    def __init__(self, key: str):
+        """Create a concise error suitable for terminal and popup display."""
+        self.key = key
+        CommandError.__init__(self, f"No stored value exists for {key!r}.")
+
 
 @dataclass(frozen=True)
 class HistoryEntry:
@@ -62,8 +76,8 @@ class NullHistory:
 
 class Storage(Protocol):
     """Structural interface implemented by key-value storage backends."""
-    def get(self, key: str, default=None):
-        """Return the value for *key*, or *default* when absent."""
+    def get(self, key: str, default=_MISSING):
+        """Return *key*, use an explicit default, or raise StorageKeyError."""
         ...
     def set(self, key: str, value) -> None:
         """Associate *value* with *key*."""
@@ -79,9 +93,13 @@ class MemoryStorage:
         """Create an empty storage backend."""
         self.data = {}
 
-    def get(self, key, default=None):
-        """Return the stored value or *default*."""
-        return self.data.get(key, default)
+    def get(self, key, default=_MISSING):
+        """Return *key*, use an explicit default, or raise StorageKeyError."""
+        if key in self.data:
+            return self.data[key]
+        if default is not _MISSING:
+            return default
+        raise StorageKeyError(key)
 
     def set(self, key, value):
         """Store *value* under *key*."""
@@ -94,9 +112,11 @@ class MemoryStorage:
 
 class NullStorage:
     """Discard writes for applications that do not need persistence."""
-    def get(self, key, default=None):
-        """Always return *default*."""
-        return default
+    def get(self, key, default=_MISSING):
+        """Use an explicit default or raise because this store has no keys."""
+        if default is not _MISSING:
+            return default
+        raise StorageKeyError(key)
 
     def set(self, key, value):
         """Discard a key-value pair."""

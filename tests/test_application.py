@@ -1,6 +1,9 @@
 import unittest
+from types import SimpleNamespace
 from ctui import CtuiApp, CommandResult, command
 from ctui.commands import Argument, CommandNotFound, CommandValidationError
+from ctui.keybindings import get_key_bindings
+from ctui.layout import CtuiLayout
 from ctui.services import MemoryHistory, MemoryStorage, NullHistory
 
 
@@ -118,3 +121,75 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((app.name, app.prompt), ("Demo", "demo> "))
         storage.set("answer", 42)
         self.assertEqual(storage.get("answer"), 42)
+
+    def test_shortcut_registration_validates_and_stores_handler(self):
+        app = Demo()
+
+        def handler():
+            return "handled"
+
+        app.add_shortcut("f2", handler=handler, description="Example")
+        self.assertEqual(app.shortcuts, [(('f2',), handler, "Example")])
+        with self.assertRaises(ValueError):
+            app.add_shortcut(handler=handler)
+        with self.assertRaises(TypeError):
+            app.add_shortcut("f3", handler=None)
+
+    def test_registered_shortcut_is_added_to_terminal_bindings(self):
+        app = Demo()
+        app.add_shortcut("f2", handler=lambda: None)
+        app.layout = CtuiLayout(app)
+        bindings = get_key_bindings(app).bindings
+        self.assertTrue(any(str(binding.keys[0]) == "Keys.F2" for binding in bindings))
+
+    def test_terminal_mouse_capture_is_disabled_by_default(self):
+        self.assertFalse(CtuiApp.mouse_support)
+
+    def test_standard_input_editing_keys_are_registered(self):
+        app = Demo()
+        app.layout = CtuiLayout(app)
+        bindings = get_key_bindings(app).bindings
+        registered = {str(binding.keys[0]) for binding in bindings}
+        expected = {
+            "Keys.Home",
+            "Keys.End",
+            "Keys.ControlA",
+            "Keys.ControlE",
+            "Keys.ControlU",
+            "Keys.ControlK",
+            "Keys.ControlW",
+            "Keys.ControlC",
+            "Keys.ControlD",
+            "Keys.ControlL",
+        }
+        self.assertTrue(expected.issubset(registered))
+
+    def test_control_c_clears_current_input(self):
+        app = Demo()
+        app.layout = CtuiLayout(app)
+        app.layout.input_field.text = "unfinished command"
+        binding = next(
+            binding
+            for binding in get_key_bindings(app).bindings
+            if str(binding.keys[0]) == "Keys.ControlC"
+        )
+
+        binding.handler(SimpleNamespace())
+
+        self.assertEqual(app.layout.input_field.text, "")
+
+    def test_control_l_clears_output(self):
+        app = Demo()
+        app.layout = CtuiLayout(app)
+        app.layout.set_output("old output")
+        app.layout.input_field.text = "unfinished command"
+        binding = next(
+            binding
+            for binding in get_key_bindings(app).bindings
+            if str(binding.keys[0]) == "Keys.ControlL"
+        )
+
+        binding.handler(SimpleNamespace())
+
+        self.assertEqual(app.layout.output_field.text, "")
+        self.assertEqual(app.layout.input_field.text, "unfinished command")

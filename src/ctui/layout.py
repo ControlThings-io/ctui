@@ -13,6 +13,7 @@ Control Things User Interface, aka ctui.py
 # details at <http://www.gnu.org/licenses/>.
 """
 from prompt_toolkit.history import InMemoryHistory
+from prompt_toolkit.document import Document
 from prompt_toolkit.layout.containers import (
     Float,
     FloatContainer,
@@ -62,6 +63,8 @@ class CtuiLayout(object):
             style="class:output_field",
             wrap_lines=self.ctui.wrap_lines,
             scrollbar=True,
+            read_only=True,
+            focusable=False,
         )
 
         self._statusbar = Window(
@@ -145,6 +148,13 @@ class CtuiLayout(object):
     def output_field(self):
         """Return the scrollable command output widget."""
         return self._output_field
+
+    def set_output(self, text: str) -> None:
+        """Replace read-only output through prompt-toolkit's safe bypass."""
+        self._output_field.buffer.set_document(
+            Document(text=text, cursor_position=len(text)),
+            bypass_readonly=True,
+        )
 
     @property
     def statusbar_text(self):

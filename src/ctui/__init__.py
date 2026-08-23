@@ -23,7 +23,13 @@ from ctui.commands import (
     CompletionItem,
     command,
 )
-from ctui.services import MemoryHistory, MemoryStorage, NullHistory, NullStorage
+from ctui.services import (
+    MemoryHistory,
+    MemoryStorage,
+    NullHistory,
+    NullStorage,
+    StorageKeyError,
+)
 
 __all__ = [
     "CtuiApp",
@@ -38,5 +44,6 @@ __all__ = [
     "MemoryStorage",
     "NullHistory",
     "NullStorage",
+    "StorageKeyError",
     "command",
 ]

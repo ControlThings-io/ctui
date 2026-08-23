@@ -1,11 +1,10 @@
-"""Use any CtuiApp automatically as a traditional command-line program.
+"""Use every CtuiApp as a traditional command-line program too.
 
-Try these from the repository root:
-
-    uv run examples/07_headless_testing.py --help
-    uv run examples/07_headless_testing.py -c "greet Ada --enthusiastic"
-    uv run examples/07_headless_testing.py -c "add 12 30" -c "count-words 'hello world'"
-    uv run examples/07_headless_testing.py --file examples/commands.txt
+Try:
+    uv run examples/04_automatic_cli.py --help
+    uv run examples/04_automatic_cli.py -c "greet Ada --enthusiastic"
+    uv run examples/04_automatic_cli.py -c "add 12 30" -c "count-words 'hello world'"
+    uv run examples/04_automatic_cli.py --file examples/commands.txt
 
 Run without arguments to open the same application's full-screen interface.
 """
@@ -14,7 +13,7 @@ from ctui import CtuiApp, command
 
 
 class CommandLineTool(CtuiApp):
-    """Offer commands in both the full-screen UI and ordinary shell mode."""
+    """Offer commands through both supported interfaces."""
 
     name = "Command Line Example"
     description = "One application that automatically supports two interfaces."

@@ -1,11 +1,8 @@
 """Show progress for concurrent commands in the status bar.
 
-Run: uv run examples/06_footer_progress.py
-Try: download report.csv
-Before it completes, try: download photo.jpg
-
-Each download randomly takes between 2 and 10 seconds. Active downloads appear
-in the status bar and disappear from it as soon as they finish.
+Run: uv run examples/07_statusbar_progress.py
+Try ``download report.csv``, then ``download photo.jpg`` before it completes.
+Finished downloads disappear from the status bar.
 """
 
 import asyncio
@@ -48,9 +45,7 @@ class DownloadTool(CtuiApp):
             await self.events.emit("progress", filename=filename, percent=0)
             for step in range(1, 21):
                 await asyncio.sleep(delay / 20)
-                await self.events.emit(
-                    "progress", filename=filename, percent=step * 5
-                )
+                await self.events.emit("progress", filename=filename, percent=step * 5)
         finally:
             await self.events.emit("progress", filename=filename, percent=None)
         return CommandResult.append(f"Completed {filename}")
