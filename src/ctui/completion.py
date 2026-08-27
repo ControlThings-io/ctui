@@ -50,7 +50,10 @@ class CommandCompleter(Completer):
 
         def collect(name, item, *, alias=False):
             name_parts = name.split()
-            if name_parts[: len(completed)] != completed:
+            if len(name_parts) < len(completed) or any(
+                not actual.startswith(typed)
+                for typed, actual in zip(completed, name_parts)
+            ):
                 return
             if len(name_parts) <= len(completed):
                 return

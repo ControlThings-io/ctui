@@ -73,6 +73,12 @@ class CompletionTests(unittest.IsolatedAsyncioTestCase):
         partial = await self.collect(completer, "history e")
         self.assertEqual([item.text for item in partial], ["export"])
 
+        abbreviated_parent = await self.collect(completer, "hist ")
+        self.assertEqual(
+            [item.text for item in abbreviated_parent],
+            ["export", "search", "count"],
+        )
+
     async def test_arguments_wait_for_space_after_command(self):
         commands = Commands()
 

@@ -629,6 +629,9 @@ class Commands:
                 part.startswith(token) for token, part in zip(tokens, parts)
             ):
                 matches.append((name, item, len(parts)))
+        if matches:
+            longest = max(count for _, _, count in matches)
+            matches = [match for match in matches if match[2] == longest]
         if len({id(item) for _, item, _ in matches}) == 1:
             _, item, count = max(matches, key=lambda match: match[2])
             return item, shlex.join(tokens[count:])

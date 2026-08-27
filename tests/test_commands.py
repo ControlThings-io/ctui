@@ -3,7 +3,13 @@ from enum import Enum
 from pathlib import Path
 from typing import Literal
 
-from ctui.commands import Argument, Command, Commands, CommandValidationError
+from ctui.commands import (
+    Argument,
+    Command,
+    CommandNotFound,
+    Commands,
+    CommandValidationError,
+)
 
 
 class Color(Enum):
@@ -23,6 +29,40 @@ class CommandTests(unittest.IsolatedAsyncioTestCase):
         item, args = commands.resolve("cp one.txt --force")
         self.assertEqual(args, "one.txt --force")
         self.assertIs(item, commands["copy file"])
+
+    def test_partial_subcommand_prefers_longest_command_depth(self):
+        commands = Commands()
+
+        @commands.register(name="configs")
+        def configs():
+            pass
+
+        @commands.register(name="configs list")
+        def configs_list():
+            pass
+
+        @commands.register(name="project")
+        def project():
+            pass
+
+        @commands.register(name="project list")
+        def project_list():
+            pass
+
+        @commands.register(name="project load")
+        def project_load():
+            pass
+
+        item, arguments = commands.resolve("conf l")
+        self.assertIs(item, commands["configs list"])
+        self.assertEqual(arguments, "")
+
+        item, arguments = commands.resolve("proj li")
+        self.assertIs(item, commands["project list"])
+        self.assertEqual(arguments, "")
+
+        with self.assertRaisesRegex(CommandNotFound, "Ambiguous command"):
+            commands.resolve("proj l")
 
     def test_typed_parsing(self):
         def build(
