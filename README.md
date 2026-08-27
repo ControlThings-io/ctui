@@ -29,7 +29,7 @@ FileTool().run()
 
 Commands can be sync or async. Applications already inside an event loop can
 use `await app.run_async()`. Test without a terminal using
-`await app.dispatch("list files . --order size")`.
+`await app.dispatch("list files . order size")`.
 
 ## Automatic command-line mode
 
@@ -52,7 +52,7 @@ Use `-c` or `--command` to run commands without opening the UI. Repeat the
 option to execute several commands sequentially:
 
 ```bash
-python my_tool.py -c "list files ." -c "list files /tmp --order size"
+python my_tool.py -c "list files ." -c "list files /tmp order size"
 ```
 
 Use `-f` or `--file` to read commands from a UTF-8 text file. Blank lines and
@@ -99,8 +99,8 @@ async def deploy(self, environment: str, server: str): ...
 A provider receives `CompletionContext`: the command, current parameter,
 partial word, parsed arguments, and app. It may return strings or
 `CompletionItem` values with dropdown help. Results pass through type conversion
-and validation, so the menu does not recommend invalid input. Named options
-such as `--environment` are also completed.
+and validation, so the menu does not recommend invalid input. Optional values
+use and complete keyword/value pairs such as `environment production`.
 
 Supported annotations include `str`, `int`, `float`, `bool`, `Path`, `Enum`,
 `Literal`, `Optional`, and comma-separated collections.
@@ -121,9 +121,48 @@ typing a space advances the menu to the next argument.
 `command_failed`. Commands defined as application methods can emit custom events
 directly with `await self.events.emit("download_progress", percent=50)`.
 
-History and storage are injected instead of automatically writing project files.
-Memory and null implementations are included. Override `compose()` for a custom
-prompt-toolkit container; stable component aliases are available in
+History and storage remain injectable. An application with a stable `app_id`
+also receives a default SQLite project backend in the platform-appropriate user
+data directory. Each project has its own database containing named configs,
+command history, record sessions, and raw or decoded protocol records:
+
+```python
+class ModbusTool(CtuiApp):
+    app_id = "io.example.modbus"
+
+    def __init__(self):
+        super().__init__()
+        self.configs.register_template(
+            "local", {"host": "127.0.0.1", "port": 502}
+        )
+```
+
+Runtime objects such as clients, sockets, servers, and tasks remain ordinary
+application attributes. Use `await self.configs.save(...)` for named profiles
+and `await self.records.append(...)` for protocol traffic. Pass a custom
+`backend`, `configs`, `records`, or `history` service to replace the defaults.
+
+Built-in project commands create, clone, list, load, rename, permanently delete,
+import, export, and selectively reset projects. `project` shows active-project
+statistics. Configs export as versioned JSON, while whole projects export as
+consistent `.ctui-project` SQLite snapshots. Destructive commands show a UI
+confirmation dialog; noninteractive execution requires a trailing `confirm`.
+
+Application command options use keyword/value syntax without dashes, for
+example `history search timeout limit 50 since 7d`. Decorated commands can opt
+out of history and require a formatted confirmation message:
+
+```python
+@command(
+    record_history=False,
+    confirmation="Permanently delete {name}?",
+)
+async def delete(self, name: str):
+    ...
+```
+
+Memory and null implementations remain included. Override `compose()` for a
+custom prompt-toolkit container; stable component aliases are available in
 `ctui.widgets`.
 
 Register application-wide keyboard shortcuts with

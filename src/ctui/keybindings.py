@@ -12,14 +12,15 @@ Control Things User Interface, aka ctui.py
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details at <http://www.gnu.org/licenses/>.
 """
+
 import inspect
 import traceback
 
 from prompt_toolkit.filters import has_focus
 from prompt_toolkit.key_binding import KeyBindings
 
-from .dialogs import message_dialog
 from .commands import CommandError
+from .dialogs import YesNoDialog, message_dialog, show_dialog
 from .functions import (
     scroll_end,
     scroll_home,
@@ -72,7 +73,12 @@ def get_key_bindings(ctui):
             """Dispatch input and apply its normalized result to the widgets."""
             try:
                 ctui.output_text = output_field.text
-                result = await ctui.dispatch(submitted)
+                result = await ctui.dispatch(
+                    submitted,
+                    confirm_callback=lambda message: show_dialog(
+                        YesNoDialog(title="Confirm", text=message)
+                    ),
+                )
             except CommandError as error:
                 restored = restore_if_latest()
                 if restored and getattr(error, "position", None) is not None:
@@ -83,7 +89,9 @@ def get_key_bindings(ctui):
                 return
             except Exception:
                 restore_if_latest()
-                message_dialog(title="Error", text=traceback.format_exc(), scrollbar=True)
+                message_dialog(
+                    title="Error", text=traceback.format_exc(), scrollbar=True
+                )
                 return
             if not result.accepted:
                 restore_if_latest()
@@ -118,7 +126,9 @@ def get_key_bindings(ctui):
     @kb.add("c-k", filter=has_focus(input_field))
     def _(event):
         """Delete input from the cursor through the end."""
-        input_field.buffer.delete(len(input_field.text) - input_field.buffer.cursor_position)
+        input_field.buffer.delete(
+            len(input_field.text) - input_field.buffer.cursor_position
+        )
 
     @kb.add("c-w", filter=has_focus(input_field))
     def _(event):

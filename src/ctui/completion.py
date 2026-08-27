@@ -1,7 +1,9 @@
 """Context-aware command and argument completion."""
 
 from __future__ import annotations
+
 from prompt_toolkit.completion import Completer, Completion
+
 from ctui.commands import CommandNotFound, Commands
 
 
@@ -33,6 +35,7 @@ def _argument_state(text: str) -> tuple[list[str], str, bool]:
 
 class CommandCompleter(Completer):
     """Complete command names, options, and validated argument values."""
+
     def __init__(self, commands: Commands, app=None):
         """Bind completion to a command registry and optional application."""
         self.commands, self.app = commands, app

@@ -12,6 +12,7 @@ Control Things User Interface, aka ctui.py
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details at <http://www.gnu.org/licenses/>.
 """
+
 from __future__ import unicode_literals
 
 from functools import partial

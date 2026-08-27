@@ -3,7 +3,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Literal
 
-from ctui.commands import Argument, Command, CommandValidationError, Commands
+from ctui.commands import Argument, Command, Commands, CommandValidationError
 
 
 class Color(Enum):
@@ -53,6 +53,22 @@ class CommandTests(unittest.IsolatedAsyncioTestCase):
 
         values = Command(greet).parse_args('--loud "Ada Lovelace"')
         self.assertEqual(values, {"loud": True, "name": "Ada Lovelace"})
+
+    def test_keyword_value_arguments_do_not_require_dashes(self):
+        def search(keyword: str, limit: int = 0, since: str | None = None):
+            pass
+
+        values = Command(search).parse_args("timeout limit 50 since 7d")
+        self.assertEqual(values, {"keyword": "timeout", "limit": 50, "since": "7d"})
+
+    def test_command_behavior_metadata_is_preserved(self):
+        item = Command(
+            lambda name: None,
+            record_history=False,
+            confirmation="Delete {name}?",
+        )
+        self.assertFalse(item.record_history)
+        self.assertEqual(item.confirmation, "Delete {name}?")
 
     def test_missing_bad_and_extra_arguments(self):
         item = Command(lambda count: None)

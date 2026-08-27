@@ -5,7 +5,7 @@ from __future__ import annotations
 import inspect
 import sys
 from pathlib import Path
-from typing import Any, TextIO
+from typing import TextIO
 
 from prompt_toolkit.application import Application
 from prompt_toolkit.layout.layout import Layout
@@ -15,6 +15,7 @@ from ctui.commands import (
     CommandResult,
     Commands,
     CommandValidationError,
+    ConfirmationRequired,
     _token_starts,
     register_default_commands,
 )
@@ -33,6 +34,8 @@ class CtuiApp:
     help_message = "Currently supported commands:"
     wrap_lines = False
     mouse_support = False
+    app_id = None
+    project_schema_version = 1
 
     def __init__(
         self,
@@ -43,6 +46,12 @@ class CtuiApp:
         prompt=None,
         history=None,
         storage=None,
+        backend=None,
+        configs=None,
+        records=None,
+        app_id=None,
+        app_author=None,
+        data_dir=None,
         theme="dark",
         register_defaults=True,
     ):
@@ -55,6 +64,12 @@ class CtuiApp:
             prompt: Text displayed before command input.
             history: History backend; defaults to in-memory history.
             storage: Key-value backend; defaults to discarded storage.
+            backend: Optional project backend; SQLite is used when app_id is set.
+            configs: Optional named-configuration repository override.
+            records: Optional protocol-record repository override.
+            app_id: Stable identifier used for default project storage.
+            app_author: Optional platform-specific application author.
+            data_dir: Optional project-data directory override.
             theme: Built-in theme name, either ``"dark"`` or ``"light"``.
             register_defaults: Whether to install standard commands.
         """
@@ -66,8 +81,35 @@ class CtuiApp:
             self.description = description
         if prompt is not None:
             self.prompt = prompt
+        if app_id is not None:
+            self.app_id = app_id
         self.commands, self.events = Commands(), EventBus()
-        self.history = history if history is not None else MemoryHistory()
+        self.backend = backend
+        if self.backend is None and self.app_id:
+            from ctui.projects import SqliteProjectBackend
+
+            self.backend = SqliteProjectBackend(
+                self.app_id,
+                app_author=app_author,
+                data_dir=data_dir,
+                tool_version=self.version,
+                tool_schema_version=self.project_schema_version,
+            )
+        self.history = (
+            history
+            if history is not None
+            else (self.backend.history if self.backend is not None else MemoryHistory())
+        )
+        self.configs = (
+            configs
+            if configs is not None
+            else (self.backend.configs if self.backend is not None else None)
+        )
+        self.records = (
+            records
+            if records is not None
+            else (self.backend.records if self.backend is not None else None)
+        )
         self.storage = storage if storage is not None else NullStorage()
         self.theme = theme
         self.statusbar = lambda: self.name
@@ -75,6 +117,10 @@ class CtuiApp:
         self.shortcuts = []
         if register_defaults:
             register_default_commands(self)
+            if self.backend is not None:
+                from ctui.projects import register_project_commands
+
+                register_project_commands(self)
         self._register_class_commands()
 
     def _register_class_commands(self):
@@ -168,7 +214,7 @@ class CtuiApp:
         position = 0 if position is None else max(0, min(position, len(text)))
         return f"{text}\n{' ' * position}^\nError: {error}"
 
-    async def dispatch(self, text):
+    async def dispatch(self, text, *, confirmed=False, confirm_callback=None):
         """Parse and execute one command without requiring a terminal.
 
         Args:
@@ -184,6 +230,11 @@ class CtuiApp:
         """
         await self.events.emit("command_submitted", text=text)
         item, argument_text = self.commands.resolve(text)
+        if item.confirmation:
+            tokens = argument_text.rsplit(None, 1)
+            if tokens and tokens[-1] == "confirm":
+                argument_text = tokens[0] if len(tokens) == 2 else ""
+                confirmed = True
         source_starts = _token_starts(text)
         argument_starts = source_starts[len(item.name.split()) :]
         try:
@@ -194,14 +245,27 @@ class CtuiApp:
             if error.position is not None and error.position >= len(argument_text):
                 error.position = len(text)
             elif error.position is not None and argument_starts:
-                token_number = sum(
-                    start <= error.position for start in expanded_starts
-                ) - 1
+                token_number = (
+                    sum(start <= error.position for start in expanded_starts) - 1
+                )
                 token_number = max(0, min(token_number, len(argument_starts) - 1))
                 error.position = argument_starts[token_number]
             elif error.position is not None:
                 error.position = len(text)
             raise
+        if item.confirmation and not confirmed:
+            try:
+                message = item.confirmation.format(**kwargs)
+            except KeyError as error:
+                raise CommandError(
+                    f"Invalid confirmation placeholder: {error.args[0]}"
+                ) from error
+            if confirm_callback is None:
+                raise ConfirmationRequired(message)
+            approved = confirm_callback(message)
+            approved = await approved if inspect.isawaitable(approved) else approved
+            if not approved:
+                return CommandResult.rejected()
         await self.events.emit("command_started", command=item, arguments=kwargs)
         try:
             raw = await item.execute(app=self, raw_input=text, **kwargs)
@@ -218,7 +282,10 @@ class CtuiApp:
                 f"not {type(raw).__name__}"
             )
         if result.accepted:
-            self.history.append(text)
+            if item.record_history:
+                appended = self.history.append(text)
+                if inspect.isawaitable(appended):
+                    await appended
             await self.events.emit("command_finished", command=item, result=result)
         return result
 
@@ -239,6 +306,8 @@ class CtuiApp:
 
     async def run_async(self):
         """Run the terminal application in the caller's event loop."""
+        if self.backend is not None:
+            await self.backend.open()
         await self._hook(self.on_start)
         self._build_application()
         await self._hook(self.on_ready)
@@ -246,7 +315,11 @@ class CtuiApp:
             return await self.app.run_async()
         finally:
             await self._hook(self.on_stop)
-            self.storage.close()
+            closed = self.storage.close()
+            if inspect.isawaitable(closed):
+                await closed
+            if self.backend is not None:
+                await self.backend.close()
 
     @staticmethod
     def _parse_cli_operations(arguments):
@@ -274,8 +347,14 @@ class CtuiApp:
             index += 1
         return False, operations
 
-    async def run_cli(self, arguments, *, stdout: TextIO | None = None,
-                      stderr: TextIO | None = None, program=None):
+    async def run_cli(
+        self,
+        arguments,
+        *,
+        stdout: TextIO | None = None,
+        stderr: TextIO | None = None,
+        program=None,
+    ):
         """Execute terminal arguments and return a conventional exit status."""
         stdout, stderr = stdout or sys.stdout, stderr or sys.stderr
         try:
@@ -303,6 +382,8 @@ class CtuiApp:
             print(self.format_cli_help(program), file=stderr)
             return 2
 
+        if self.backend is not None:
+            await self.backend.open()
         await self._hook(self.on_start)
         try:
             for text in commands:
@@ -319,7 +400,11 @@ class CtuiApp:
             return 0
         finally:
             await self._hook(self.on_stop)
-            self.storage.close()
+            closed = self.storage.close()
+            if inspect.isawaitable(closed):
+                await closed
+            if self.backend is not None:
+                await self.backend.close()
 
     def run(self, argv=None):
         """Open the UI without arguments, otherwise run terminal operations."""

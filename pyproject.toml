@@ -3,7 +3,7 @@ name = "ctui"
 version = "1.0.0"
 description = "Build typed, asynchronous terminal UIs and command-line tools from one Python application"
 authors = [{ name = "Justin Searle", email = "justin@controlthings.io" }]
-requires-python = ">=3.10,<4"
+requires-python = ">=3.11,<4"
 readme = "README.md"
 license = "LGPL-3.0-or-later"
 keywords = ["serial", "fieldbus", "ICS", "control", "ControlThings"]
@@ -19,13 +19,13 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
     "Topic :: Utilities",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
+    "platformdirs>=4,<5",
     "prompt-toolkit>=3.0.36,<4",
     "Pygments>=2.14.0,<3",
     "tabulate>=0.8.0,<0.9",

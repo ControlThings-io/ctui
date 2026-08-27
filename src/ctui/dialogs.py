@@ -12,6 +12,7 @@ Control Things User Interface, aka ctui.py
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details at <http://www.gnu.org/licenses/>.
 """
+
 from asyncio import Future, ensure_future
 
 from prompt_toolkit.application.current import get_app
@@ -27,6 +28,7 @@ from .base import Button
 
 class YesNoDialog(object):
     """Display a modal confirmation with affirmative and negative actions."""
+
     def __init__(
         self,
         title="",
@@ -78,6 +80,7 @@ class YesNoDialog(object):
 
 class TextInputDialog(object):
     """Collect a single line of text in a modal dialog."""
+
     def __init__(
         self,
         title="",
@@ -131,6 +134,7 @@ class TextInputDialog(object):
 
 class MessageDialog(object):
     """Display read-only text in a modal dialog."""
+
     def __init__(
         self,
         title="",

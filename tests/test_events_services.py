@@ -1,6 +1,7 @@
 import unittest
-from ctui.events import EventBus
+
 from ctui.commands import CommandError
+from ctui.events import EventBus
 from ctui.services import (
     MemoryHistory,
     MemoryStorage,

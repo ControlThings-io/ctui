@@ -44,7 +44,9 @@ class CliTests(unittest.IsolatedAsyncioTestCase):
         output = io.StringIO()
         with tempfile.TemporaryDirectory() as folder:
             command_file = Path(folder) / "commands.txt"
-            command_file.write_text("# comment\necho from-file\nadd 10 5\n", encoding="utf-8")
+            command_file.write_text(
+                "# comment\necho from-file\nadd 10 5\n", encoding="utf-8"
+            )
             status = await CliApp().run_cli(
                 ["-c", "echo before", "-f", str(command_file), "-c", "echo after"],
                 stdout=output,

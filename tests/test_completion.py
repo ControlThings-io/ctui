@@ -1,6 +1,8 @@
 import unittest
+
 from prompt_toolkit.completion import CompleteEvent
 from prompt_toolkit.document import Document
+
 from ctui.commands import Argument, Commands
 from ctui.completion import CommandCompleter, _argument_state
 
@@ -46,7 +48,9 @@ class CompletionTests(unittest.IsolatedAsyncioTestCase):
     async def test_arguments_wait_for_space_after_command(self):
         commands = Commands()
 
-        @commands.register(arguments={"environment": Argument(choices=("development", "production"))})
+        @commands.register(
+            arguments={"environment": Argument(choices=("development", "production"))}
+        )
         def deploy(environment: str):
             pass
 
@@ -54,15 +58,19 @@ class CompletionTests(unittest.IsolatedAsyncioTestCase):
         without_space = await self.collect(completer, "deploy")
         self.assertEqual([item.text for item in without_space], ["deploy"])
         with_space = await self.collect(completer, "deploy ")
-        self.assertEqual([item.text for item in with_space], ["development", "production"])
+        self.assertEqual(
+            [item.text for item in with_space], ["development", "production"]
+        )
 
     async def test_next_argument_waits_for_unquoted_space(self):
         commands = Commands()
 
-        @commands.register(arguments={
-            "environment": Argument(choices=("development", "production")),
-            "server": Argument(choices=("web-1", "web-2")),
-        })
+        @commands.register(
+            arguments={
+                "environment": Argument(choices=("development", "production")),
+                "server": Argument(choices=("web-1", "web-2")),
+            }
+        )
         def deploy(environment: str, server: str):
             pass
 
@@ -81,10 +89,16 @@ class CompletionTests(unittest.IsolatedAsyncioTestCase):
 
         completer = CommandCompleter(commands)
         string_aid = await self.collect(completer, "repeat hello")
-        self.assertEqual(str(string_aid[0].display), "FormattedText([('', '<MESSAGE: str>')])")
+        self.assertEqual(
+            str(string_aid[0].display), "FormattedText([('', '<MESSAGE: str>')])"
+        )
         int_aid = await self.collect(completer, "repeat hello ")
-        self.assertEqual(str(int_aid[0].display), "FormattedText([('', '<COUNT: int>')])")
+        self.assertEqual(
+            str(int_aid[0].display), "FormattedText([('', '<COUNT: int>')])"
+        )
 
     def test_partial_tokenizer_keeps_quoted_spaces_in_one_argument(self):
         self.assertEqual(_argument_state('"Ada Lovelace'), ([], "Ada Lovelace", False))
-        self.assertEqual(_argument_state('"Ada Lovelace" '), (["Ada Lovelace"], "", True))
+        self.assertEqual(
+            _argument_state('"Ada Lovelace" '), (["Ada Lovelace"], "", True)
+        )

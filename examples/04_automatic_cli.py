@@ -2,7 +2,7 @@
 
 Try:
     uv run examples/04_automatic_cli.py --help
-    uv run examples/04_automatic_cli.py -c "greet Ada --enthusiastic"
+    uv run examples/04_automatic_cli.py -c "greet Ada enthusiastic true"
     uv run examples/04_automatic_cli.py -c "add 12 30" -c "count-words 'hello world'"
     uv run examples/04_automatic_cli.py --file examples/commands.txt
 

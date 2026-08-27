@@ -20,7 +20,6 @@ class Calculator(CtuiApp):
         """Add two whole numbers."""
         answer = str(first + second)
         return CommandResult.append(f"{first} + {second} = {answer}")
-        
 
     @command
     def multiply(self, first: int, second: int) -> str:

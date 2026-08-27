@@ -28,6 +28,7 @@ class CommandError(Exception):
 
 class CommandNotFound(CommandError):
     """Indicate that input did not match a registered command or alias."""
+
     pass
 
 
@@ -49,9 +50,18 @@ class CommandValidationError(CommandError):
         return self
 
 
+class ConfirmationRequired(CommandError):
+    """Indicate that a command needs explicit approval before execution."""
+
+    def __init__(self, message: str):
+        self.message = message
+        super().__init__(message)
+
+
 @dataclass(frozen=True)
 class CompletionItem:
     """Describe insertable completion text and its dropdown help message."""
+
     value: str
     help: str = ""
     display: str | None = None
@@ -77,6 +87,7 @@ class Argument:
 @dataclass(frozen=True)
 class CompletionContext:
     """Describe the command-line state supplied to a completion provider."""
+
     command: "Command"
     parameter: inspect.Parameter
     word: str
@@ -87,6 +98,7 @@ class CompletionContext:
 @dataclass(frozen=True)
 class CommandResult:
     """Describe how a completed command should affect the user interface."""
+
     output: str | None = None
     clear_output: bool = False
     append_output: bool = False
@@ -203,11 +215,14 @@ def _convert(value: str, annotation: Any, name: str) -> Any:
 @dataclass
 class Command:
     """Store callable metadata and perform parsing, execution, and completion."""
+
     func: Callable[..., Any]
     name: str | None = None
     aliases: tuple[str, ...] = ()
     arguments: Mapping[str, Argument] = field(default_factory=dict)
     description: str = ""
+    record_history: bool = True
+    confirmation: str | None = None
 
     def __post_init__(self):
         """Derive command metadata and validate argument configuration."""
@@ -224,7 +239,7 @@ class Command:
         self.signature = inspect.signature(self.func)
         try:
             self.hints = get_type_hints(self.func)
-        except (NameError, TypeError):
+        except NameError, TypeError:
             self.hints = {}
         unknown = set(self.arguments) - set(self.signature.parameters)
         if unknown:
@@ -233,19 +248,23 @@ class Command:
     @property
     def parameters(self):
         """Return user-supplied parameters, excluding the bound ``self``."""
-        return [
-            p
-            for p in self.signature.parameters.values()
-            if p.name != "self"
-        ]
+        return [p for p in self.signature.parameters.values() if p.name != "self"]
 
     @property
     def help(self):
         """Return a compact usage line followed by the command description."""
         args = " ".join(
-            ("[" if p.default is not inspect.Parameter.empty else "<")
-            + (self.arguments.get(p.name, Argument()).metavar or p.name.upper())
-            + ("]" if p.default is not inspect.Parameter.empty else ">")
+            (
+                "["
+                + p.name.replace("_", "-")
+                + " "
+                + (self.arguments.get(p.name, Argument()).metavar or p.name.upper())
+                + "]"
+                if p.default is not inspect.Parameter.empty
+                else "<"
+                + (self.arguments.get(p.name, Argument()).metavar or p.name.upper())
+                + ">"
+            )
             for p in self.parameters
         )
         return f"{self.name} {args}\n\n{self.desc}".strip()
@@ -272,6 +291,7 @@ class Command:
         starts = _token_starts(text)
         values, value_positions, positional, pending = {}, {}, [], None
         options = {"--" + p.name.replace("_", "-"): p for p in self.parameters}
+        keywords = {p.name.replace("_", "-"): p for p in self.parameters}
 
         def convert_at(raw, parameter, token_index):
             """Convert a token and enrich failures with its source position."""
@@ -310,6 +330,29 @@ class Command:
                     value_positions[parameter.name] = starts[index]
                 else:
                     pending = parameter
+            elif (
+                token in keywords
+                and keywords[token].name not in values
+                and len(positional)
+                >= sum(
+                    p.default is inspect.Parameter.empty
+                    for p in self.parameters
+                    if p.name not in values and p.name != keywords[token].name
+                )
+            ):
+                parameter = keywords[token]
+                if index + 1 < len(tokens):
+                    index += 1
+                    values[parameter.name] = convert_at(tokens[index], parameter, index)
+                    value_positions[parameter.name] = starts[index]
+                elif partial:
+                    pending = parameter
+                else:
+                    raise CommandValidationError(
+                        f"Missing value for {token}",
+                        position=len(text),
+                        argument=parameter.name,
+                    )
             else:
                 positional.append((token, index))
             index += 1
@@ -355,9 +398,11 @@ class Command:
                         valid = config.validator(value)
                         if valid is False or isinstance(valid, str):
                             raise CommandValidationError(
-                                valid
-                                if isinstance(valid, str)
-                                else f"Invalid {parameter.name}: {value}",
+                                (
+                                    valid
+                                    if isinstance(valid, str)
+                                    else f"Invalid {parameter.name}: {value}"
+                                ),
                                 position=value_positions[parameter.name],
                                 argument=parameter.name,
                             )
@@ -381,6 +426,33 @@ class Command:
             app: Optional application passed to dynamic providers.
         """
         values, parameter = self.parse_args(text, partial=True)
+        keyword_names = {p.name.replace("_", "-"): p for p in self.parameters}
+        try:
+            completed_tokens = shlex.split(text)
+        except ValueError:
+            completed_tokens = []
+        entering_keyword_value = bool(
+            completed_tokens and completed_tokens[-1] in keyword_names
+        )
+        required_missing = any(
+            p.default is inspect.Parameter.empty and p.name not in values
+            for p in self.parameters
+        )
+        if not entering_keyword_value and not required_missing:
+            keyword_items = []
+            for candidate in self.parameters:
+                keyword = candidate.name.replace("_", "-")
+                if (
+                    candidate.default is not inspect.Parameter.empty
+                    and candidate.name not in values
+                    and keyword.startswith(word)
+                ):
+                    config = self.arguments.get(candidate.name, Argument())
+                    keyword_items.append(
+                        CompletionItem(keyword, config.help or f"Set {candidate.name}")
+                    )
+            if keyword_items:
+                return keyword_items
         if word.startswith("--"):
             options = []
             for candidate in self.parameters:
@@ -453,7 +525,11 @@ class Command:
         except ValueError as error:
             raise CommandValidationError(str(error)) from error
         expanded: list[str] = []
+        keywords = {p.name.replace("_", "-") for p in self.parameters}
         for token in tokens:
+            if token in keywords:
+                expanded.append(token)
+                continue
             prefix = shlex.join(expanded)
             if prefix:
                 prefix += " "
@@ -470,12 +546,21 @@ class Command:
 
 class Commands:
     """Register commands and resolve input using longest-prefix matching."""
+
     def __init__(self):
         """Create an empty command and alias registry."""
         self.commands, self.aliases = {}, {}
 
     def register(
-        self, func=None, *, name=None, aliases=(), arguments=None, description=""
+        self,
+        func=None,
+        *,
+        name=None,
+        aliases=(),
+        arguments=None,
+        description="",
+        record_history=True,
+        confirmation=None,
     ):
         """Register a callable, directly or as a configurable decorator.
 
@@ -489,6 +574,7 @@ class Commands:
         Returns:
             The original callable, allowing normal decorator behavior.
         """
+
         def decorate(target):
             """Create and store command metadata for a decorated callable."""
             meta = getattr(target, "__ctui_command__", {})
@@ -498,6 +584,8 @@ class Commands:
                 tuple(aliases or meta.get("aliases", ())),
                 arguments or meta.get("arguments", {}),
                 description or meta.get("description", ""),
+                meta.get("record_history", record_history),
+                meta.get("confirmation", confirmation),
             )
             if item.name in self.commands:
                 raise ValueError(f"Command already registered: {item.name}")
@@ -558,7 +646,16 @@ class Commands:
         return self.commands[key]
 
 
-def command(func=None, *, name=None, aliases=(), arguments=None, description=""):
+def command(
+    func=None,
+    *,
+    name=None,
+    aliases=(),
+    arguments=None,
+    description="",
+    record_history=True,
+    confirmation=None,
+):
     """Mark a class method for automatic registration by ``CtuiApp``.
 
     The decorator supports both ``@command`` and ``@command(...)`` forms and
@@ -572,6 +669,8 @@ def command(func=None, *, name=None, aliases=(), arguments=None, description="")
             "aliases": tuple(aliases),
             "arguments": arguments or {},
             "description": description,
+            "record_history": record_history,
+            "confirmation": confirmation,
         }
         return target
 
@@ -580,6 +679,7 @@ def command(func=None, *, name=None, aliases=(), arguments=None, description="")
 
 def register_default_commands(app):
     """Install the standard clear, help, history, and exit commands."""
+
     @app.commands.register
     def clear():
         """Clear the output."""
@@ -591,11 +691,32 @@ def register_default_commands(app):
         return CommandResult.success(app.format_help())
 
     @app.commands.register
-    def history(count: int = 0):
+    async def history(count: int = 0):
         """Show recent command history."""
         entries = app.history.all()
+        entries = await entries if inspect.isawaitable(entries) else entries
         entries = entries[-count:] if count else entries
         return CommandResult.success("\n".join(x.command for x in entries))
+
+    if hasattr(app.history, "search"):
+
+        @app.commands.register(name="history search", record_history=False)
+        async def history_search(
+            keyword: str, limit: int = 0, since: str | None = None
+        ):
+            """Search command history by keyword, limit, and relative age."""
+            entries = await app.history.search(keyword, limit=limit, since=since)
+            return CommandResult.success("\n".join(x.command for x in entries))
+
+        @app.commands.register(
+            name="history clear",
+            record_history=False,
+            confirmation="Clear all command history in the active project?",
+        )
+        async def history_clear():
+            """Clear command history without recording this command."""
+            await app.history.clear()
+            return CommandResult.success("Cleared command history.")
 
     @app.commands.register
     async def exit():

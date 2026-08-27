@@ -12,6 +12,7 @@ Control Things User Interface, aka ctui.py
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details at <http://www.gnu.org/licenses/>.
 """
+
 from ctui.application import CtuiApp
 from ctui.commands import (
     Argument,
@@ -21,13 +22,17 @@ from ctui.commands import (
     CommandValidationError,
     CompletionContext,
     CompletionItem,
+    ConfirmationRequired,
     command,
 )
+from ctui.projects import ProjectInfo, RecordEntry, SqliteProjectBackend
 from ctui.services import (
+    ConfigStore,
     MemoryHistory,
     MemoryStorage,
     NullHistory,
     NullStorage,
+    RecordStore,
     StorageKeyError,
 )
 
@@ -38,12 +43,18 @@ __all__ = [
     "CommandNotFound",
     "CommandResult",
     "CommandValidationError",
+    "ConfirmationRequired",
     "CompletionContext",
     "CompletionItem",
+    "ConfigStore",
     "MemoryHistory",
     "MemoryStorage",
     "NullHistory",
     "NullStorage",
     "StorageKeyError",
+    "ProjectInfo",
+    "RecordEntry",
+    "RecordStore",
+    "SqliteProjectBackend",
     "command",
 ]

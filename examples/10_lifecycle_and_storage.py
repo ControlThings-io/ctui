@@ -1,35 +1,39 @@
-"""Initialize an application with lifecycle hooks and shared storage.
+"""Use persistent projects, configuration templates, and protocol records.
 
 Run: uv run examples/10_lifecycle_and_storage.py
-Try: set color blue
-Try: get color
-Try: get missing
+Try: configs list
+Try: configs show local
+Try: profile save lab 10.0.0.20 502
+Try: traffic record sent 010300000001
+Try: project
 """
 
-from ctui import CtuiApp, MemoryStorage, command
+from ctui import CtuiApp, command
 
 
 class SettingsTool(CtuiApp):
-    """Share in-memory values between commands."""
+    """Persist connection profiles and protocol traffic by project."""
+
+    app_id = "io.controlthings.ctui.storage-example"
 
     def __init__(self):
-        super().__init__(storage=MemoryStorage())
+        super().__init__()
+        self.configs.register_template("local", {"host": "127.0.0.1", "port": 502})
 
-    async def on_start(self) -> None:
-        """Install a default value before either interface starts."""
-        self.storage.set("color", "green")
+    @command(name="profile save")
+    async def profile_save(self, name: str, host: str, port: int = 502) -> str:
+        """Save a named connection profile in the active project."""
+        await self.configs.save(name, {"host": host, "port": port})
+        return f"Saved profile {name!r}."
 
-    @command
-    def set(self, name: str, value: str) -> str:
-        """Store a setting for this application session."""
-        self.storage.set(name, value)
-        return f"Stored {name}={value}"
-
-    @command
-    def get(self, name: str) -> str:
-        """Read a setting, showing an error popup when it does not exist."""
-        value = self.storage.get(name)
-        return f"{name}={value}"
+    @command(name="traffic record")
+    async def traffic_record(self, direction: str, hexadecimal: str) -> str:
+        """Record one example protocol frame in the active project."""
+        payload = bytes.fromhex(hexadecimal)
+        await self.records.append(
+            direction=direction, protocol="example", payload=payload
+        )
+        return f"Recorded {len(payload)} bytes."
 
 
 if __name__ == "__main__":

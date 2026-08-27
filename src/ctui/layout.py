@@ -12,8 +12,9 @@ Control Things User Interface, aka ctui.py
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details at <http://www.gnu.org/licenses/>.
 """
-from prompt_toolkit.history import InMemoryHistory
+
 from prompt_toolkit.document import Document
+from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.layout.containers import (
     Float,
     FloatContainer,

@@ -1,10 +1,10 @@
-"""Use type annotations, defaults, choices, and named options.
+"""Use type annotations, defaults, choices, and named values.
 
 Run: uv run examples/03_types_and_options.py
 Try: greet Justin
 Try: greet "Justin Searle"
 Try: greet Justin excited
-Try: greet Justin --style excited --uppercase
+Try: greet Justin style excited uppercase true
 """
 
 from typing import Literal

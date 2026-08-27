@@ -1,6 +1,7 @@
 import unittest
 from types import SimpleNamespace
-from ctui import CtuiApp, CommandResult, command
+
+from ctui import CommandResult, ConfirmationRequired, CtuiApp, command
 from ctui.commands import Argument, CommandNotFound, CommandValidationError
 from ctui.keybindings import get_key_bindings
 from ctui.layout import CtuiLayout
@@ -48,6 +49,27 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
         appended = CommandResult.append("next line")
         self.assertTrue(appended.append_output)
         self.assertEqual(appended.output, "next line")
+
+    async def test_confirmation_and_history_suppression(self):
+        history = MemoryHistory()
+        app = CtuiApp(register_defaults=False, history=history)
+        called = []
+
+        @app.commands.register(confirmation="Delete {name}?", record_history=False)
+        def delete(name: str):
+            called.append(name)
+            return "deleted"
+
+        with self.assertRaisesRegex(ConfirmationRequired, "Delete old"):
+            await app.dispatch("delete old")
+        self.assertEqual(called, [])
+        result = await app.dispatch("delete old", confirm_callback=lambda _: True)
+        self.assertEqual(result.output, "deleted")
+        self.assertEqual(history.all(), [])
+
+        result = await app.dispatch("delete other confirm")
+        self.assertEqual(result.output, "deleted")
+        self.assertEqual(called, ["old", "other"])
 
     async def test_unknown_command(self):
         with self.assertRaises(CommandNotFound):
@@ -129,7 +151,7 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
             return "handled"
 
         app.add_shortcut("f2", handler=handler, description="Example")
-        self.assertEqual(app.shortcuts, [(('f2',), handler, "Example")])
+        self.assertEqual(app.shortcuts, [(("f2",), handler, "Example")])
         with self.assertRaises(ValueError):
             app.add_shortcut(handler=handler)
         with self.assertRaises(TypeError):
