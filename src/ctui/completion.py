@@ -41,19 +41,35 @@ class CommandCompleter(Completer):
         self.commands, self.app = commands, app
 
     def _command_completions(self, text):
-        """Yield command and alias completions matching *text*."""
+        """Yield only the next matching word of commands and aliases."""
+        boundary = bool(text) and text[-1].isspace()
+        parts = text.split()
+        completed = parts if boundary else parts[:-1]
+        word = "" if boundary or not parts else parts[-1]
+        candidates = {}
+
+        def collect(name, item, *, alias=False):
+            name_parts = name.split()
+            if name_parts[: len(completed)] != completed:
+                return
+            if len(name_parts) <= len(completed):
+                return
+            candidate = name_parts[len(completed)]
+            if not candidate.startswith(word):
+                return
+            help_text = f"Alias for {item.name}" if alias else item.desc
+            candidates.setdefault(candidate, help_text)
+
         for item in self.commands:
-            if item.name.startswith(text):
-                yield Completion(
-                    item.name, start_position=-len(text), display_meta=item.desc
-                )
+            collect(item.name, item)
         for alias, item in self.commands.aliases.items():
-            if alias.startswith(text):
-                yield Completion(
-                    alias,
-                    start_position=-len(text),
-                    display_meta=f"Alias for {item.name}",
-                )
+            collect(alias, item, alias=True)
+        for candidate, help_text in candidates.items():
+            yield Completion(
+                candidate,
+                start_position=-len(word),
+                display_meta=help_text,
+            )
 
     def get_completions(self, document, complete_event):
         """Yield synchronous command-name completions for prompt-toolkit."""
@@ -72,6 +88,8 @@ class CommandCompleter(Completer):
             for result in command_matches:
                 yield result
             return
+        for result in command_matches:
+            yield result
         try:
             item, argument_text = self.commands.resolve(text)
         except CommandNotFound:

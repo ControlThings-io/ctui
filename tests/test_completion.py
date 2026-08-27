@@ -45,6 +45,34 @@ class CompletionTests(unittest.IsolatedAsyncioTestCase):
         completer = CommandCompleter(Commands())
         self.assertEqual(await self.collect(completer, ""), [])
 
+    async def test_subcommands_and_parent_arguments_share_dropdown(self):
+        commands = Commands()
+
+        @commands.register(name="history")
+        def history(count: int = 0):
+            pass
+
+        @commands.register(name="history export")
+        def history_export(path: str):
+            pass
+
+        @commands.register(name="history search")
+        def history_search(keyword: str):
+            pass
+
+        completer = CommandCompleter(commands)
+        top_level = await self.collect(completer, "history")
+        self.assertEqual([item.text for item in top_level], ["history"])
+
+        results = await self.collect(completer, "history ")
+        self.assertEqual(
+            [item.text for item in results],
+            ["export", "search", "count"],
+        )
+
+        partial = await self.collect(completer, "history e")
+        self.assertEqual([item.text for item in partial], ["export"])
+
     async def test_arguments_wait_for_space_after_command(self):
         commands = Commands()
 

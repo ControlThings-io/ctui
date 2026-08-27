@@ -157,7 +157,7 @@ file:
 
 ```text
 history export commands.txt
-history 5 export recent-commands.txt
+history export recent-commands.txt count 5
 ```
 
 The resulting UTF-8 file can be executed later with `-f` or `--file`.

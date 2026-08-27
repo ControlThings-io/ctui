@@ -85,12 +85,14 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn("Exported 2 commands", result.output)
             self.assertEqual(all_path.read_text(encoding="utf-8"), "help\nclear\n")
 
-            result = await app.dispatch(f"history 2 export {recent_path}")
+            result = await app.dispatch(f"history export {recent_path} count 2")
             self.assertIn("Exported 2 commands", result.output)
             self.assertEqual(
                 recent_path.read_text(encoding="utf-8"),
                 f"clear\nhistory export {all_path}\n",
             )
+
+            self.assertIn("history export", app.format_help())
 
     async def test_unknown_command(self):
         with self.assertRaises(CommandNotFound):
