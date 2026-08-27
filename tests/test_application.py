@@ -1,4 +1,6 @@
 import unittest
+import tempfile
+from pathlib import Path
 from types import SimpleNamespace
 
 from ctui import CommandResult, ConfirmationRequired, CtuiApp, command
@@ -70,6 +72,25 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
         result = await app.dispatch("delete other confirm")
         self.assertEqual(result.output, "deleted")
         self.assertEqual(called, ["old", "other"])
+
+    async def test_history_exports_all_or_recent_commands(self):
+        app = CtuiApp()
+        await app.dispatch("help")
+        await app.dispatch("clear")
+        with tempfile.TemporaryDirectory() as folder:
+            all_path = Path(folder) / "all.txt"
+            recent_path = Path(folder) / "recent.txt"
+
+            result = await app.dispatch(f"history export {all_path}")
+            self.assertIn("Exported 2 commands", result.output)
+            self.assertEqual(all_path.read_text(encoding="utf-8"), "help\nclear\n")
+
+            result = await app.dispatch(f"history 2 export {recent_path}")
+            self.assertIn("Exported 2 commands", result.output)
+            self.assertEqual(
+                recent_path.read_text(encoding="utf-8"),
+                f"clear\nhistory export {all_path}\n",
+            )
 
     async def test_unknown_command(self):
         with self.assertRaises(CommandNotFound):

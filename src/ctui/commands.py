@@ -691,11 +691,23 @@ def register_default_commands(app):
         return CommandResult.success(app.format_help())
 
     @app.commands.register
-    async def history(count: int = 0):
-        """Show recent command history."""
+    async def history(count: int = 0, export: Path | None = None):
+        """Show or export recent command history."""
         entries = app.history.all()
         entries = await entries if inspect.isawaitable(entries) else entries
         entries = entries[-count:] if count else entries
+        if export is not None:
+            try:
+                export.write_text(
+                    "".join(f"{entry.command}\n" for entry in entries),
+                    encoding="utf-8",
+                )
+            except OSError as error:
+                raise CommandError(f"Cannot export history: {error}") from error
+            return CommandResult.success(
+                f"Exported {len(entries)} command"
+                f"{'s' if len(entries) != 1 else ''} to {export}."
+            )
         return CommandResult.success("\n".join(x.command for x in entries))
 
     if hasattr(app.history, "search"):

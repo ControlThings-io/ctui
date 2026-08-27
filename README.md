@@ -152,6 +152,16 @@ Application command options use keyword/value syntax without dashes, for
 example `history search timeout limit 50 since 7d`. Decorated commands can opt
 out of history and require a formatted confirmation message:
 
+Export all history, or only the most recent commands, as a reusable command
+file:
+
+```text
+history export commands.txt
+history 5 export recent-commands.txt
+```
+
+The resulting UTF-8 file can be executed later with `-f` or `--file`.
+
 ```python
 @command(
     record_history=False,
