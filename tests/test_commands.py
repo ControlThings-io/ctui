@@ -91,15 +91,59 @@ class CommandTests(unittest.IsolatedAsyncioTestCase):
         def greet(name: str, loud: bool = False):
             return name
 
-        values = Command(greet).parse_args('--loud "Ada Lovelace"')
+        item = Command(
+            greet, arguments={"loud": Argument(flags=("-l", "--loud"))}
+        )
+        values = item.parse_args('--loud "Ada Lovelace"')
         self.assertEqual(values, {"loud": True, "name": "Ada Lovelace"})
+        self.assertEqual(
+            item.parse_args('"Grace Hopper" -l'),
+            {"name": "Grace Hopper", "loud": True},
+        )
 
-    def test_keyword_value_arguments_do_not_require_dashes(self):
+    def test_arguments_are_positional_unless_flags_are_configured(self):
         def search(keyword: str, limit: int = 0, since: str | None = None):
             pass
 
-        values = Command(search).parse_args("timeout limit 50 since 7d")
-        self.assertEqual(values, {"keyword": "timeout", "limit": 50, "since": "7d"})
+        item = Command(search)
+        self.assertEqual(
+            item.parse_args("timeout 50 7d"),
+            {"keyword": "timeout", "limit": 50, "since": "7d"},
+        )
+        with self.assertRaisesRegex(CommandValidationError, "Unknown option"):
+            item.parse_args("timeout --limit 50")
+
+    def test_named_arguments_support_short_long_equals_and_separator(self):
+        def search(keyword: str, limit: int = 0, since: str | None = None):
+            pass
+
+        item = Command(
+            search,
+            arguments={
+                "limit": Argument(flags=("-n", "--limit")),
+                "since": Argument(flags=("-s", "--since")),
+            },
+        )
+        self.assertEqual(
+            item.parse_args("timeout -n 50 --since=7d"),
+            {"keyword": "timeout", "limit": 50, "since": "7d"},
+        )
+        self.assertEqual(item.parse_args("-- -literal"), {"keyword": "-literal"})
+
+    def test_required_named_argument_cannot_be_passed_positionally(self):
+        def deploy(target: str, environment: str):
+            pass
+
+        item = Command(
+            deploy,
+            arguments={"environment": Argument(flags=("-e", "--environment"))},
+        )
+        with self.assertRaisesRegex(CommandValidationError, "Too many arguments"):
+            item.parse_args("api production")
+        self.assertEqual(
+            item.parse_args("api -e production"),
+            {"target": "api", "environment": "production"},
+        )
 
     def test_command_behavior_metadata_is_preserved(self):
         item = Command(
@@ -179,13 +223,30 @@ class CommandTests(unittest.IsolatedAsyncioTestCase):
             pass
 
         item = Command(
-            deploy, arguments={"environment": Argument(help="Target environment")}
+            deploy,
+            arguments={
+                "environment": Argument(
+                    flags=("-e", "--environment"), help="Target environment"
+                )
+            },
         )
         results = await item.complete("", "--e")
         self.assertEqual(
             (results[0].value, results[0].help), ("--environment", "Target environment")
         )
+        short_results = await item.complete("", "-e")
+        self.assertEqual(short_results[0].value, "-e")
 
     def test_argument_configuration_is_checked(self):
         with self.assertRaises(ValueError):
             Command(lambda value: None, arguments={"missing": Argument()})
+        with self.assertRaisesRegex(ValueError, "Invalid flag"):
+            Command(lambda value: None, arguments={"value": Argument(flags=("value",))})
+        with self.assertRaisesRegex(ValueError, "Duplicate argument flag"):
+            Command(
+                lambda first, second: None,
+                arguments={
+                    "first": Argument(flags=("-x",)),
+                    "second": Argument(flags=("-x",)),
+                },
+            )

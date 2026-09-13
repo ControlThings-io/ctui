@@ -751,7 +751,11 @@ def register_project_commands(app: Any) -> None:
         await backend.export_project(path)
         return f"Exported project to {path}."
 
-    @app.commands.register(name="project import", record_history=False)
+    @app.commands.register(
+        name="project import",
+        record_history=False,
+        arguments={"name": Argument(flags=("-n", "--name"))},
+    )
     async def project_import(path: Path, name: str | None = None):
         """Import and activate a project snapshot."""
         previous = backend.current

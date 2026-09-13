@@ -99,8 +99,22 @@ async def deploy(self, environment: str, server: str): ...
 A provider receives `CompletionContext`: the command, current parameter,
 partial word, parsed arguments, and app. It may return strings or
 `CompletionItem` values with dropdown help. Results pass through type conversion
-and validation, so the menu does not recommend invalid input. Optional values
-use and complete keyword/value pairs such as `environment production`.
+and validation, so the menu does not recommend invalid input. Arguments remain
+positional even when they have `Argument` completion or validation metadata.
+To make a parameter a named option, declare its short and/or long flags
+explicitly:
+
+```python
+@command(arguments={
+    "environment": Argument(flags=("-e", "--environment")),
+    "verbose": Argument(flags=("-v", "--verbose")),
+})
+def deploy(self, target: str, environment: str = "dev", verbose: bool = False): ...
+```
+
+This accepts forms such as `deploy api -e prod`,
+`deploy api --environment=prod`, and `deploy api --verbose`. Boolean named
+arguments act as flags; all parameters without `flags` are positional.
 
 Supported annotations include `str`, `int`, `float`, `bool`, `Path`, `Enum`,
 `Literal`, `Optional`, and comma-separated collections.

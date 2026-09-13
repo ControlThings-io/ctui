@@ -69,7 +69,7 @@ class CompletionItem:
 
 @dataclass(frozen=True)
 class Argument:
-    """Completion and validation configuration for one parameter."""
+    """Configure one parameter, including explicit command-line flags."""
 
     help: str = ""
     choices: Iterable[Any] | Mapping[Any, str] | None = None
@@ -82,6 +82,7 @@ class Argument:
     ) = None
     validator: Callable[[Any], bool | str | None] | None = None
     metavar: str | None = None
+    flags: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -244,6 +245,20 @@ class Command:
         unknown = set(self.arguments) - set(self.signature.parameters)
         if unknown:
             raise ValueError(f"Unknown arguments for {self.name}: {', '.join(unknown)}")
+        seen_flags = set()
+        for parameter in self.parameters:
+            for flag in self.arguments.get(parameter.name, Argument()).flags:
+                if not (
+                    flag.startswith("--") and len(flag) > 2
+                    or flag.startswith("-") and len(flag) == 2
+                ):
+                    raise ValueError(
+                        f"Invalid flag for {parameter.name}: {flag!r}; "
+                        "use '-x' or '--long-name'"
+                    )
+                if flag in seen_flags:
+                    raise ValueError(f"Duplicate argument flag: {flag}")
+                seen_flags.add(flag)
 
     @property
     def parameters(self):
@@ -253,20 +268,27 @@ class Command:
     @property
     def help(self):
         """Return a compact usage line followed by the command description."""
-        args = " ".join(
-            (
-                "["
-                + p.name.replace("_", "-")
-                + " "
-                + (self.arguments.get(p.name, Argument()).metavar or p.name.upper())
-                + "]"
-                if p.default is not inspect.Parameter.empty
-                else "<"
-                + (self.arguments.get(p.name, Argument()).metavar or p.name.upper())
-                + ">"
-            )
-            for p in self.parameters
-        )
+        parts = []
+        for parameter in self.parameters:
+            config = self.arguments.get(parameter.name, Argument())
+            metavar = config.metavar or parameter.name.upper()
+            if config.flags:
+                label = "|".join(config.flags)
+                annotation = self.hints.get(parameter.name, parameter.annotation)
+                if annotation is not bool:
+                    label += " " + metavar
+                parts.append(
+                    f"[{label}]"
+                    if parameter.default is not inspect.Parameter.empty
+                    else f"<{label}>"
+                )
+            else:
+                parts.append(
+                    f"[{metavar}]"
+                    if parameter.default is not inspect.Parameter.empty
+                    else f"<{metavar}>"
+                )
+        args = " ".join(parts)
         return f"{self.name} {args}\n\n{self.desc}".strip()
 
     def parse_args(self, text: str, partial: bool = False):
@@ -290,8 +312,16 @@ class Command:
             raise CommandValidationError(str(error), position=len(text)) from error
         starts = _token_starts(text)
         values, value_positions, positional, pending = {}, {}, [], None
-        options = {"--" + p.name.replace("_", "-"): p for p in self.parameters}
-        keywords = {p.name.replace("_", "-"): p for p in self.parameters}
+        options = {
+            flag: parameter
+            for parameter in self.parameters
+            for flag in self.arguments.get(parameter.name, Argument()).flags
+        }
+        positional_parameters = [
+            parameter
+            for parameter in self.parameters
+            if not self.arguments.get(parameter.name, Argument()).flags
+        ]
 
         def convert_at(raw, parameter, token_index):
             """Convert a token and enrich failures with its source position."""
@@ -306,9 +336,12 @@ class Command:
                 raise
 
         index = 0
+        options_enabled = True
         while index < len(tokens):
             token = tokens[index]
-            if token.startswith("--"):
+            if options_enabled and token == "--":
+                options_enabled = False
+            elif options_enabled and token.startswith("-"):
                 option, equals, inline = token.partition("=")
                 parameter = options.get(option)
                 if not parameter:
@@ -316,6 +349,12 @@ class Command:
                         break
                     raise CommandValidationError(
                         f"Unknown option: {option}", position=starts[index]
+                    )
+                if parameter.name in values:
+                    raise CommandValidationError(
+                        f"Argument specified more than once: {parameter.name}",
+                        position=starts[index],
+                        argument=parameter.name,
                     )
                 annotation = self.hints.get(parameter.name, parameter.annotation)
                 if annotation is bool and not equals:
@@ -330,33 +369,10 @@ class Command:
                     value_positions[parameter.name] = starts[index]
                 else:
                     pending = parameter
-            elif (
-                token in keywords
-                and keywords[token].name not in values
-                and len(positional)
-                >= sum(
-                    p.default is inspect.Parameter.empty
-                    for p in self.parameters
-                    if p.name not in values and p.name != keywords[token].name
-                )
-            ):
-                parameter = keywords[token]
-                if index + 1 < len(tokens):
-                    index += 1
-                    values[parameter.name] = convert_at(tokens[index], parameter, index)
-                    value_positions[parameter.name] = starts[index]
-                elif partial:
-                    pending = parameter
-                else:
-                    raise CommandValidationError(
-                        f"Missing value for {token}",
-                        position=len(text),
-                        argument=parameter.name,
-                    )
             else:
                 positional.append((token, index))
             index += 1
-        available = [p for p in self.parameters if p.name not in values]
+        available = [p for p in positional_parameters if p.name not in values]
         for (raw, token_index), parameter in zip(positional, available):
             values[parameter.name] = convert_at(raw, parameter, token_index)
             value_positions[parameter.name] = starts[token_index]
@@ -426,46 +442,37 @@ class Command:
             app: Optional application passed to dynamic providers.
         """
         values, parameter = self.parse_args(text, partial=True)
-        keyword_names = {p.name.replace("_", "-"): p for p in self.parameters}
+        option_names = {
+            flag: parameter
+            for parameter in self.parameters
+            for flag in self.arguments.get(parameter.name, Argument()).flags
+        }
         try:
             completed_tokens = shlex.split(text)
         except ValueError:
             completed_tokens = []
-        entering_keyword_value = bool(
-            completed_tokens and completed_tokens[-1] in keyword_names
+        entering_option_value = bool(
+            completed_tokens
+            and completed_tokens[-1] in option_names
+            and self.hints.get(
+                option_names[completed_tokens[-1]].name,
+                option_names[completed_tokens[-1]].annotation,
+            )
+            is not bool
         )
-        required_missing = any(
-            p.default is inspect.Parameter.empty and p.name not in values
-            for p in self.parameters
-        )
-        if not entering_keyword_value and not required_missing:
-            keyword_items = []
-            for candidate in self.parameters:
-                keyword = candidate.name.replace("_", "-")
-                if (
-                    candidate.default is not inspect.Parameter.empty
-                    and candidate.name not in values
-                    and keyword.startswith(word)
-                ):
-                    config = self.arguments.get(candidate.name, Argument())
-                    keyword_items.append(
-                        CompletionItem(keyword, config.help or f"Set {candidate.name}")
-                    )
-            if keyword_items:
-                return keyword_items
-        if word.startswith("--"):
+        if not entering_option_value and (word.startswith("-") or parameter is None):
             options = []
             for candidate in self.parameters:
-                option = "--" + candidate.name.replace("_", "-")
-                if candidate.name not in values and option.startswith(word):
-                    config = self.arguments.get(candidate.name, Argument())
-                    annotation = self.hints.get(candidate.name, candidate.annotation)
-                    type_name = getattr(annotation, "__name__", str(annotation))
-                    options.append(
-                        CompletionItem(
-                            option, config.help or f"{candidate.name}: {type_name}"
+                config = self.arguments.get(candidate.name, Argument())
+                for option in config.flags:
+                    if candidate.name not in values and option.startswith(word):
+                        annotation = self.hints.get(candidate.name, candidate.annotation)
+                        type_name = getattr(annotation, "__name__", str(annotation))
+                        options.append(
+                            CompletionItem(
+                                option, config.help or f"{candidate.name}: {type_name}"
+                            )
                         )
-                    )
             return options
         if not parameter:
             return []
@@ -525,9 +532,13 @@ class Command:
         except ValueError as error:
             raise CommandValidationError(str(error)) from error
         expanded: list[str] = []
-        keywords = {p.name.replace("_", "-") for p in self.parameters}
+        options = {
+            flag
+            for parameter in self.parameters
+            for flag in self.arguments.get(parameter.name, Argument()).flags
+        }
         for token in tokens:
-            if token in keywords:
+            if token in options:
                 expanded.append(token)
                 continue
             prefix = shlex.join(expanded)
@@ -701,7 +712,10 @@ def register_default_commands(app):
         entries = entries[-count:] if count else entries
         return CommandResult.success("\n".join(x.command for x in entries))
 
-    @app.commands.register(name="history export")
+    @app.commands.register(
+        name="history export",
+        arguments={"count": Argument(flags=("-n", "--count"))},
+    )
     async def history_export(path: Path, count: int = 0):
         """Export all or the most recent commands to a text file."""
         entries = app.history.all()
@@ -721,7 +735,14 @@ def register_default_commands(app):
 
     if hasattr(app.history, "search"):
 
-        @app.commands.register(name="history search", record_history=False)
+        @app.commands.register(
+            name="history search",
+            record_history=False,
+            arguments={
+                "limit": Argument(flags=("-n", "--limit")),
+                "since": Argument(flags=("-s", "--since")),
+            },
+        )
         async def history_search(
             keyword: str, limit: int = 0, since: str | None = None
         ):

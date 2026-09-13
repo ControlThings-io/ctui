@@ -45,7 +45,7 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
         await self.app.dispatch("project load default")
         entries = await self.app.history.all()
         self.assertEqual([entry.command for entry in entries], ["help"])
-        result = await self.app.dispatch("history search help since 7d limit 5")
+        result = await self.app.dispatch("history search help --since 7d --limit 5")
         self.assertEqual(result.output, "help")
         await self.app.dispatch("history clear confirm")
         self.assertEqual(await self.app.history.all(), [])
@@ -60,7 +60,7 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
 
         project_path = root / "shared.ctui-project"
         await self.app.dispatch(f"project export {project_path}")
-        await self.app.dispatch(f"project import {project_path} name imported")
+        await self.app.dispatch(f"project import {project_path} --name imported")
         self.assertEqual(self.app.backend.current.name, "imported")
         self.assertEqual((await self.app.configs.get("remote"))["port"], 502)
 

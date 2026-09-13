@@ -85,7 +85,7 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn("Exported 2 commands", result.output)
             self.assertEqual(all_path.read_text(encoding="utf-8"), "help\nclear\n")
 
-            result = await app.dispatch(f"history export {recent_path} count 2")
+            result = await app.dispatch(f"history export {recent_path} --count 2")
             self.assertIn("Exported 2 commands", result.output)
             self.assertEqual(
                 recent_path.read_text(encoding="utf-8"),
