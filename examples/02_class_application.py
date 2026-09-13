@@ -5,8 +5,7 @@ Try: add 2 3
 Try: multiply 4 5
 """
 
-from ctui import CtuiApp, command
-from ctui.commands import CommandResult
+from ctui import CommandResult, CtuiApp, command
 
 
 class Calculator(CtuiApp):

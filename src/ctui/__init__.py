@@ -13,6 +13,8 @@ Control Things User Interface, aka ctui.py
 # details at <http://www.gnu.org/licenses/>.
 """
 
+from importlib.metadata import PackageNotFoundError, version
+
 from ctui.application import CtuiApp
 from ctui.commands import (
     Argument,
@@ -28,11 +30,14 @@ from ctui.commands import (
 from ctui.projects import ProjectInfo, RecordEntry, SqliteProjectBackend
 from ctui.services import (
     ConfigStore,
+    HistoryEntry,
+    HistoryStore,
     MemoryHistory,
     MemoryStorage,
     NullHistory,
     NullStorage,
     RecordStore,
+    Storage,
     StorageKeyError,
 )
 from ctui.types import (
@@ -43,30 +48,40 @@ from ctui.types import (
     IntegerSpan,
 )
 
+try:
+    __version__ = version("ctui")
+except PackageNotFoundError:  # Support importing directly from an unpacked tree.
+    __version__ = "0+unknown"
+
+
 __all__ = [
-    "CtuiApp",
     "Argument",
     "CommandError",
     "CommandNotFound",
     "CommandResult",
     "CommandValidationError",
-    "ConfirmationRequired",
     "CompletionContext",
     "CompletionItem",
     "ConfigStore",
+    "ConfirmationRequired",
+    "CtuiApp",
     "FuzzyHexPattern",
     "FuzzyStringPattern",
-    "MemoryHistory",
     "HexBytes",
+    "HistoryEntry",
+    "HistoryStore",
     "IntegerRanges",
     "IntegerSpan",
+    "MemoryHistory",
     "MemoryStorage",
     "NullHistory",
     "NullStorage",
-    "StorageKeyError",
     "ProjectInfo",
     "RecordEntry",
     "RecordStore",
     "SqliteProjectBackend",
+    "Storage",
+    "StorageKeyError",
+    "__version__",
     "command",
 ]

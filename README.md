@@ -277,6 +277,27 @@ Return `CommandResult.append("Finished")` when output should be added below
 previous command output instead of replacing it. This is safe for overlapping
 async commands because the append is applied when each command finishes.
 
+## Public API and compatibility
+
+ctui follows semantic versioning. Within the 1.x series, documented top-level
+imports from `ctui` are the supported compatibility surface:
+
+- Application and commands: `CtuiApp`, `command`, `Argument`, `CommandResult`,
+  `CommandError`, `CommandNotFound`, `CommandValidationError`,
+  `ConfirmationRequired`, `CompletionContext`, and `CompletionItem`.
+- Parameter types: `HexBytes`, `FuzzyHexPattern`, `FuzzyStringPattern`,
+  `IntegerRanges`, and `IntegerSpan`.
+- Service interfaces and implementations: `HistoryStore`, `Storage`,
+  `ConfigStore`, `RecordStore`, `HistoryEntry`, `MemoryHistory`, `NullHistory`,
+  `MemoryStorage`, `NullStorage`, and `StorageKeyError`.
+- Project storage: `SqliteProjectBackend`, `ProjectInfo`, and `RecordEntry`.
+- Package metadata: `__version__`.
+
+The reusable names exported by `ctui.widgets` are also supported for custom
+layouts. Other submodules and names beginning with an underscore are
+implementation details and may change between minor releases. Deprecations to
+the supported API will be documented before removal in a future major release.
+
 ## Development
 
 The [`examples`](examples/README.md) directory contains a progressive tutorial.

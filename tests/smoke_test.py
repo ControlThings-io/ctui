@@ -5,7 +5,7 @@ import tempfile
 from importlib.metadata import version
 from pathlib import Path
 
-from ctui import CtuiApp, FuzzyHexPattern, HexBytes, command
+from ctui import CtuiApp, FuzzyHexPattern, HexBytes, __version__, command
 
 
 class SmokeApp(CtuiApp):
@@ -19,7 +19,7 @@ class SmokeApp(CtuiApp):
 
 async def smoke_test() -> None:
     """Verify public types, dispatch, and persistent project storage."""
-    assert version("ctui")
+    assert __version__ == version("ctui")
     assert HexBytes("be:ef") == b"\xbe\xef"
     assert list(FuzzyHexPattern("f[0-1]").expand()) == [b"\xf0", b"\xf1"]
 
