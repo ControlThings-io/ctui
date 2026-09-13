@@ -35,7 +35,13 @@ from ctui.services import (
     RecordStore,
     StorageKeyError,
 )
-from ctui.types import FuzzyHexPattern, FuzzyStringPattern, HexBytes
+from ctui.types import (
+    FuzzyHexPattern,
+    FuzzyStringPattern,
+    HexBytes,
+    IntegerRanges,
+    IntegerSpan,
+)
 
 __all__ = [
     "CtuiApp",
@@ -52,6 +58,8 @@ __all__ = [
     "FuzzyStringPattern",
     "MemoryHistory",
     "HexBytes",
+    "IntegerRanges",
+    "IntegerSpan",
     "MemoryStorage",
     "NullHistory",
     "NullStorage",

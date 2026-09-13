@@ -12,16 +12,18 @@ this order:
    bytes using a command annotation.
 6. `06_fuzzy_patterns.py` — lazily expand finite byte and string patterns or
    sample them without constructing every possibility.
-7. `07_automatic_cli.py` — use the automatic CLI shared by every `CtuiApp`.
-8. `08_completion_and_validation.py` — create safe dropdown suggestions.
-9. `09_async_and_events.py` — run overlapping async commands and show immediate
+7. `07_integer_ranges.py` — parse inclusive integer ranges and safely inspect,
+   transform, expand, or sample them.
+8. `08_automatic_cli.py` — use the automatic CLI shared by every `CtuiApp`.
+9. `09_completion_and_validation.py` — create safe dropdown suggestions.
+10. `10_async_and_events.py` — run overlapping async commands and show immediate
    started/completed messages.
-10. `10_statusbar_progress.py` — track several active commands in the status bar
+11. `11_statusbar_progress.py` — track several active commands in the status bar
    and remove each one when it finishes.
-11. `11_keyboard_shortcuts.py` — register an application-wide shortcut.
-12. `12_custom_layout.py` — compose a layout from reusable widgets.
-13. `13_lifecycle_and_storage.py` — persist projects, configs, and records.
-14. `filesystem.py` — combine several features in a practical tool.
+12. `12_keyboard_shortcuts.py` — register an application-wide shortcut.
+13. `13_custom_layout.py` — compose a layout from reusable widgets.
+14. `14_lifecycle_and_storage.py` — persist projects, configs, and records.
+15. `filesystem.py` — combine several features in a practical tool.
 
 Run an example from the repository root:
 
@@ -33,7 +35,7 @@ Every terminal example includes commands to try in its opening docstring. The
 headless example accepts commands after its filename. Start with:
 
 ```bash
-uv run examples/07_automatic_cli.py --help
-uv run examples/07_automatic_cli.py -c "add 12 30"
-uv run examples/07_automatic_cli.py --file examples/commands.txt
+uv run examples/08_automatic_cli.py --help
+uv run examples/08_automatic_cli.py -c "add 12 30"
+uv run examples/08_automatic_cli.py --file examples/commands.txt
 ```

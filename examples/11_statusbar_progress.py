@@ -1,6 +1,6 @@
 """Show progress for concurrent commands in the status bar.
 
-Run: uv run examples/10_statusbar_progress.py
+Run: uv run examples/11_statusbar_progress.py
 Try ``download report.csv``, then ``download photo.jpg`` before it completes.
 Finished downloads disappear from the status bar.
 """

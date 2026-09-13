@@ -1,6 +1,6 @@
 """Use persistent projects, configuration templates, and protocol records.
 
-Run: uv run examples/13_lifecycle_and_storage.py
+Run: uv run examples/14_lifecycle_and_storage.py
 Try: configs list
 Try: configs show local
 Try: profile save lab 10.0.0.20 502

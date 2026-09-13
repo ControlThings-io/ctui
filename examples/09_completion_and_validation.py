@@ -1,6 +1,6 @@
 """Add dropdown help, dynamic suggestions, and input validation.
 
-Run: uv run examples/08_completion_and_validation.py
+Run: uv run examples/09_completion_and_validation.py
 Type ``deploy `` and use the completion menu.
 Try the unique abbreviations: ``dep dev dev-1``.
 """

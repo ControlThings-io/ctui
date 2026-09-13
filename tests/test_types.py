@@ -1,7 +1,13 @@
 import unittest
 from collections.abc import Iterator
 
-from ctui import FuzzyHexPattern, FuzzyStringPattern, HexBytes
+from ctui import (
+    FuzzyHexPattern,
+    FuzzyStringPattern,
+    HexBytes,
+    IntegerRanges,
+    IntegerSpan,
+)
 from ctui.commands import Command
 
 
@@ -57,6 +63,74 @@ class HexBytesTests(unittest.TestCase):
         result = Command(send).parse_args(r"'\xde\xad\xbe\xef'")
         self.assertEqual(result, {"payload": b"\xde\xad\xbe\xef"})
         self.assertIsInstance(result["payload"], HexBytes)
+
+
+class IntegerRangesTests(unittest.TestCase):
+    def test_parsing_preserves_order_and_represents_inclusive_ranges(self):
+        ranges = IntegerRanges("0-5,9,15-20,75,10-12")
+        self.assertEqual(
+            list(ranges),
+            [
+                IntegerSpan(0, 6),
+                IntegerSpan(9, 1),
+                IntegerSpan(15, 6),
+                IntegerSpan(75, 1),
+                IntegerSpan(10, 3),
+            ],
+        )
+        self.assertEqual(ranges.count, 17)
+        self.assertEqual(str(ranges), "0-5,9,15-20,75,10-12")
+        self.assertEqual(ranges[0].stop, 6)
+        self.assertEqual(list(ranges[0].values()), list(range(6)))
+
+    def test_sorted_unique_and_merged_return_new_collections(self):
+        ranges = IntegerRanges("0-5,9,15-20,75,10-12,3-7,9")
+        self.assertEqual(str(ranges.sorted()), "0-5,3-7,9,9,10-12,15-20,75")
+        self.assertEqual(str(ranges.unique()), "0-5,9,15-20,75,10-12,3-7")
+        self.assertEqual(str(ranges.merged()), "0-7,9-12,15-20,75")
+        self.assertEqual(
+            str(ranges.merged(adjacent=False)), "0-7,9,10-12,15-20,75"
+        )
+        self.assertEqual(str(ranges), "0-5,9,15-20,75,10-12,3-7,9")
+
+    def test_expansion_is_lazy_bounded_and_preserves_duplicate_values(self):
+        ranges = IntegerRanges("1-3,2-4")
+        expanded = ranges.expand()
+        self.assertIsInstance(expanded, Iterator)
+        self.assertEqual(list(expanded), [1, 2, 3, 2, 3, 4])
+        self.assertEqual(ranges.count, 6)
+        self.assertEqual(ranges.unique_count, 4)
+        with self.assertRaisesRegex(ValueError, "expansion limit"):
+            ranges.expand(limit=5)
+
+    def test_sampling_uses_unique_union_without_full_expansion(self):
+        ranges = IntegerRanges("0-5,3-7")
+        sample = ranges.sample(8, seed=42)
+        self.assertEqual(set(sample), set(range(8)))
+        self.assertEqual(sample, ranges.sample(8, seed=42))
+        with self.assertRaisesRegex(ValueError, "8 possibilities"):
+            ranges.sample(9)
+        huge = IntegerRanges("0-999999999999999999999")
+        self.assertEqual(len(huge.sample(5, seed=42)), 5)
+
+    def test_invalid_ranges_and_spans_are_rejected(self):
+        for value in ("", "1,", ",1", "1,,2", "5-3", "-1", "one", "1-2-3"):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                IntegerRanges(value)
+        with self.assertRaises(ValueError):
+            IntegerSpan(0, 0)
+        with self.assertRaises(ValueError):
+            IntegerSpan(-1, 1)
+        with self.assertRaises(TypeError):
+            IntegerRanges([range(3)])
+
+    def test_command_annotation_performs_conversion(self):
+        def scan(ranges: IntegerRanges):
+            return ranges
+
+        result = Command(scan).parse_args("0-5,9,15-20")["ranges"]
+        self.assertIsInstance(result, IntegerRanges)
+        self.assertEqual(result.count, 13)
 
 
 class FuzzyHexPatternTests(unittest.TestCase):

@@ -119,6 +119,23 @@ arguments act as flags; all parameters without `flags` are positional.
 Supported annotations include `str`, `int`, `float`, `bool`, `Path`, `Enum`,
 `Literal`, `Optional`, and comma-separated collections.
 
+Use `list[int]`, `tuple[int, ...]`, or `set[int]` for simple comma-separated
+integers. Use `IntegerRanges` when an argument also accepts inclusive ranges:
+
+```python
+@command
+def scan(self, addresses: IntegerRanges):
+    for span in addresses:
+        print(span.start, span.count, span.stop)
+```
+
+`0-5,9,15-20` becomes an ordered immutable collection of `IntegerSpan`
+objects. Each span stores `start` and `count`; `stop` follows Python convention
+and is exclusive. `expand()` lazily yields values in the entered span order,
+`sample()` selects unique integers from the merged union, and `sorted()`,
+`unique()`, and `merged()` return new collections without changing the original.
+Only non-negative integers and ascending ranges are accepted.
+
 Use the included `HexBytes` annotation when a command accepts hexadecimal
 binary data. It returns an immutable `bytes` subclass and accepts contiguous,
 space-, colon-, hyphen-, or underscore-separated byte pairs, a whole-value

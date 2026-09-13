@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import re
+from bisect import bisect_right
+from dataclasses import dataclass
 from itertools import product
 from math import prod
 from random import Random
@@ -67,6 +69,214 @@ class HexBytes(bytes):
             "expected hex byte pairs using contiguous, 0x, \\xNN, space, colon, "
             "hyphen, or underscore notation"
         )
+
+
+@dataclass(frozen=True, order=True)
+class IntegerSpan:
+    """One inclusive input range represented by its start and value count."""
+
+    start: int
+    count: int
+
+    def __post_init__(self):
+        if isinstance(self.start, bool) or not isinstance(self.start, int):
+            raise TypeError("integer span start must be an integer")
+        if self.start < 0:
+            raise ValueError("integer span start cannot be negative")
+        if isinstance(self.count, bool) or not isinstance(self.count, int):
+            raise TypeError("integer span count must be an integer")
+        if self.count < 1:
+            raise ValueError("integer span count must be positive")
+
+    @property
+    def stop(self) -> int:
+        """Return the exclusive stop value."""
+        return self.start + self.count
+
+    def values(self) -> range:
+        """Return the integers represented by this span."""
+        return range(self.start, self.stop)
+
+    def __str__(self):
+        return str(self.start) if self.count == 1 else f"{self.start}-{self.stop - 1}"
+
+
+_INTEGER_RANGE_ITEM = re.compile(r"(?P<start>\d+)(?:\s*-\s*(?P<end>\d+))?")
+
+
+class IntegerRanges:
+    """Ordered, immutable collection of non-negative inclusive integer ranges."""
+
+    DEFAULT_EXPANSION_LIMIT = 65_536
+    DEFAULT_SAMPLE_LIMIT = 65_536
+    MAX_INPUT_LENGTH = 4_096
+    MAX_SPANS = 4_096
+
+    def __init__(self, value: str | Sequence[IntegerSpan]):
+        if isinstance(value, str):
+            spans = self._parse(value)
+            self.source = value
+        else:
+            try:
+                spans = tuple(value)
+            except TypeError as error:
+                raise TypeError(
+                    "IntegerRanges requires comma-separated text or integer spans"
+                ) from error
+            if not all(isinstance(span, IntegerSpan) for span in spans):
+                raise TypeError(
+                    "IntegerRanges collections must contain IntegerSpan values"
+                )
+            if not spans:
+                raise ValueError("integer ranges cannot be empty")
+            if len(spans) > self.MAX_SPANS:
+                raise ValueError(
+                    f"integer ranges exceed the {self.MAX_SPANS:,} span limit"
+                )
+            self.source = ",".join(map(str, spans))
+        self._spans = tuple(spans)
+
+    @classmethod
+    def _parse(cls, value: str) -> tuple[IntegerSpan, ...]:
+        text = value.strip()
+        if not text:
+            raise ValueError("integer ranges cannot be empty")
+        if len(text) > cls.MAX_INPUT_LENGTH:
+            raise ValueError(
+                f"integer ranges exceed the {cls.MAX_INPUT_LENGTH:,} character limit"
+            )
+        items = text.split(",")
+        if len(items) > cls.MAX_SPANS:
+            raise ValueError(f"integer ranges exceed the {cls.MAX_SPANS:,} span limit")
+        spans = []
+        for item in items:
+            match = _INTEGER_RANGE_ITEM.fullmatch(item.strip())
+            if not match:
+                raise ValueError(f"invalid integer range: {item!r}")
+            start = int(match.group("start"))
+            end = int(match.group("end") or start)
+            if end < start:
+                raise ValueError(f"descending integer range: {start}-{end}")
+            spans.append(IntegerSpan(start, end - start + 1))
+        return tuple(spans)
+
+    def __iter__(self):
+        return iter(self._spans)
+
+    def __len__(self):
+        return len(self._spans)
+
+    def __getitem__(self, index):
+        return self._spans[index]
+
+    def __repr__(self):
+        return f"IntegerRanges({str(self)!r})"
+
+    def __str__(self):
+        return ",".join(map(str, self._spans))
+
+    def __eq__(self, other):
+        if isinstance(other, IntegerRanges):
+            return self._spans == other._spans
+        return NotImplemented
+
+    @property
+    def count(self) -> int:
+        """Return the number of values across spans, including overlaps."""
+        return sum(span.count for span in self._spans)
+
+    @property
+    def unique_count(self) -> int:
+        """Return the number of distinct represented integers."""
+        return self.merged().count
+
+    def expand(self, *, limit: int = DEFAULT_EXPANSION_LIMIT) -> Iterator[int]:
+        """Lazily yield values in span order, preserving overlaps and duplicates."""
+        _validate_positive_integer(limit, "expansion limit")
+        if self.count > limit:
+            raise ValueError(
+                f"integer ranges produce {self.count:,} values; "
+                f"expansion limit is {limit:,}"
+            )
+        return (value for span in self._spans for value in span.values())
+
+    def sample(
+        self,
+        count: int,
+        *,
+        seed: int | None = None,
+        limit: int = DEFAULT_SAMPLE_LIMIT,
+    ) -> list[int]:
+        """Sample unique integers uniformly from the union of all spans."""
+        _validate_non_negative_integer(count, "sample size")
+        _validate_positive_integer(limit, "sample limit")
+        if count > limit:
+            raise ValueError(f"sample size {count:,} exceeds the limit of {limit:,}")
+        merged = self.merged()
+        total = merged.count
+        if count > total:
+            raise ValueError(
+                f"cannot sample {count:,} unique values from {total:,} possibilities"
+            )
+        cumulative, running = [], 0
+        for span in merged:
+            running += span.count
+            cumulative.append(running)
+        results = []
+        for index in _sample_indices(total, count, seed):
+            span_index = bisect_right(cumulative, index)
+            previous = cumulative[span_index - 1] if span_index else 0
+            results.append(merged[span_index].start + index - previous)
+        return results
+
+    def sorted(self) -> IntegerRanges:
+        """Return spans ordered by start and count without other changes."""
+        return IntegerRanges(tuple(sorted(self._spans)))
+
+    def unique(self) -> IntegerRanges:
+        """Remove exact duplicate spans while preserving their first occurrence."""
+        return IntegerRanges(tuple(dict.fromkeys(self._spans)))
+
+    def merged(self, *, adjacent: bool = True) -> IntegerRanges:
+        """Sort and combine overlapping, and optionally adjacent, spans."""
+        ordered = sorted(self._spans)
+        combined = [ordered[0]]
+        for span in ordered[1:]:
+            previous = combined[-1]
+            joins = (
+                span.start <= previous.stop
+                if adjacent
+                else span.start < previous.stop
+            )
+            if joins:
+                stop = max(previous.stop, span.stop)
+                combined[-1] = IntegerSpan(previous.start, stop - previous.start)
+            else:
+                combined.append(span)
+        return IntegerRanges(tuple(combined))
+
+
+def _validate_positive_integer(value: int, label: str):
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ValueError(f"{label} must be a positive integer")
+
+
+def _validate_non_negative_integer(value: int, label: str):
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(f"{label} must be a non-negative integer")
+
+
+def _sample_indices(total: int, count: int, seed: int | None) -> list[int]:
+    """Use Floyd's algorithm to sample indices without allocating the domain."""
+    generator = Random(seed)
+    selected: set[int] = set()
+    indices = []
+    for upper in range(total - count, total):
+        candidate = generator.randrange(upper + 1)
+        index = upper if candidate in selected else candidate
+        selected.add(index)
+        indices.append(index)
+    return indices
 
 
 _Result = TypeVar("_Result")
@@ -506,4 +716,10 @@ class FuzzyStringPattern(_FinitePattern[str]):
         return "".join(selection)
 
 
-__all__ = ["FuzzyHexPattern", "FuzzyStringPattern", "HexBytes"]
+__all__ = [
+    "FuzzyHexPattern",
+    "FuzzyStringPattern",
+    "HexBytes",
+    "IntegerRanges",
+    "IntegerSpan",
+]
