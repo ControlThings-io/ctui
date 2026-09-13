@@ -61,7 +61,7 @@ class HexBytesTests(unittest.TestCase):
 
 class FuzzyHexPatternTests(unittest.TestCase):
     def test_literals_wildcards_classes_ranges_negation_and_repetition(self):
-        pattern = FuzzyHexPattern("56:ff:ff:07:f[0-2]0{2}")
+        pattern = FuzzyHexPattern("56:ff:ff:07:f[0-2]:0{2}")
         self.assertEqual(pattern.count, 3)
         self.assertEqual(
             list(pattern.expand()),
@@ -74,6 +74,29 @@ class FuzzyHexPatternTests(unittest.TestCase):
         self.assertEqual(FuzzyHexPattern("f?").count, 16)
         self.assertEqual(FuzzyHexPattern("[!0]0").count, 15)
         self.assertEqual(FuzzyHexPattern("[0-3a-c]0").count, 7)
+
+    def test_hexbytes_formatting_conventions_are_shared(self):
+        expected = b"\xde\xad\xbe\xef"
+        values = (
+            "deadbeef",
+            "DEADBEEF",
+            "de ad be ef",
+            "de:ad:be:ef",
+            "de-ad-be-ef",
+            "de_ad_be_ef",
+            "0xdeadbeef",
+            "0xde 0xad 0xbe 0xef",
+            r"\xde\xad\xbe\xef",
+        )
+        for value in values:
+            with self.subTest(value=value):
+                self.assertEqual(HexBytes(value), expected)
+                self.assertEqual(list(FuzzyHexPattern(value).expand()), [expected])
+
+    def test_prefix_and_escape_notation_can_contain_fuzzy_nibbles(self):
+        self.assertEqual(FuzzyHexPattern("0xdeadbe??").count, 256)
+        self.assertEqual(FuzzyHexPattern("0xde 0xad 0x??").count, 256)
+        self.assertEqual(FuzzyHexPattern(r"\xde\xad\x??").count, 256)
 
     def test_expansion_is_lazy_bounded_and_requires_complete_bytes(self):
         pattern = FuzzyHexPattern("????")
@@ -101,6 +124,11 @@ class FuzzyHexPatternTests(unittest.TestCase):
             "[f-0]0",
             "[!0123456789abcdef]0",
             "gg",
+            "d:e:a:d",
+            "f-f",
+            "de:ad-be:ef",
+            "de ad-be_ef",
+            "0xde ad",
         ):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 FuzzyHexPattern(value)

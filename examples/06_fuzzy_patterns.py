@@ -2,12 +2,15 @@ r"""Lazily expand or sample finite hexadecimal and string patterns.
 
 Run: uv run examples/06_fuzzy_patterns.py
 Try: hex expand 56ffff07f[0-2]01
+Try: hex expand '0x56ffff07f[0-2]01'
+Try: hex expand '\x56\xff\xff\x07\xf?\x01'
 Try: hex sample ???????? --count 5 --seed 42
 Try: text expand {admin,user}-[1-2]
 Try: text sample 'device-\d{4}' -n 5
 
 Expansion refuses patterns above its limit before iteration begins. Sampling
 selects unique values without constructing the complete expansion.
+Hex separators must divide complete bytes, and ``{n}`` repeats one nibble.
 """
 
 from ctui import Argument, CtuiApp, FuzzyHexPattern, FuzzyStringPattern, command

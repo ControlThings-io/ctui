@@ -129,10 +129,13 @@ containing spaces or backslashes so they remain one shell-like argument.
 materializing them during command conversion. Both provide an exact `count`,
 bounded lazy `expand()`, and unique `sample()` operations. Hex patterns support
 `?`, nibble classes and ranges such as `[0-5a-f]`, negated classes such as
-`[!0]`, visual byte separators, and fixed repetition such as `?{4}`. String
-patterns additionally support ASCII wildcard classes (`\d`, `\h`, `\l`, `\u`,
-`\w`, and `\s`), literal alternatives such as `{admin,user}`, escapes, Unicode
-literals, and fixed repetition. Generated ranges and wildcard alphabets remain
+`[!0]`, and fixed repetition such as `?{4}`. Hex formatting follows `HexBytes`:
+separators must consistently divide complete bytes, while one leading `0x`,
+per-byte `0x` prefixes, and `\xNN` notation may contain fuzzy nibbles. Repetition
+is nibble-oriented, so `?{4}` produces four nibbles (two bytes). String patterns
+additionally support ASCII wildcard classes (`\d`, `\h`, `\l`, `\u`, `\w`, and
+`\s`), literal alternatives such as `{admin,user}`, escapes, Unicode literals,
+and fixed repetition. Generated ranges and wildcard alphabets remain
 ASCII-bounded; explicitly written Unicode characters are preserved.
 
 Expansion is lazy but guarded by a default limit of 65,536 complete results:

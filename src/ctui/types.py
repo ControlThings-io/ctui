@@ -160,7 +160,60 @@ class _FinitePattern(Generic[_Result]):
 
 
 _HEX_DIGITS = "0123456789abcdef"
-_VISUAL_HEX_SEPARATORS = " :-_"
+
+
+def _fuzzy_hex_chunks(source: str) -> tuple[list[str], bool]:
+    """Normalize HexBytes-style formatting into pattern chunks.
+
+    The boolean result indicates that every chunk represents exactly one byte.
+    """
+    text = source.strip()
+    if not text:
+        raise ValueError("pattern cannot be empty")
+    if text.startswith(r"\x"):
+        chunks = text.split(r"\x")[1:]
+        if not chunks or any(not chunk or r"\x" in chunk for chunk in chunks):
+            raise ValueError("invalid \\xNN hexadecimal pattern notation")
+        return chunks, True
+    if "\\" in text:
+        raise ValueError("only \\xNN escapes are valid in hexadecimal patterns")
+
+    separators: list[tuple[int, str]] = []
+    in_class = False
+    for index, character in enumerate(text):
+        if character == "[":
+            in_class = True
+        elif character == "]":
+            in_class = False
+        elif not in_class and character.isspace():
+            separators.append((index, "space"))
+        elif not in_class and character in ":_-":
+            separators.append((index, character))
+    kinds = {kind for _, kind in separators}
+    if len(kinds) > 1:
+        raise ValueError("hexadecimal pattern separators must be consistent")
+    separator_kind = next(iter(kinds), None)
+
+    if separator_kind is None:
+        chunks = [text]
+    elif separator_kind == "space":
+        chunks = text.split()
+    else:
+        chunks = text.split(separator_kind)
+    if any(not chunk for chunk in chunks):
+        raise ValueError("hexadecimal pattern contains an empty byte group")
+
+    prefixed = [chunk.lower().startswith("0x") for chunk in chunks]
+    if any(prefixed):
+        if len(chunks) == 1:
+            chunks[0] = chunks[0][2:]
+        elif separator_kind == "space" and all(prefixed):
+            chunks = [chunk[2:] for chunk in chunks]
+        else:
+            raise ValueError(
+                "use one leading 0x prefix or prefix every space-separated byte"
+            )
+    return chunks, len(chunks) > 1
 
 
 def _repeat_previous(parts: list[tuple[str, ...]], source: str, index: int) -> int:
@@ -230,27 +283,32 @@ class FuzzyHexPattern(_FinitePattern[bytes]):
             raise ValueError(
                 f"pattern exceeds the {self.MAX_PATTERN_LENGTH:,} character limit"
             )
+        chunks, byte_chunks = _fuzzy_hex_chunks(source)
         parts: list[tuple[str, ...]] = []
-        index = 0
-        while index < len(source):
-            character = source[index]
-            if character in _VISUAL_HEX_SEPARATORS:
-                index += 1
-                continue
-            if character == "?":
-                parts.append(tuple(_HEX_DIGITS))
-                index += 1
-            elif character == "[":
-                choices, index = _hex_class(source, index)
-                parts.append(choices)
-            elif character.lower() in _HEX_DIGITS:
-                parts.append((character.lower(),))
-                index += 1
-            else:
+        for chunk in chunks:
+            chunk_parts: list[tuple[str, ...]] = []
+            index = 0
+            while index < len(chunk):
+                character = chunk[index]
+                if character == "?":
+                    chunk_parts.append(tuple(_HEX_DIGITS))
+                    index += 1
+                elif character == "[":
+                    choices, index = _hex_class(chunk, index)
+                    chunk_parts.append(choices)
+                elif character.lower() in _HEX_DIGITS:
+                    chunk_parts.append((character.lower(),))
+                    index += 1
+                else:
+                    raise ValueError(
+                        f"unexpected hexadecimal pattern character: {character!r}"
+                    )
+                index = _repeat_previous(chunk_parts, chunk, index)
+            if byte_chunks and len(chunk_parts) != 2:
                 raise ValueError(
-                    f"unexpected hexadecimal pattern character: {character!r}"
+                    "separated hexadecimal pattern groups must each produce one byte"
                 )
-            index = _repeat_previous(parts, source, index)
+            parts.extend(chunk_parts)
         if len(parts) % 2:
             raise ValueError("hexadecimal patterns must produce complete byte pairs")
         super().__init__(source, parts)
