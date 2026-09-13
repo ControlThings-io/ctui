@@ -36,6 +36,7 @@ class CtuiApp:
     mouse_support = False
     app_id = None
     project_schema_version = 1
+    project_migrations = {}
 
     def __init__(
         self,
@@ -94,6 +95,7 @@ class CtuiApp:
                 data_dir=data_dir,
                 tool_version=self.version,
                 tool_schema_version=self.project_schema_version,
+                tool_migrations=self.project_migrations,
             )
         self.history = (
             history

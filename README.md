@@ -223,6 +223,28 @@ application attributes. Use `await self.configs.save(...)` for named profiles
 and `await self.records.append(...)` for protocol traffic. Pass a custom
 `backend`, `configs`, `records`, or `history` service to replace the defaults.
 
+Project databases are versioned and checked for integrity when opened or
+imported. Increase `project_schema_version` when application-owned database
+objects change, and provide SQL statements keyed by the version they migrate
+from:
+
+```python
+class ModbusTool(CtuiApp):
+    app_id = "io.example.modbus"
+    project_schema_version = 2
+    project_migrations = {
+        1: (
+            "ALTER TABLE device_data ADD COLUMN label TEXT NOT NULL DEFAULT ''",
+        ),
+    }
+```
+
+Framework and application migrations run together in a transaction. Before a
+database is changed, ctui creates a timestamped `pre-migration` backup beside
+it. Missing migrations, newer schemas, corrupt databases, and incompatible
+imports are rejected without replacing the active project or leaving an orphan
+in the project catalog.
+
 Built-in project commands create, clone, list, load, rename, permanently delete,
 import, export, and selectively reset projects. `project` shows active-project
 statistics. Configs export as versioned JSON, while whole projects export as

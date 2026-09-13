@@ -1,11 +1,15 @@
 import asyncio
 import json
+import sqlite3
 import tempfile
 import time
 import unittest
+from contextlib import closing
 from pathlib import Path
+from unittest.mock import patch
 
-from ctui import CommandError, ConfirmationRequired, CtuiApp
+import ctui.projects as projects_module
+from ctui import CommandError, ConfirmationRequired, CtuiApp, SqliteProjectBackend
 
 
 class ProjectTests(unittest.IsolatedAsyncioTestCase):
@@ -116,3 +120,164 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
         invalid.write_text("[]", encoding="utf-8")
         with self.assertRaisesRegex(CommandError, "JSON object"):
             await self.app.configs.import_file(invalid, self.app.app_id)
+
+    async def _export_with_metadata(self, filename, **metadata):
+        """Export a project and replace selected metadata values."""
+        path = Path(self.temporary.name) / filename
+        await self.app.backend.export_project(path)
+        with closing(sqlite3.connect(path)) as connection, connection:
+            for key, value in metadata.items():
+                connection.execute(
+                    "INSERT OR REPLACE INTO metadata(key, value) VALUES (?, ?)",
+                    (key, str(value)),
+                )
+        return path
+
+    async def test_older_schema_is_backed_up_and_migrated(self):
+        await self.app.configs.save("device", {"port": 502})
+        path = await self._export_with_metadata("legacy.ctui-project", schema_version=0)
+
+        info = await self.app.backend.import_project(path, "migrated")
+
+        cursor = await self.app.backend.connection.execute(
+            "SELECT value FROM metadata WHERE key = 'schema_version'"
+        )
+        self.assertEqual(
+            (await cursor.fetchone())[0], str(projects_module.SCHEMA_VERSION)
+        )
+        self.assertEqual(await self.app.configs.get("device"), {"port": 502})
+        database = self.app.backend._database_path(info.id)
+        self.assertTrue(
+            list(database.parent.glob(f"{database.name}.pre-migration-v0-tool1-*.bak"))
+        )
+
+    async def test_corrupt_incomplete_and_newer_imports_leave_no_orphans(self):
+        root = Path(self.temporary.name)
+        corrupt = root / "corrupt.ctui-project"
+        corrupt.write_bytes(b"not a sqlite database")
+        missing = root / "missing.ctui-project"
+        with closing(sqlite3.connect(missing)):
+            pass
+        newer = await self._export_with_metadata(
+            "newer.ctui-project", schema_version=projects_module.SCHEMA_VERSION + 1
+        )
+        wrong_app = await self._export_with_metadata(
+            "wrong-app.ctui-project", app_id="io.example.somewhere-else"
+        )
+        incomplete = await self._export_with_metadata("incomplete.ctui-project")
+        with closing(sqlite3.connect(incomplete)) as connection, connection:
+            connection.execute("DROP TABLE records")
+
+        before = await self.app.backend.list_projects()
+        cases = (
+            (corrupt, "Invalid project database"),
+            (missing, "metadata table"),
+            (newer, "newer than supported"),
+            (wrong_app, "different application"),
+            (incomplete, "missing required tables"),
+        )
+        for path, message in cases:
+            with self.subTest(path=path), self.assertRaisesRegex(CommandError, message):
+                await self.app.backend.import_project(path, f"import-{path.stem}")
+            self.assertEqual(await self.app.backend.list_projects(), before)
+            self.assertEqual(self.app.backend.current.name, "default")
+
+    async def test_failed_migration_rolls_back_and_removes_failed_import(self):
+        path = await self._export_with_metadata("legacy.ctui-project", schema_version=0)
+        before = await self.app.backend.list_projects()
+        files_before = {item.name for item in self.app.backend.databases_dir.iterdir()}
+
+        with patch.dict(
+            projects_module.SCHEMA_MIGRATIONS,
+            {0: ("THIS IS NOT SQL",)},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(CommandError, "migration failed"):
+                await self.app.backend.import_project(path, "broken-migration")
+
+        self.assertEqual(await self.app.backend.list_projects(), before)
+        self.assertEqual(self.app.backend.current.name, "default")
+        self.assertEqual(
+            {item.name for item in self.app.backend.databases_dir.iterdir()},
+            files_before,
+        )
+
+    async def test_failed_load_keeps_the_current_project_available(self):
+        bad = await self.app.backend.create("bad", activate=False)
+        self.app.backend._database_path(bad.id).write_bytes(b"not sqlite")
+
+        with self.assertRaises(CommandError):
+            await self.app.backend.load("bad")
+
+        self.assertEqual(self.app.backend.current.name, "default")
+        self.assertEqual(await self.app.configs.get("local"), {"host": "127.0.0.1"})
+
+    async def test_application_schema_requires_explicit_ordered_migrations(self):
+        data_dir = Path(self.temporary.name) / "tool-migrations"
+        original = SqliteProjectBackend(
+            "io.example.migrations", data_dir=data_dir, tool_schema_version=1
+        )
+        await original.open()
+        await original.connection.execute(
+            "CREATE TABLE app_data(id INTEGER PRIMARY KEY, value TEXT NOT NULL)"
+        )
+        await original.connection.execute(
+            "INSERT INTO app_data(value) VALUES ('preserved')"
+        )
+        await original.connection.commit()
+        await original.close()
+
+        missing = SqliteProjectBackend(
+            "io.example.migrations", data_dir=data_dir, tool_schema_version=2
+        )
+        with self.assertRaisesRegex(CommandError, "No application migration"):
+            await missing.open()
+        await missing.close()
+
+        migrated = SqliteProjectBackend(
+            "io.example.migrations",
+            data_dir=data_dir,
+            tool_schema_version=2,
+            tool_migrations={
+                1: ("ALTER TABLE app_data ADD COLUMN label TEXT NOT NULL DEFAULT ''",)
+            },
+        )
+        await migrated.open()
+        try:
+            cursor = await migrated.connection.execute(
+                "SELECT value, label FROM app_data"
+            )
+            self.assertEqual(await cursor.fetchone(), ("preserved", ""))
+            cursor = await migrated.connection.execute(
+                "SELECT value FROM metadata WHERE key = 'tool_schema_version'"
+            )
+            self.assertEqual((await cursor.fetchone())[0], "2")
+            database = migrated._database_path(migrated.current.id)
+            self.assertTrue(
+                list(
+                    database.parent.glob(
+                        f"{database.name}.pre-migration-v1-tool1-*.bak"
+                    )
+                )
+            )
+        finally:
+            await migrated.close()
+
+    def test_application_migration_configuration_is_validated(self):
+        for schema_version in (True, 0, -1, 1.5):
+            with (
+                self.subTest(schema_version=schema_version),
+                self.assertRaisesRegex(ValueError, "positive integer"),
+            ):
+                SqliteProjectBackend(
+                    "io.example.invalid", tool_schema_version=schema_version
+                )
+
+        invalid_migrations = ({0: ("SELECT 1",)}, {2: ("SELECT 1",)}, {1: "SQL"})
+        for migrations in invalid_migrations:
+            with self.subTest(migrations=migrations), self.assertRaises(ValueError):
+                SqliteProjectBackend(
+                    "io.example.invalid",
+                    tool_schema_version=2,
+                    tool_migrations=migrations,
+                )
