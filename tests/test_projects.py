@@ -59,13 +59,13 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
         await self.app.configs.save("remote", {"host": "10.0.0.2", "port": 502})
         root = Path(self.temporary.name)
         configs_path = root / "configs.json"
-        await self.app.dispatch(f"configs export {configs_path}")
+        await self.app.dispatch(f'configs export "{configs_path}"')
         document = json.loads(configs_path.read_text(encoding="utf-8"))
         self.assertEqual(document["format"], "ctui-configs")
 
         project_path = root / "shared.ctui-project"
-        await self.app.dispatch(f"project export {project_path}")
-        await self.app.dispatch(f"project import {project_path} --name imported")
+        await self.app.dispatch(f'project export "{project_path}"')
+        await self.app.dispatch(f'project import "{project_path}" --name imported')
         self.assertEqual(self.app.backend.current.name, "imported")
         self.assertEqual((await self.app.configs.get("remote"))["port"], 502)
 

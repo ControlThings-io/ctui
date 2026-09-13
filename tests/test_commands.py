@@ -87,6 +87,17 @@ class CommandTests(unittest.IsolatedAsyncioTestCase):
             },
         )
 
+    def test_quoted_windows_path_preserves_backslashes_and_spaces(self):
+        def inspect_path(path: Path):
+            return path
+
+        item = Command(inspect_path)
+        windows_path = r"C:\Users\Jane Doe\AppData\Local\Temp\result.txt"
+
+        parsed = item.parse_args(f'"{windows_path}"')
+
+        self.assertEqual(str(parsed["path"]), windows_path)
+
     def test_named_options_defaults_and_quoted_strings(self):
         def greet(name: str, loud: bool = False):
             return name

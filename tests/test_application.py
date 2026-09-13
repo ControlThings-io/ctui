@@ -80,16 +80,17 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
         with tempfile.TemporaryDirectory() as folder:
             all_path = Path(folder) / "all.txt"
             recent_path = Path(folder) / "recent.txt"
+            all_command = f'history export "{all_path}"'
 
-            result = await app.dispatch(f"history export {all_path}")
+            result = await app.dispatch(all_command)
             self.assertIn("Exported 2 commands", result.output)
             self.assertEqual(all_path.read_text(encoding="utf-8"), "help\nclear\n")
 
-            result = await app.dispatch(f"history export {recent_path} --count 2")
+            result = await app.dispatch(f'history export "{recent_path}" --count 2')
             self.assertIn("Exported 2 commands", result.output)
             self.assertEqual(
                 recent_path.read_text(encoding="utf-8"),
-                f"clear\nhistory export {all_path}\n",
+                f"clear\n{all_command}\n",
             )
 
             self.assertIn("history export", app.format_help())
