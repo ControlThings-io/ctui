@@ -1,6 +1,6 @@
 """Wrap the standard command interface in a custom layout.
 
-Run: uv run examples/09_custom_layout.py
+Run: uv run examples/10_custom_layout.py
 Try: system status
 """
 

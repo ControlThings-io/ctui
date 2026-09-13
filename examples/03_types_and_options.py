@@ -1,10 +1,13 @@
-"""Use type annotations, defaults, choices, and named values.
+"""Use type annotations, defaults, and constrained positional values.
 
 Run: uv run examples/03_types_and_options.py
 Try: greet Justin
 Try: greet "Justin Searle"
 Try: greet Justin excited
-Try: greet Justin style excited uppercase true
+Try: greet Justin excited true
+
+Parameters are positional unless the ``@command`` configuration gives them
+flags. The next tutorial introduces explicit named arguments.
 """
 
 from typing import Literal

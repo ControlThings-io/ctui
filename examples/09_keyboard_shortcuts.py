@@ -1,6 +1,6 @@
 """Register an application-wide keyboard shortcut.
 
-Run: uv run examples/08_keyboard_shortcuts.py
+Run: uv run examples/09_keyboard_shortcuts.py
 Press F2 several times and watch the status bar.
 """
 

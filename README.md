@@ -162,16 +162,16 @@ statistics. Configs export as versioned JSON, while whole projects export as
 consistent `.ctui-project` SQLite snapshots. Destructive commands show a UI
 confirmation dialog; noninteractive execution requires a trailing `confirm`.
 
-Application command options use keyword/value syntax without dashes, for
-example `history search timeout limit 50 since 7d`. Decorated commands can opt
-out of history and require a formatted confirmation message:
+Application command options use explicitly declared Linux-style flags, for
+example `history search timeout --limit 50 --since 7d`. Decorated commands can
+opt out of history and require a formatted confirmation message.
 
 Export all history, or only the most recent commands, as a reusable command
 file:
 
 ```text
 history export commands.txt
-history export recent-commands.txt count 5
+history export recent-commands.txt --count 5
 ```
 
 The resulting UTF-8 file can be executed later with `-f` or `--file`.

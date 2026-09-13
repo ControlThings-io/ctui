@@ -1,6 +1,6 @@
 """Run several asynchronous commands at the same time.
 
-Run: uv run examples/06_async_and_events.py
+Run: uv run examples/07_async_and_events.py
 Try ``download report.csv``, then ``download photo.jpg`` before it completes.
 Each download randomly takes between 2 and 10 seconds.
 """
