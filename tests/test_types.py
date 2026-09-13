@@ -88,9 +88,7 @@ class IntegerRangesTests(unittest.TestCase):
         self.assertEqual(str(ranges.sorted()), "0-5,3-7,9,9,10-12,15-20,75")
         self.assertEqual(str(ranges.unique()), "0-5,9,15-20,75,10-12,3-7")
         self.assertEqual(str(ranges.merged()), "0-7,9-12,15-20,75")
-        self.assertEqual(
-            str(ranges.merged(adjacent=False)), "0-7,9,10-12,15-20,75"
-        )
+        self.assertEqual(str(ranges.merged(adjacent=False)), "0-7,9,10-12,15-20,75")
         self.assertEqual(str(ranges), "0-5,9,15-20,75,10-12,3-7,9")
 
     def test_expansion_is_lazy_bounded_and_preserves_duplicate_values(self):

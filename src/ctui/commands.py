@@ -227,7 +227,22 @@ class Command:
 
     def __post_init__(self):
         """Derive command metadata and validate argument configuration."""
-        self.name = self.name or _name(self.func)
+        self.name = _name(self.func) if self.name is None else self.name
+        if (
+            not isinstance(self.name, str)
+            or not self.name
+            or self.name != " ".join(self.name.split())
+        ):
+            raise ValueError(
+                "Command names must be non-empty words separated by single spaces"
+            )
+        if any(
+            not isinstance(alias, str) or not alias or alias != " ".join(alias.split())
+            for alias in self.aliases
+        ):
+            raise ValueError(
+                "Command aliases must be non-empty words separated by single spaces"
+            )
         self.string, self.string_parts, self.func_name = (
             self.name,
             self.name.split(),
@@ -240,17 +255,42 @@ class Command:
         self.signature = inspect.signature(self.func)
         try:
             self.hints = get_type_hints(self.func)
-        except NameError, TypeError:
+        except (NameError, TypeError):
             self.hints = {}
         unknown = set(self.arguments) - set(self.signature.parameters)
         if unknown:
             raise ValueError(f"Unknown arguments for {self.name}: {', '.join(unknown)}")
+        unsupported = [
+            parameter.name
+            for parameter in self.parameters
+            if parameter.kind
+            in (
+                inspect.Parameter.POSITIONAL_ONLY,
+                inspect.Parameter.VAR_POSITIONAL,
+                inspect.Parameter.VAR_KEYWORD,
+            )
+        ]
+        if unsupported:
+            raise ValueError(
+                f"Command {self.name!r} uses unsupported parameters: "
+                f"{', '.join(unsupported)}"
+            )
         seen_flags = set()
         for parameter in self.parameters:
             for flag in self.arguments.get(parameter.name, Argument()).flags:
+                if not isinstance(flag, str):
+                    raise ValueError(
+                        f"Invalid flag for {parameter.name}: {flag!r}; "
+                        "use '-x' or '--long-name'"
+                    )
                 if not (
-                    flag.startswith("--") and len(flag) > 2
-                    or flag.startswith("-") and len(flag) == 2
+                    flag.startswith("--")
+                    and not flag.startswith("---")
+                    and len(flag) > 2
+                    and flag[2:].replace("-", "").isalnum()
+                    or flag.startswith("-")
+                    and len(flag) == 2
+                    and flag[1].isalnum()
                 ):
                     raise ValueError(
                         f"Invalid flag for {parameter.name}: {flag!r}; "
@@ -367,6 +407,12 @@ class Command:
                     index += 1
                     values[parameter.name] = convert_at(tokens[index], parameter, index)
                     value_positions[parameter.name] = starts[index]
+                elif not partial:
+                    raise CommandValidationError(
+                        f"Missing value for {option}",
+                        position=len(text),
+                        argument=parameter.name,
+                    )
                 else:
                     pending = parameter
             else:
@@ -466,7 +512,9 @@ class Command:
                 config = self.arguments.get(candidate.name, Argument())
                 for option in config.flags:
                     if candidate.name not in values and option.startswith(word):
-                        annotation = self.hints.get(candidate.name, candidate.annotation)
+                        annotation = self.hints.get(
+                            candidate.name, candidate.annotation
+                        )
                         type_name = getattr(annotation, "__name__", str(annotation))
                         options.append(
                             CompletionItem(
@@ -598,12 +646,23 @@ class Commands:
                 meta.get("record_history", record_history),
                 meta.get("confirmation", confirmation),
             )
-            if item.name in self.commands:
+            if item.name in self.commands or item.name in self.aliases:
                 raise ValueError(f"Command already registered: {item.name}")
+            duplicate_aliases = [
+                alias
+                for alias in item.aliases
+                if alias in self.aliases or alias in self.commands or alias == item.name
+            ]
+            if len(set(item.aliases)) != len(item.aliases):
+                duplicate_aliases.extend(
+                    alias for alias in item.aliases if item.aliases.count(alias) > 1
+                )
+            if duplicate_aliases:
+                raise ValueError(
+                    f"Alias already registered: {sorted(set(duplicate_aliases))[0]}"
+                )
             self.commands[item.name] = item
             for alias in item.aliases:
-                if alias in self.aliases or alias in self.commands:
-                    raise ValueError(f"Alias already registered: {alias}")
                 self.aliases[alias] = item
             return target
 

@@ -6,12 +6,13 @@ Try: change directory .
 """
 
 import asyncio
+import os
 from pathlib import Path
 
 from ctui import Argument, CommandError, CtuiApp, command
 
 
-async def directory_names(context):
+async def directory_names(_context):
     """Suggest directories found under the current working directory."""
     await asyncio.sleep(0)
     return [str(path) for path in Path.cwd().iterdir() if path.is_dir()]
@@ -45,8 +46,6 @@ class FilesystemApp(CtuiApp):
     )
     def change_directory(self, directory: Path) -> str:
         """Change the working directory."""
-        import os
-
         os.chdir(directory)
         return f"Changed to {Path.cwd()}"
 

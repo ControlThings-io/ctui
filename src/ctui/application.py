@@ -256,38 +256,36 @@ class CtuiApp:
         if item.confirmation and not confirmed:
             try:
                 message = item.confirmation.format(**kwargs)
-            except KeyError as error:
-                raise CommandError(
-                    f"Invalid confirmation placeholder: {error.args[0]}"
-                ) from error
+            except (KeyError, ValueError, IndexError, AttributeError) as error:
+                raise CommandError(f"Invalid confirmation template: {error}") from error
             if confirm_callback is None:
                 raise ConfirmationRequired(message)
             approved = confirm_callback(message)
             approved = await approved if inspect.isawaitable(approved) else approved
             if not approved:
                 return CommandResult.rejected()
-        await self.events.emit("command_started", command=item, arguments=kwargs)
         try:
+            await self.events.emit("command_started", command=item, arguments=kwargs)
             raw = await item.execute(app=self, raw_input=text, **kwargs)
-        except CommandError:
+            if isinstance(raw, CommandResult):
+                result = raw
+            elif isinstance(raw, str):
+                result = CommandResult(output=raw)
+            else:
+                raise TypeError(
+                    f'Command "{item.name}" must return str or CommandResult, '
+                    f"not {type(raw).__name__}"
+                )
+            if result.accepted:
+                if item.record_history:
+                    appended = self.history.append(text)
+                    if inspect.isawaitable(appended):
+                        await appended
+                await self.events.emit("command_finished", command=item, result=result)
+            return result
+        except Exception:
             await self.events.emit("command_failed", command=item)
             raise
-        if isinstance(raw, CommandResult):
-            result = raw
-        elif isinstance(raw, str):
-            result = CommandResult(output=str(raw))
-        else:
-            raise TypeError(
-                f'Command "{item.name}" must return str or CommandResult, '
-                f"not {type(raw).__name__}"
-            )
-        if result.accepted:
-            if item.record_history:
-                appended = self.history.append(text)
-                if inspect.isawaitable(appended):
-                    await appended
-            await self.events.emit("command_finished", command=item, result=result)
-        return result
 
     def _build_application(self):
         """Construct prompt-toolkit layout, bindings, style, and application."""
@@ -304,22 +302,35 @@ class CtuiApp:
             full_screen=True,
         )
 
-    async def run_async(self):
-        """Run the terminal application in the caller's event loop."""
-        if self.backend is not None:
-            await self.backend.open()
-        await self._hook(self.on_start)
-        self._build_application()
-        await self._hook(self.on_ready)
+    async def _close_runtime(self, backend_opened):
+        """Close configured services, preserving backend cleanup on failure."""
         try:
-            return await self.app.run_async()
-        finally:
-            await self._hook(self.on_stop)
             closed = self.storage.close()
             if inspect.isawaitable(closed):
                 await closed
-            if self.backend is not None:
+        finally:
+            if backend_opened:
                 await self.backend.close()
+
+    async def run_async(self):
+        """Run the terminal application in the caller's event loop."""
+        backend_opened = False
+        started = False
+        try:
+            if self.backend is not None:
+                backend_opened = True
+                await self.backend.open()
+            await self._hook(self.on_start)
+            started = True
+            self._build_application()
+            await self._hook(self.on_ready)
+            return await self.app.run_async()
+        finally:
+            try:
+                if started:
+                    await self._hook(self.on_stop)
+            finally:
+                await self._close_runtime(backend_opened)
 
     @staticmethod
     def _parse_cli_operations(arguments):
@@ -382,10 +393,14 @@ class CtuiApp:
             print(self.format_cli_help(program), file=stderr)
             return 2
 
-        if self.backend is not None:
-            await self.backend.open()
-        await self._hook(self.on_start)
+        backend_opened = False
+        started = False
         try:
+            if self.backend is not None:
+                backend_opened = True
+                await self.backend.open()
+            await self._hook(self.on_start)
+            started = True
             for text in commands:
                 try:
                     result = await self.dispatch(text)
@@ -393,18 +408,23 @@ class CtuiApp:
                     print(f"{self.format_command_error(text, error)}\n", file=stderr)
                     print(self.format_cli_help(program), file=stderr)
                     return 2
+                except Exception as error:  # Application code failed unexpectedly.
+                    print(
+                        f"Error: Unexpected {type(error).__name__}: {error}",
+                        file=stderr,
+                    )
+                    return 1
                 if result.output is not None:
                     print(result.output, file=stdout)
                 if result.exit_requested:
                     break
             return 0
         finally:
-            await self._hook(self.on_stop)
-            closed = self.storage.close()
-            if inspect.isawaitable(closed):
-                await closed
-            if self.backend is not None:
-                await self.backend.close()
+            try:
+                if started:
+                    await self._hook(self.on_stop)
+            finally:
+                await self._close_runtime(backend_opened)
 
     def run(self, argv=None):
         """Open the UI without arguments, otherwise run terminal operations."""

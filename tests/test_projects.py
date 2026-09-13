@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ctui import ConfirmationRequired, CtuiApp
+from ctui import CommandError, ConfirmationRequired, CtuiApp
 
 
 class ProjectTests(unittest.IsolatedAsyncioTestCase):
@@ -88,3 +88,18 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
             )
         )
         self.assertEqual((await self.app.backend.stats())["records"], 50)
+
+    async def test_invalid_names_limits_and_config_documents_are_command_errors(self):
+        for name in ("", " ", " trailing ", "bad\nname"):
+            with self.subTest(name=name), self.assertRaises(CommandError):
+                await self.app.backend.create(name)
+
+        with self.assertRaisesRegex(CommandError, "history limit"):
+            await self.app.history.search("anything", limit=-1)
+        with self.assertRaisesRegex(CommandError, "record limit"):
+            await self.app.records.query(limit=-1)
+
+        invalid = Path(self.temporary.name) / "configs.json"
+        invalid.write_text("[]", encoding="utf-8")
+        with self.assertRaisesRegex(CommandError, "JSON object"):
+            await self.app.configs.import_file(invalid, self.app.app_id)

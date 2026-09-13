@@ -28,12 +28,15 @@ class _Cursor:
 
     @property
     def lastrowid(self):
+        """Return the row identifier produced by the last insert."""
         return self.cursor.lastrowid
 
     async def fetchone(self):
+        """Fetch one result row without blocking the event loop."""
         return await self.connection._run(self.cursor.fetchone)
 
     async def fetchall(self):
+        """Fetch all remaining result rows without blocking the event loop."""
         return await self.connection._run(self.cursor.fetchall)
 
 
@@ -49,21 +52,27 @@ class _Connection:
             return function(*args)
 
     async def execute(self, sql, parameters=()):
+        """Execute one SQL statement and return its cursor facade."""
         return _Cursor(self, await self._run(self.raw.execute, sql, parameters))
 
     async def executescript(self, script):
+        """Execute a SQL script and return its cursor facade."""
         return _Cursor(self, await self._run(self.raw.executescript, script))
 
     async def commit(self):
+        """Commit the current transaction."""
         await self._run(self.raw.commit)
 
     async def rollback(self):
+        """Roll back the current transaction."""
         await self._run(self.raw.rollback)
 
     async def close(self):
+        """Close the underlying SQLite connection."""
         await self._run(self.raw.close)
 
     async def backup(self, destination: "_Connection"):
+        """Copy this database into *destination*."""
         await self._run(self.raw.backup, destination.raw)
 
 
@@ -104,6 +113,15 @@ def _json(value: Any) -> str | None:
     return None if value is None else json.dumps(value, separators=(",", ":"))
 
 
+def _validate_name(name: str, label: str) -> str:
+    """Return a usable user-facing name or raise a concise command error."""
+    if not isinstance(name, str) or not name.strip():
+        raise CommandError(f"{label} name cannot be empty")
+    if name != name.strip() or any(character in name for character in "\r\n\0"):
+        raise CommandError(f"{label} name contains unsupported whitespace")
+    return name
+
+
 class ProjectHistory:
     """Store command history in the currently active project."""
 
@@ -111,6 +129,7 @@ class ProjectHistory:
         self.backend = backend
 
     async def append(self, command: str) -> None:
+        """Append an accepted command to the active project."""
         db = self.backend.connection
         await db.execute(
             "INSERT INTO history(command, timestamp) VALUES (?, ?)",
@@ -120,6 +139,7 @@ class ProjectHistory:
         await self.backend.touch()
 
     async def all(self) -> list[HistoryEntry]:
+        """Return active-project history in insertion order."""
         cursor = await self.backend.connection.execute(
             "SELECT command, timestamp FROM history ORDER BY id"
         )
@@ -129,6 +149,9 @@ class ProjectHistory:
     async def search(
         self, keyword: str, *, limit: int = 0, since: str | None = None
     ) -> list[HistoryEntry]:
+        """Find history containing *keyword*, optionally by age and count."""
+        if limit < 0:
+            raise CommandError("history limit cannot be negative")
         sql = "SELECT command, timestamp FROM history WHERE command LIKE ?"
         values: list[Any] = [f"%{keyword}%"]
         if since:
@@ -145,6 +168,7 @@ class ProjectHistory:
         return [HistoryEntry(row[0], datetime.fromisoformat(row[1])) for row in rows]
 
     async def clear(self) -> None:
+        """Remove all history from the active project."""
         await self.backend.connection.execute("DELETE FROM history")
         await self.backend.connection.commit()
         await self.backend.touch()
@@ -158,12 +182,14 @@ class ProjectConfigs:
         self.templates: dict[str, dict[str, Any]] = {}
 
     def register_template(self, name: str, values: dict[str, Any]) -> None:
-        if not name:
+        """Register a JSON-compatible config populated in every project."""
+        if not isinstance(name, str) or not name.strip():
             raise ValueError("A config template requires a name")
         json.dumps(values)
         self.templates[name] = json.loads(json.dumps(values))
 
     async def initialize_templates(self) -> None:
+        """Add any missing registered templates to the active project."""
         for name, values in self.templates.items():
             await self.backend.connection.execute(
                 "INSERT OR IGNORE INTO configs(name, value, template) VALUES (?, ?, 1)",
@@ -172,12 +198,14 @@ class ProjectConfigs:
         await self.backend.connection.commit()
 
     async def list(self) -> dict[str, Any]:
+        """Return all configs in the active project, ordered by name."""
         cursor = await self.backend.connection.execute(
             "SELECT name, value FROM configs ORDER BY name"
         )
         return {row[0]: json.loads(row[1]) for row in await cursor.fetchall()}
 
     async def get(self, name: str) -> Any:
+        """Return one named config or raise ``CommandError``."""
         cursor = await self.backend.connection.execute(
             "SELECT value FROM configs WHERE name = ?", (name,)
         )
@@ -187,6 +215,8 @@ class ProjectConfigs:
         return json.loads(row[0])
 
     async def save(self, name: str, values: Any) -> None:
+        """Create or replace a JSON-compatible named config."""
+        _validate_name(name, "Config")
         encoded = _json(values)
         await self.backend.connection.execute(
             """INSERT INTO configs(name, value, template) VALUES (?, ?, 0)
@@ -197,6 +227,7 @@ class ProjectConfigs:
         await self.backend.touch()
 
     async def delete(self, name: str) -> None:
+        """Delete a named config when it exists."""
         await self.backend.connection.execute(
             "DELETE FROM configs WHERE name = ?", (name,)
         )
@@ -204,11 +235,13 @@ class ProjectConfigs:
         await self.backend.touch()
 
     async def reset(self) -> None:
+        """Delete configs and restore registered templates."""
         await self.backend.connection.execute("DELETE FROM configs")
         await self.initialize_templates()
         await self.backend.touch()
 
     async def export_file(self, path: Path, app_id: str) -> None:
+        """Write configs to a versioned UTF-8 JSON document."""
         document = {
             "format": "ctui-configs",
             "version": 1,
@@ -218,10 +251,13 @@ class ProjectConfigs:
         path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
 
     async def import_file(self, path: Path, app_id: str) -> int:
+        """Merge a compatible config document and return its item count."""
         try:
             document = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as error:
             raise CommandError(f"Cannot import configs: {error}") from error
+        if not isinstance(document, dict):
+            raise CommandError("Config export must contain a JSON object")
         if document.get("format") != "ctui-configs" or document.get("version") != 1:
             raise CommandError("Unsupported config export format")
         if document.get("app_id") != app_id:
@@ -254,6 +290,7 @@ class ProjectRecords:
         self.backend = backend
 
     async def start_session(self, protocol: str, metadata: Any = None) -> int:
+        """Start a recording session and return its database identifier."""
         cursor = await self.backend.connection.execute(
             "INSERT INTO record_sessions(protocol, started_at, metadata) VALUES (?, ?, ?)",
             (protocol, _now(), _json(metadata)),
@@ -262,6 +299,7 @@ class ProjectRecords:
         return cursor.lastrowid
 
     async def end_session(self, session_id: int) -> None:
+        """Mark a recording session as ended."""
         await self.backend.connection.execute(
             "UPDATE record_sessions SET ended_at = ? WHERE id = ?",
             (_now(), session_id),
@@ -278,6 +316,7 @@ class ProjectRecords:
         decoded: Any = None,
         metadata: Any = None,
     ) -> int:
+        """Append a protocol interaction and return its database identifier."""
         cursor = await self.backend.connection.execute(
             """INSERT INTO records
                (session_id, timestamp, direction, protocol, payload, decoded, metadata)
@@ -305,6 +344,8 @@ class ProjectRecords:
         limit: int = 0,
     ) -> list[RecordEntry]:
         """Query records using generic fields understood by Ctui."""
+        if limit < 0:
+            raise CommandError("record limit cannot be negative")
         clauses, values = [], []
         for column, value in (
             ("session_id", session),
@@ -352,6 +393,7 @@ class SqliteProjectBackend:
         tool_version: str = "",
         tool_schema_version: int = 1,
     ):
+        """Configure project identity, storage location, and service facades."""
         self.app_id = app_id
         self.tool_version = tool_version
         self.tool_schema_version = tool_schema_version
@@ -372,6 +414,7 @@ class SqliteProjectBackend:
         self.records = ProjectRecords(self)
 
     async def open(self) -> None:
+        """Open the catalog and activate the last-used or default project."""
         self.databases_dir.mkdir(parents=True, exist_ok=True)
         self.catalog = await _connect(self.catalog_path)
         await self.catalog.execute("PRAGMA foreign_keys = ON")
@@ -392,6 +435,7 @@ class SqliteProjectBackend:
         await self.load(selected.name)
 
     async def close(self) -> None:
+        """Close active-project and catalog database connections."""
         if self.connection:
             await self.connection.close()
             self.connection = None
@@ -407,7 +451,7 @@ class SqliteProjectBackend:
             return json.loads(self.state_path.read_text(encoding="utf-8")).get(
                 "active_project"
             )
-        except OSError, json.JSONDecodeError, AttributeError:
+        except (OSError, json.JSONDecodeError, AttributeError):
             return None
 
     def _write_state(self) -> None:
@@ -472,12 +516,14 @@ class SqliteProjectBackend:
         await self.connection.commit()
 
     async def list_projects(self) -> list[ProjectInfo]:
+        """Return catalog projects ordered by name."""
         cursor = await self.catalog.execute(
             "SELECT id, name, created_at, modified_at FROM projects ORDER BY name"
         )
         return [ProjectInfo(*row) for row in await cursor.fetchall()]
 
     async def find(self, name: str) -> ProjectInfo:
+        """Return a project by exact name or raise ``CommandError``."""
         cursor = await self.catalog.execute(
             "SELECT id, name, created_at, modified_at FROM projects WHERE name = ?",
             (name,),
@@ -488,6 +534,8 @@ class SqliteProjectBackend:
         return ProjectInfo(*row)
 
     async def create(self, name: str, *, activate: bool = True) -> ProjectInfo:
+        """Create a project and optionally make it active."""
+        _validate_name(name, "Project")
         project_id, now = str(uuid.uuid4()), _now()
         try:
             await self.catalog.execute(
@@ -506,11 +554,14 @@ class SqliteProjectBackend:
         return info
 
     async def load(self, name: str) -> ProjectInfo:
+        """Make an existing project active."""
         info = await self.find(name)
         await self._open_project(info)
         return info
 
     async def rename(self, name: str) -> ProjectInfo:
+        """Rename the active project."""
+        _validate_name(name, "Project")
         try:
             await self.catalog.execute(
                 "UPDATE projects SET name = ?, modified_at = ? WHERE id = ?",
@@ -528,6 +579,7 @@ class SqliteProjectBackend:
         return self.current
 
     async def delete(self, name: str) -> None:
+        """Permanently delete an inactive project and its database files."""
         info = await self.find(name)
         if info.id == self.current.id:
             raise CommandError(
@@ -543,6 +595,8 @@ class SqliteProjectBackend:
                 pass
 
     async def saveas(self, name: str) -> ProjectInfo:
+        """Clone the active project under *name* and activate the clone."""
+        _validate_name(name, "Project")
         project_id, now = str(uuid.uuid4()), _now()
         try:
             await self.catalog.execute(
@@ -562,6 +616,7 @@ class SqliteProjectBackend:
         return info
 
     async def export_project(self, path: Path) -> None:
+        """Export a consistent SQLite snapshot of the active project."""
         destination = await _connect(path)
         try:
             await self.connection.backup(destination)
@@ -569,6 +624,7 @@ class SqliteProjectBackend:
             await destination.close()
 
     async def import_project(self, path: Path, name: str | None = None) -> ProjectInfo:
+        """Import and activate a compatible project snapshot."""
         if not path.is_file():
             raise CommandError(f"Project file does not exist: {path}")
         source = await _connect(f"file:{path}?mode=ro", uri=True)
@@ -603,6 +659,7 @@ class SqliteProjectBackend:
         return info
 
     async def reset(self, section: str) -> None:
+        """Clear one data section, restoring templates when appropriate."""
         tables = {
             "history": ("history",),
             "records": ("records", "record_sessions"),
@@ -624,6 +681,7 @@ class SqliteProjectBackend:
         await self.touch()
 
     async def stats(self) -> dict[str, Any]:
+        """Return counts, payload size, and path for the active project."""
         values = {}
         for key, table in (
             ("configs", "configs"),
@@ -641,6 +699,7 @@ class SqliteProjectBackend:
         return values
 
     async def touch(self) -> None:
+        """Update modification metadata for the active project."""
         now = _now()
         await self.catalog.execute(
             "UPDATE projects SET modified_at = ? WHERE id = ?", (now, self.current.id)

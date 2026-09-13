@@ -2,6 +2,9 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+from prompt_toolkit.layout.containers import Window
+from prompt_toolkit.widgets import TextArea
+
 from ctui.application import CtuiApp
 from ctui.functions import (
     scroll_end,
@@ -40,6 +43,24 @@ class StatusbarTests(unittest.TestCase):
         self.assertEqual(layout.statusbar.content.text(), "first")
         status[0] = "second"
         self.assertEqual(layout.statusbar.content.text(), "second")
+
+    def test_layout_honors_injected_widgets_and_root_container(self):
+        input_field = TextArea(height=1)
+        output_field = TextArea()
+        statusbar = Window(height=1)
+        root = Window()
+        layout = CtuiLayout(
+            CtuiApp(),
+            input_field=input_field,
+            output_field=output_field,
+            statusbar=statusbar,
+            root_container=root,
+        )
+
+        self.assertIs(layout.input_field, input_field)
+        self.assertIs(layout.output_field, output_field)
+        self.assertIs(layout.statusbar, statusbar)
+        self.assertIs(layout.root_container, root)
 
     def test_output_is_read_only_and_does_not_take_focus(self):
         layout = CtuiLayout(CtuiApp())

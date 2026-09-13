@@ -11,12 +11,9 @@ from random import Random
 from string import ascii_letters, digits
 from typing import Generic, Iterator, Sequence, TypeVar
 
-
 _BYTE_ESCAPE = re.compile(r"(?:\\x[0-9a-fA-F]{2})+")
 _CONTIGUOUS = re.compile(r"[0-9a-fA-F]+")
-_PREFIXED_BYTES = re.compile(
-    r"0x[0-9a-f]{2}(?:\s+0x[0-9a-f]{2})*", re.IGNORECASE
-)
+_PREFIXED_BYTES = re.compile(r"0x[0-9a-f]{2}(?:\s+0x[0-9a-f]{2})*", re.IGNORECASE)
 _WHITESPACE_BYTES = re.compile(r"[0-9a-fA-F]{2}(?:\s+[0-9a-fA-F]{2})+")
 _SEPARATED_BYTES = re.compile(
     r"[0-9a-fA-F]{2}(?P<separator>[:_-])[0-9a-fA-F]{2}"
@@ -244,9 +241,7 @@ class IntegerRanges:
         for span in ordered[1:]:
             previous = combined[-1]
             joins = (
-                span.start <= previous.stop
-                if adjacent
-                else span.start < previous.stop
+                span.start <= previous.stop if adjacent else span.start < previous.stop
             )
             if joins:
                 stop = max(previous.stop, span.stop)
@@ -551,9 +546,7 @@ def _unicode_escape(source: str, index: int) -> tuple[str, int] | None:
         return None
     character = chr(int(digits_value, 16))
     if 0xD800 <= ord(character) <= 0xDFFF:
-        raise ValueError(
-            "Unicode surrogate code points are not valid string values"
-        )
+        raise ValueError("Unicode surrogate code points are not valid string values")
     return character, index + 1 + width
 
 
@@ -607,10 +600,7 @@ def _string_class(source: str, start: int) -> tuple[tuple[str, ...], int]:
     position = 0
     while position < len(tokens):
         first, _ = tokens[position]
-        if (
-            position + 2 < len(tokens)
-            and tokens[position + 1] == ("-", False)
-        ):
+        if position + 2 < len(tokens) and tokens[position + 1] == ("-", False):
             last = tokens[position + 2][0]
             if ord(first) > 127 or ord(last) > 127:
                 raise ValueError("string ranges are limited to ASCII characters")
@@ -663,9 +653,7 @@ def _string_alternatives(source: str, start: int) -> tuple[tuple[str, ...], int]
         for first in unique
         for second in unique
     ):
-        raise ValueError(
-            "string alternatives cannot be prefixes of other alternatives"
-        )
+        raise ValueError("string alternatives cannot be prefixes of other alternatives")
     return unique, index + 1
 
 
@@ -696,9 +684,7 @@ class FuzzyStringPattern(_FinitePattern[str]):
                 choices, index = _string_escape(source, index + 1)
                 parts.append(choices)
             elif character in "]}":
-                raise ValueError(
-                    f"unexpected string pattern character: {character!r}"
-                )
+                raise ValueError(f"unexpected string pattern character: {character!r}")
             elif 0xD800 <= ord(character) <= 0xDFFF:
                 raise ValueError(
                     "Unicode surrogate code points are not valid string values"

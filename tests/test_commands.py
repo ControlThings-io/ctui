@@ -91,9 +91,7 @@ class CommandTests(unittest.IsolatedAsyncioTestCase):
         def greet(name: str, loud: bool = False):
             return name
 
-        item = Command(
-            greet, arguments={"loud": Argument(flags=("-l", "--loud"))}
-        )
+        item = Command(greet, arguments={"loud": Argument(flags=("-l", "--loud"))})
         values = item.parse_args('--loud "Ada Lovelace"')
         self.assertEqual(values, {"loud": True, "name": "Ada Lovelace"})
         self.assertEqual(
@@ -129,6 +127,18 @@ class CommandTests(unittest.IsolatedAsyncioTestCase):
             {"keyword": "timeout", "limit": 50, "since": "7d"},
         )
         self.assertEqual(item.parse_args("-- -literal"), {"keyword": "-literal"})
+
+    def test_named_argument_without_value_is_rejected_even_when_optional(self):
+        def search(keyword: str, limit: int = 0):
+            pass
+
+        item = Command(search, arguments={"limit": Argument(flags=("-n", "--limit"))})
+        for text in ("term -n", "term --limit"):
+            with (
+                self.subTest(text=text),
+                self.assertRaisesRegex(CommandValidationError, "Missing value"),
+            ):
+                item.parse_args(text)
 
     def test_required_named_argument_cannot_be_passed_positionally(self):
         def deploy(target: str, environment: str):
@@ -250,3 +260,58 @@ class CommandTests(unittest.IsolatedAsyncioTestCase):
                     "second": Argument(flags=("-x",)),
                 },
             )
+
+    def test_unsupported_variadic_signatures_are_rejected_at_registration(self):
+        with self.assertRaisesRegex(ValueError, "unsupported parameters"):
+            Command(lambda *values: None)
+        with self.assertRaisesRegex(ValueError, "unsupported parameters"):
+            Command(lambda **values: None)
+
+    def test_names_flags_and_positional_only_parameters_are_validated(self):
+        def ordinary(value: str):
+            return value
+
+        for name in ("", " leading", "trailing ", "two  spaces"):
+            with (
+                self.subTest(name=name),
+                self.assertRaisesRegex(ValueError, "Command names"),
+            ):
+                Command(ordinary, name=name)
+
+        with self.assertRaisesRegex(ValueError, "Command aliases"):
+            Command(ordinary, aliases=("bad  alias",))
+
+        for flag in (1, "---long", "--bad_name", "--", "-ab", "-_"):
+            with (
+                self.subTest(flag=flag),
+                self.assertRaisesRegex(ValueError, "Invalid flag"),
+            ):
+                Command(ordinary, arguments={"value": Argument(flags=(flag,))})
+
+        def positional_only(value, /):
+            return value
+
+        with self.assertRaisesRegex(ValueError, "unsupported parameters: value"):
+            Command(positional_only)
+
+    def test_registration_collisions_do_not_partially_modify_registry(self):
+        commands = Commands()
+
+        @commands.register(aliases=("run",))
+        def execute():
+            pass
+
+        with self.assertRaisesRegex(ValueError, "already registered"):
+
+            @commands.register(name="run")
+            def conflicting_name():
+                pass
+
+        with self.assertRaisesRegex(ValueError, "already registered"):
+
+            @commands.register(name="inspect", aliases=("run",))
+            def conflicting_alias():
+                pass
+
+        self.assertEqual(commands.strings, ["execute"])
+        self.assertEqual(list(commands.aliases), ["run"])

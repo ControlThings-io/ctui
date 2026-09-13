@@ -81,6 +81,23 @@ class CliTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Error:", errors.getvalue())
         self.assertIn("Usage: tool", errors.getvalue())
 
+    async def test_unexpected_command_exception_returns_runtime_failure(self):
+        app = CliApp(register_defaults=False)
+
+        @app.commands.register
+        def crash():
+            raise RuntimeError("database disconnected")
+
+        output, errors = io.StringIO(), io.StringIO()
+        status = await app.run_cli(
+            ["-c", "crash"], stdout=output, stderr=errors, program="tool"
+        )
+        self.assertEqual(status, 1)
+        self.assertEqual(output.getvalue(), "")
+        self.assertIn(
+            "Unexpected RuntimeError: database disconnected", errors.getvalue()
+        )
+
 
 class RunRoutingTests(unittest.TestCase):
     def test_no_arguments_select_full_screen_ui(self):

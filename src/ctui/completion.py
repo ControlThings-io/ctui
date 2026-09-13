@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import shlex
+
 from prompt_toolkit.completion import Completer, Completion
 
 from ctui.commands import CommandNotFound, Commands
@@ -103,8 +105,6 @@ class CommandCompleter(Completer):
         if input_at_boundary:
             argument_text += " "
         completed, word, _ = _argument_state(argument_text)
-        import shlex
-
         completion_text = shlex.join(completed)
         if completion_text:
             completion_text += " "

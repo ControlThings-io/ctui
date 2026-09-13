@@ -5,31 +5,43 @@ full-screen terminal interfaces and traditional command-line programs. Write
 ordinary typed functions; ctui supplies parsing, validation, async execution,
 completion, history, layout, and automatic CLI routing.
 
+## Installation
+
+ctui requires Python 3.11 or newer:
+
+```bash
+python -m pip install ctui
+```
+
 ## Quick start
 
 ```python
 from pathlib import Path
 from typing import Literal
-from ctui import CommandError, CtuiApp, command
+from ctui import Argument, CommandError, CtuiApp, command
 
 class FileTool(CtuiApp):
     name = "files"
     prompt = "files> "
 
-    @command(aliases=("ls",))
+    @command(
+        aliases=("ls",),
+        arguments={"order": Argument(flags=("-o", "--order"))},
+    )
     async def list_files(self, directory: Path = Path("."),
                          order: Literal["name", "size"] = "name") -> str:
         """List files in a directory."""
         if not directory.is_dir():
             raise CommandError(f"Not a directory: {directory}")
-        return "\n".join(item.name for item in directory.iterdir())
+        key = (lambda item: item.stat().st_size) if order == "size" else None
+        return "\n".join(item.name for item in sorted(directory.iterdir(), key=key))
 
 FileTool().run()
 ```
 
 Commands can be sync or async. Applications already inside an event loop can
 use `await app.run_async()`. Test without a terminal using
-`await app.dispatch("list files . order size")`.
+`await app.dispatch("list files . --order size")`.
 
 ## Automatic command-line mode
 
@@ -52,7 +64,7 @@ Use `-c` or `--command` to run commands without opening the UI. Repeat the
 option to execute several commands sequentially:
 
 ```bash
-python my_tool.py -c "list files ." -c "list files /tmp order size"
+python my_tool.py -c "list files ." -c "list files /tmp --order size"
 ```
 
 Use `-f` or `--file` to read commands from a UTF-8 text file. Blank lines and
@@ -117,12 +129,16 @@ This accepts forms such as `deploy api -e prod`,
 arguments act as flags; all parameters without `flags` are positional.
 
 Supported annotations include `str`, `int`, `float`, `bool`, `Path`, `Enum`,
-`Literal`, `Optional`, and comma-separated collections.
+`Literal`, `Optional`, and comma-separated collections. Normal Python
+parameters are supported; positional-only parameters, `*args`, and `**kwargs`
+are rejected during registration because their CLI meaning would be ambiguous.
 
 Use `list[int]`, `tuple[int, ...]`, or `set[int]` for simple comma-separated
 integers. Use `IntegerRanges` when an argument also accepts inclusive ranges:
 
 ```python
+from ctui import IntegerRanges, command
+
 @command
 def scan(self, addresses: IntegerRanges):
     for span in addresses:
@@ -158,6 +174,8 @@ ASCII-bounded; explicitly written Unicode characters are preserved.
 Expansion is lazy but guarded by a default limit of 65,536 complete results:
 
 ```python
+from ctui import FuzzyHexPattern, FuzzyStringPattern, command
+
 @command
 def scan(self, pattern: FuzzyHexPattern):
     for payload in pattern.expand(limit=1_000):

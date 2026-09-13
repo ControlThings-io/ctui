@@ -13,48 +13,14 @@ Control Things User Interface, aka ctui.py
 # details at <http://www.gnu.org/licenses/>.
 """
 
-from __future__ import unicode_literals
-
-from functools import partial
-
-import six
 from prompt_toolkit.application.current import get_app
-from prompt_toolkit.auto_suggest import DynamicAutoSuggest
-from prompt_toolkit.buffer import Buffer
-from prompt_toolkit.document import Document
-from prompt_toolkit.filters import Condition, has_focus, is_done, is_true, to_filter
-from prompt_toolkit.formatted_text import Template, is_formatted_text, to_formatted_text
-from prompt_toolkit.formatted_text.utils import fragment_list_to_text
 from prompt_toolkit.key_binding.key_bindings import KeyBindings
-from prompt_toolkit.keys import Keys
-from prompt_toolkit.layout.containers import (
-    ConditionalContainer,
-    DynamicContainer,
-    Float,
-    FloatContainer,
-    HSplit,
-    VSplit,
-    Window,
-    WindowAlign,
-    is_container,
-)
-from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
-from prompt_toolkit.layout.dimension import Dimension as D
-from prompt_toolkit.layout.dimension import is_dimension, to_dimension
-from prompt_toolkit.layout.margins import NumberedMargin, ScrollbarMargin
-from prompt_toolkit.layout.processors import (
-    AppendAutoSuggestion,
-    BeforeInput,
-    ConditionalProcessor,
-    PasswordProcessor,
-)
-from prompt_toolkit.lexers import DynamicLexer
+from prompt_toolkit.layout.containers import Window, WindowAlign
+from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.mouse_events import MouseEventType
-from prompt_toolkit.utils import get_cwidth
-from prompt_toolkit.widgets.toolbars import SearchToolbar
 
 
-class Button(object):
+class Button:
     """
     Clickable button, copied from prompt_toolkit/widgets/base.py, fixed width bug.
 
@@ -65,7 +31,7 @@ class Button(object):
 
     def __init__(self, text, handler=None, width=12):
         """Create a focusable button with a minimum display width."""
-        assert isinstance(text, six.text_type)
+        assert isinstance(text, str)
         assert handler is None or callable(handler)
         assert isinstance(width, int)
 
@@ -82,8 +48,7 @@ class Button(object):
             """Return the style class appropriate to the current focus state."""
             if get_app().layout.has_focus(self):
                 return "class:button.focused"
-            else:
-                return "class:button"
+            return "class:button"
 
         self.window = Window(
             self.control,

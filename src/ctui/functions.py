@@ -84,9 +84,7 @@ def scroll_end(event, output_field):
 
 def show_help(ctui):
     """Display a dialog listing top-level commands for *ctui*."""
-    dialog = "{}\n\n{}\n\nAvaiable commands are:\n\n".format(
-        ctui.welcome, ctui.help_message
-    )
+    dialog = f"{ctui.welcome}\n\n{ctui.help_message}\n\nAvailable commands are:\n\n"
     table = []
     for command in ctui.commands:
         if len(command.string.split()) == 1:

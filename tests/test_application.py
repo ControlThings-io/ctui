@@ -1,9 +1,9 @@
-import unittest
 import tempfile
+import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from ctui import CommandResult, ConfirmationRequired, CtuiApp, command
+from ctui import CommandError, CommandResult, ConfirmationRequired, CtuiApp, command
 from ctui.commands import Argument, CommandNotFound, CommandValidationError
 from ctui.keybindings import get_key_bindings
 from ctui.layout import CtuiLayout
@@ -137,6 +137,35 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(TypeError, "must return str or CommandResult"):
             await app.dispatch("invalid")
 
+    async def test_all_execution_failures_emit_command_failed(self):
+        app = CtuiApp(register_defaults=False)
+        failed = []
+        app.on("command_failed", lambda command: failed.append(command.name))
+
+        @app.commands.register
+        def crashes():
+            raise RuntimeError("broken")
+
+        @app.commands.register
+        def invalid_result():
+            return None
+
+        with self.assertRaisesRegex(RuntimeError, "broken"):
+            await app.dispatch("crashes")
+        with self.assertRaisesRegex(TypeError, "must return"):
+            await app.dispatch("invalid result")
+        self.assertEqual(failed, ["crashes", "invalid result"])
+
+    async def test_malformed_confirmation_template_is_a_command_error(self):
+        app = CtuiApp(register_defaults=False)
+
+        @app.commands.register(confirmation="Delete {name!invalid}?")
+        def delete(name: str):
+            return name
+
+        with self.assertRaisesRegex(CommandError, "Invalid confirmation"):
+            await app.dispatch("delete old")
+
     async def test_validation_error_points_to_argument_start(self):
         app = CtuiApp(register_defaults=False)
 
@@ -189,6 +218,40 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
 
     def test_terminal_mouse_capture_is_disabled_by_default(self):
         self.assertFalse(CtuiApp.mouse_support)
+
+    async def test_startup_failure_still_closes_storage_and_open_backend(self):
+        calls = []
+
+        class Backend:
+            history = MemoryHistory()
+            configs = None
+            records = None
+
+            async def open(self):
+                calls.append("backend open")
+
+            async def close(self):
+                calls.append("backend close")
+
+        class Storage(MemoryStorage):
+            def close(self):
+                calls.append("storage close")
+
+        class FailingApp(CtuiApp):
+            async def on_start(self):
+                calls.append("start")
+                raise RuntimeError("startup failed")
+
+            async def on_stop(self):
+                calls.append("stop")
+
+        app = FailingApp(backend=Backend(), storage=Storage(), register_defaults=False)
+        with self.assertRaisesRegex(RuntimeError, "startup failed"):
+            await app.run_cli([])
+        self.assertEqual(
+            calls,
+            ["backend open", "start", "storage close", "backend close"],
+        )
 
     def test_standard_input_editing_keys_are_registered(self):
         app = Demo()
