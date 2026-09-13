@@ -7,6 +7,8 @@ Replace `1.0.0` in the commands when preparing a later version.
 
 - [ ] Confirm `pyproject.toml` contains the intended version.
 - [ ] Confirm `CHANGELOG.md` describes that version and uses the release date.
+- [ ] For a prerelease, use the PEP 440 form `1.0.0rc1` in
+      `pyproject.toml` and the matching `v1.0.0rc1` Git tag.
 - [ ] Confirm `uv.lock` is current with `uv lock --check`.
 - [ ] Confirm `git status --short` is empty.
 - [ ] Review the comparison with the previous release tag.
@@ -53,6 +55,8 @@ git push origin v1.0.0
 - [ ] Watch the **Publish release to PyPI** workflow through verification,
       artifact smoke tests, attestation, publication, and GitHub release
       creation.
+- [ ] Confirm prerelease tags produce a GitHub prerelease that is not marked as
+      the latest stable release.
 - [ ] Do not reuse a failed or incorrect release version; fix the problem and
       increment the version according to semantic versioning.
 

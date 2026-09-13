@@ -9,8 +9,38 @@ on:
       - "v[0-9]+.[0-9]+.[0-9]+[ab][0-9]+"
 
 jobs:
+  release-metadata:
+    name: Validate release metadata
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify tag matches package version
+        shell: bash
+        run: |
+          package_version="$(python3 - <<'PY'
+          import tomllib
+
+          with open("pyproject.toml", "rb") as project_file:
+              print(tomllib.load(project_file)["project"]["version"])
+          PY
+          )"
+          tag_version="${GITHUB_REF_NAME#v}"
+
+          if [[ "$tag_version" != "$package_version" ]]; then
+            echo "Release tag $GITHUB_REF_NAME does not match package version $package_version" >&2
+            exit 1
+          fi
+
   verify:
     name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    needs:
+      - release-metadata
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -98,6 +128,11 @@ jobs:
       contents: write
       id-token: write
     steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Install uv
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
@@ -109,6 +144,54 @@ jobs:
           name: dist
           path: dist/
 
+      - name: Prepare curated release notes
+        env:
+          TAG_VERSION: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          tag_version = os.environ["TAG_VERSION"].removeprefix("v")
+          base_version = re.sub(r"(?:a|b|rc)\d+$", "", tag_version)
+          candidates = [tag_version]
+          if base_version != tag_version:
+              candidates.append(base_version)
+
+          lines = Path("CHANGELOG.md").read_text(encoding="utf-8").splitlines()
+          start = None
+          for candidate in candidates:
+              prefix = f"## [{candidate}]"
+              start = next(
+                  (index + 1 for index, line in enumerate(lines)
+                   if line.startswith(prefix)),
+                  None,
+              )
+              if start is not None:
+                  break
+
+          if start is None:
+              raise SystemExit(
+                  f"CHANGELOG.md has no section for {tag_version} or {base_version}"
+              )
+
+          end = next(
+              (index for index in range(start, len(lines))
+               if lines[index].startswith("## [")),
+              len(lines),
+          )
+          notes = "\n".join(lines[start:end]).strip()
+          if base_version != tag_version:
+              notice = (
+                  f"> **Prerelease:** {tag_version} is a release candidate for "
+                  f"ctui {base_version}. Test it before using it in production."
+              )
+              notes = f"{notice}\n\n{notes}"
+
+          Path("release-notes.md").write_text(notes + "\n", encoding="utf-8")
+          PY
+
       - name: Generate PEP 740 attestations
         uses: astral-sh/attest-action@f589a42a7efb6fe400b4f400de60b4bc90390027 # v0.0.6
 
@@ -119,8 +202,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
+          release_options=()
+          if [[ "$GITHUB_REF_NAME" =~ (a|b|rc)[0-9]+$ ]]; then
+            release_options+=(--prerelease --latest=false)
+          fi
+
+          gh release create "$GITHUB_REF_NAME" dist/* \
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
             --generate-notes \
+            --notes "$(cat release-notes.md)" \
+            "${release_options[@]}" \
             --title "$GITHUB_REF_NAME"
