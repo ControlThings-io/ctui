@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import sqlite3
@@ -12,6 +11,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import aiosqlite
 from platformdirs import user_data_path
 
 from .commands import Argument, CommandError, CommandResult
@@ -20,65 +20,9 @@ from .services import HistoryEntry
 SCHEMA_VERSION = 1
 
 
-class _Cursor:
-    """Async facade over a sqlite cursor owned by one connection."""
-
-    def __init__(self, connection: "_Connection", cursor: sqlite3.Cursor):
-        self.connection, self.cursor = connection, cursor
-
-    @property
-    def lastrowid(self):
-        """Return the row identifier produced by the last insert."""
-        return self.cursor.lastrowid
-
-    async def fetchone(self):
-        """Fetch one result row without blocking the event loop."""
-        return await self.connection._run(self.cursor.fetchone)
-
-    async def fetchall(self):
-        """Fetch all remaining result rows without blocking the event loop."""
-        return await self.connection._run(self.cursor.fetchall)
-
-
-class _Connection:
-    """Serialize sqlite3 work off the event loop for one database connection."""
-
-    def __init__(self, raw: sqlite3.Connection):
-        self.raw = raw
-        self.lock = asyncio.Lock()
-
-    async def _run(self, function, *args):
-        async with self.lock:
-            return function(*args)
-
-    async def execute(self, sql, parameters=()):
-        """Execute one SQL statement and return its cursor facade."""
-        return _Cursor(self, await self._run(self.raw.execute, sql, parameters))
-
-    async def executescript(self, script):
-        """Execute a SQL script and return its cursor facade."""
-        return _Cursor(self, await self._run(self.raw.executescript, script))
-
-    async def commit(self):
-        """Commit the current transaction."""
-        await self._run(self.raw.commit)
-
-    async def rollback(self):
-        """Roll back the current transaction."""
-        await self._run(self.raw.rollback)
-
-    async def close(self):
-        """Close the underlying SQLite connection."""
-        await self._run(self.raw.close)
-
-    async def backup(self, destination: "_Connection"):
-        """Copy this database into *destination*."""
-        await self._run(self.raw.backup, destination.raw)
-
-
-async def _connect(path, *, uri=False) -> _Connection:
-    raw = sqlite3.connect(path, uri=uri, check_same_thread=False)
-    return _Connection(raw)
+async def _connect(path, *, uri=False) -> aiosqlite.Connection:
+    """Open a worker-thread-backed SQLite connection."""
+    return await aiosqlite.connect(path, uri=uri)
 
 
 @dataclass(frozen=True)
@@ -406,8 +350,8 @@ class SqliteProjectBackend:
         self.databases_dir = self.projects_dir / "databases"
         self.catalog_path = self.projects_dir / "catalog.sqlite3"
         self.state_path = self.root / "state.json"
-        self.catalog: _Connection | None = None
-        self.connection: _Connection | None = None
+        self.catalog: aiosqlite.Connection | None = None
+        self.connection: aiosqlite.Connection | None = None
         self.current: ProjectInfo | None = None
         self.history = ProjectHistory(self)
         self.configs = ProjectConfigs(self)

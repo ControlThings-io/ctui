@@ -1,6 +1,7 @@
 import asyncio
 import json
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -88,6 +89,18 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
             )
         )
         self.assertEqual((await self.app.backend.stats())["records"], 50)
+
+    async def test_slow_sqlite_work_does_not_block_the_event_loop(self):
+        await self.app.backend.connection.create_function("delay", 1, time.sleep)
+        query = asyncio.create_task(
+            self.app.backend.connection.execute("SELECT delay(?)", (0.1,))
+        )
+
+        await asyncio.sleep(0.02)
+
+        self.assertFalse(query.done())
+        cursor = await query
+        await cursor.fetchone()
 
     async def test_invalid_names_limits_and_config_documents_are_command_errors(self):
         for name in ("", " ", " trailing ", "bad\nname"):
