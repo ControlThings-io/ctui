@@ -6,6 +6,7 @@ authors = [{ name = "Justin Searle", email = "justin@controlthings.io" }]
 requires-python = ">=3.11,<4"
 readme = "README.md"
 license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
 keywords = ["serial", "fieldbus", "ICS", "control", "ControlThings"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
