@@ -119,6 +119,12 @@ arguments act as flags; all parameters without `flags` are positional.
 Supported annotations include `str`, `int`, `float`, `bool`, `Path`, `Enum`,
 `Literal`, `Optional`, and comma-separated collections.
 
+Use the included `HexBytes` annotation when a command accepts hexadecimal
+binary data. It returns an immutable `bytes` subclass and accepts contiguous,
+space-, colon-, hyphen-, or underscore-separated byte pairs, a whole-value
+`0x` prefix, per-byte `0x` prefixes, and `\xNN` escapes. Quote representations
+containing spaces or backslashes so they remain one shell-like argument.
+
 Command names and constrained choices accept unique prefixes. For example,
 `dep dev web-1` can select `deploy development web-1` when each prefix has one
 match. Ambiguous prefixes produce validation help instead of guessing. Quote

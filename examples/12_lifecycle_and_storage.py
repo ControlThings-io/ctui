@@ -1,6 +1,6 @@
 """Use persistent projects, configuration templates, and protocol records.
 
-Run: uv run examples/11_lifecycle_and_storage.py
+Run: uv run examples/12_lifecycle_and_storage.py
 Try: configs list
 Try: configs show local
 Try: profile save lab 10.0.0.20 502
@@ -8,7 +8,7 @@ Try: traffic record sent 010300000001
 Try: project
 """
 
-from ctui import CtuiApp, command
+from ctui import CtuiApp, HexBytes, command
 
 
 class SettingsTool(CtuiApp):
@@ -27,9 +27,8 @@ class SettingsTool(CtuiApp):
         return f"Saved profile {name!r}."
 
     @command(name="traffic record")
-    async def traffic_record(self, direction: str, hexadecimal: str) -> str:
+    async def traffic_record(self, direction: str, payload: HexBytes) -> str:
         """Record one example protocol frame in the active project."""
-        payload = bytes.fromhex(hexadecimal)
         await self.records.append(
             direction=direction, protocol="example", payload=payload
         )

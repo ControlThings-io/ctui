@@ -35,6 +35,7 @@ from ctui.services import (
     RecordStore,
     StorageKeyError,
 )
+from ctui.types import HexBytes
 
 __all__ = [
     "CtuiApp",
@@ -48,6 +49,7 @@ __all__ = [
     "CompletionItem",
     "ConfigStore",
     "MemoryHistory",
+    "HexBytes",
     "MemoryStorage",
     "NullHistory",
     "NullStorage",
