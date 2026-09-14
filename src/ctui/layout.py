@@ -12,27 +12,19 @@ Control Things User Interface, aka ctui.py
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details at <http://www.gnu.org/licenses/>.
 """
-from pathlib import Path
 
-from prompt_toolkit.history import FileHistory
-from prompt_toolkit.layout.containers import (
-    Float,
-    FloatContainer,
-    HSplit,
-    VSplit,
-    Window,
-)
+from prompt_toolkit.document import Document
+from prompt_toolkit.history import InMemoryHistory
+from prompt_toolkit.layout.containers import Float, FloatContainer, HSplit, Window
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.layout.menus import CompletionsMenu
-from prompt_toolkit.lexers import Lexer
-from prompt_toolkit.widgets import MenuContainer, MenuItem, SearchToolbar, TextArea
+from prompt_toolkit.widgets import TextArea
 
 from ctui.completion import CommandCompleter
-from ctui.functions import show_help
 
 
-class CtuiLayout(object):
-    """Class to facilitate editing and accessing different layout elements"""
+class CtuiLayout:
+    """Build and expose the standard ctui input and output layout."""
 
     def __init__(
         self,
@@ -42,15 +34,14 @@ class CtuiLayout(object):
         statusbar=None,
         root_container=None,
     ):
+        """Build the standard input, output, completion, and status layout."""
         self.ctui = ctui
 
-        self._completer = CommandCompleter(ctui.commands)
+        self._completer = CommandCompleter(ctui.commands, ctui)
 
-        self._history = FileHistory(
-            "{}/.{}_history".format(Path.home(), self.ctui.name)
-        )
+        self._history = InMemoryHistory()
 
-        self._input_field = TextArea(
+        self._input_field = input_field or TextArea(
             height=1,
             prompt=self.ctui.prompt,
             style="class:input_field",
@@ -60,14 +51,16 @@ class CtuiLayout(object):
 
         self._header_field = Window(height=1, char="-", style="class:line")
 
-        self._output_field = TextArea(
+        self._output_field = output_field or TextArea(
             text="",
             style="class:output_field",
             wrap_lines=self.ctui.wrap_lines,
             scrollbar=True,
+            read_only=True,
+            focusable=False,
         )
 
-        self._statusbar = Window(
+        self._statusbar = statusbar or Window(
             content=FormattedTextControl(lambda: self.statusbar_text),
             height=1,
             style="class:statusbar",
@@ -86,79 +79,58 @@ class CtuiLayout(object):
             ],
         )
 
-        self._root_container = MenuContainer(
-            body=self.body,
-            menu_items=[
-                MenuItem(
-                    "Session ",
-                    children=[
-                        MenuItem("Connect"),
-                        MenuItem("Disconnect"),
-                        #         MenuItem('Save'),
-                        #         MenuItem('Save as...'),
-                        #         MenuItem('-', disabled=True),
-                        MenuItem("Exit"),
-                    ],
-                ),
-                MenuItem(
-                    "Edit ",
-                    children=[
-                        MenuItem("Copy"),
-                        MenuItem("Paste"),
-                    ],
-                ),
-                MenuItem(
-                    "Help ",
-                    children=[
-                        MenuItem("Help", handler=show_help),
-                        MenuItem("About"),
-                    ],
-                ),
-            ],
-            floats=[
-                Float(
-                    xcursor=True,
-                    ycursor=True,
-                    content=CompletionsMenu(max_height=16, scroll_offset=1),
-                ),
-            ],
-        )
+        self._root_container = root_container or self._body
 
     @property
     def completer(self):
+        """Return the command-aware prompt completer."""
         return self._completer
 
     @property
     def history(self):
+        """Return prompt-toolkit's in-session editing history."""
         return self._history
 
     @property
     def input_field(self):
+        """Return the single-line command input widget."""
         return self._input_field
 
     @property
     def header_field(self):
+        """Return the separator between input and output."""
         return self._header_field
 
     @property
     def output_field(self):
+        """Return the scrollable command output widget."""
         return self._output_field
+
+    def set_output(self, text: str) -> None:
+        """Replace read-only output through prompt-toolkit's safe bypass."""
+        self._output_field.buffer.set_document(
+            Document(text=text, cursor_position=len(text)),
+            bypass_readonly=True,
+        )
 
     @property
     def statusbar_text(self):
+        """Resolve status text dynamically from the application."""
         return self.ctui._statusbar
 
     @property
     def statusbar(self):
+        """Return the status-bar window."""
         return self._statusbar
 
     # Organization of windows
     @property
     def body(self):
+        """Return the standard vertically arranged body container."""
         return self._body
 
     # Adding menus
     @property
     def root_container(self):
-        return self._body
-        # return self._root_container
+        """Return the root prompt-toolkit container used by default."""
+        return self._root_container

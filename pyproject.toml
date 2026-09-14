@@ -1,11 +1,12 @@
 [project]
 name = "ctui"
-version = "0.8.1"
-description = "The ctui library is similar to Python's built in cmd library, but with a curses-like user interface"
+version = "1.0.0rc1"
+description = "Build typed, asynchronous terminal UIs and command-line tools from one Python application"
 authors = [{ name = "Justin Searle", email = "justin@controlthings.io" }]
-requires-python = ">=3.8,<4"
+requires-python = ">=3.11,<4"
 readme = "README.md"
-license = "LGPL-3.0-or-later"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
 keywords = ["serial", "fieldbus", "ICS", "control", "ControlThings"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -19,25 +20,22 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
     "Topic :: Utilities",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
+    "aiosqlite>=0.22,<0.23",
+    "platformdirs>=4,<5",
     "prompt-toolkit>=3.0.36,<4",
     "Pygments>=2.14.0,<3",
     "tabulate>=0.8.0,<0.9",
-    "tinydb>=4.7.1,<5",
-    "six>=1.16.0,<2",
 ]
 
 [project.urls]
 Homepage = "https://www.controlthings.io"
-Repository = "https://github.com/ControlThings-io/ctserial"
+Repository = "https://github.com/ControlThings-io/ctui"
 
 [dependency-groups]
 dev = ["pylint", "black", "isort"]
@@ -45,12 +43,12 @@ dev = ["pylint", "black", "isort"]
 [tool.uv]
 default-groups = "all"
 
+[tool.black]
+target-version = ["py311"]
+
 [build-system]
 requires = ["uv_build>=0.12.3,<0.13.0"]
 build-backend = "uv_build"
-
-[tool.pylint.messages_control]
-disable = "C0330, C0326"
 
 [tool.pylint.format]
 max-line-length = "88"

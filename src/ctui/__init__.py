@@ -12,9 +12,76 @@ Control Things User Interface, aka ctui.py
 # FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 # details at <http://www.gnu.org/licenses/>.
 """
-import ctui.types
-from ctui.application import Ctui
+
+from importlib.metadata import PackageNotFoundError, version
+
+from ctui.application import CtuiApp
+from ctui.commands import (
+    Argument,
+    CommandError,
+    CommandNotFound,
+    CommandResult,
+    CommandValidationError,
+    CompletionContext,
+    CompletionItem,
+    ConfirmationRequired,
+    command,
+)
+from ctui.projects import ProjectInfo, RecordEntry, SqliteProjectBackend
+from ctui.services import (
+    ConfigStore,
+    HistoryEntry,
+    HistoryStore,
+    MemoryHistory,
+    MemoryStorage,
+    NullHistory,
+    NullStorage,
+    RecordStore,
+    Storage,
+    StorageKeyError,
+)
+from ctui.types import (
+    FuzzyHexPattern,
+    FuzzyStringPattern,
+    HexBytes,
+    IntegerRanges,
+    IntegerSpan,
+)
+
+try:
+    __version__ = version("ctui")
+except PackageNotFoundError:  # Support importing directly from an unpacked tree.
+    __version__ = "0+unknown"
+
 
 __all__ = [
-    "Ctui",
+    "Argument",
+    "CommandError",
+    "CommandNotFound",
+    "CommandResult",
+    "CommandValidationError",
+    "CompletionContext",
+    "CompletionItem",
+    "ConfigStore",
+    "ConfirmationRequired",
+    "CtuiApp",
+    "FuzzyHexPattern",
+    "FuzzyStringPattern",
+    "HexBytes",
+    "HistoryEntry",
+    "HistoryStore",
+    "IntegerRanges",
+    "IntegerSpan",
+    "MemoryHistory",
+    "MemoryStorage",
+    "NullHistory",
+    "NullStorage",
+    "ProjectInfo",
+    "RecordEntry",
+    "RecordStore",
+    "SqliteProjectBackend",
+    "Storage",
+    "StorageKeyError",
+    "__version__",
+    "command",
 ]

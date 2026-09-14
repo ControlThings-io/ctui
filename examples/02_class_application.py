@@ -1,0 +1,31 @@
+"""Organize related commands in an application class.
+
+Run: uv run examples/02_class_application.py
+Try: add 2 3
+Try: multiply 4 5
+"""
+
+from ctui import CommandResult, CtuiApp, command
+
+
+class Calculator(CtuiApp):
+    """Multiple commands and appending output."""
+
+    name = "Calculator"
+    prompt = "calc> "
+
+    @command
+    def add(self, first: int, second: int) -> str:
+        """Add two whole numbers."""
+        answer = str(first + second)
+        return CommandResult.append(f"{first} + {second} = {answer}")
+
+    @command
+    def multiply(self, first: int, second: int) -> str:
+        """Multiply two whole numbers."""
+        answer = str(first * second)
+        return CommandResult.append(f"{first} * {second} = {answer}")
+
+
+if __name__ == "__main__":
+    Calculator().run()

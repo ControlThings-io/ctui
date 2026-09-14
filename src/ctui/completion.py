@@ -1,87 +1,120 @@
-"""
-Control Things User Interface, aka ctui.py
+"""Context-aware command and argument completion."""
 
-# Copyright (C) 2019  Justin Searle
-#
-# This program is free software: you can redistribute it and/or modify it under
-# the terms of the GNU General Public License as published by the Free Software
-# Foundation, either version 3 of the License, or any later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
-# details at <http://www.gnu.org/licenses/>.
-"""
-from __future__ import unicode_literals
+from __future__ import annotations
+
+import shlex
 
 from prompt_toolkit.completion import Completer, Completion
-from six import string_types
 
-from ctui.commands import Commands
+from ctui.commands import CommandNotFound, Commands
 
-__all__ = [
-    "CommandCompleter",
-]
+
+def _argument_state(text: str) -> tuple[list[str], str, bool]:
+    """Split partial input while preserving quoted spaces and cursor state."""
+    completed, current, quote, escaped = [], [], None, False
+    for character in text:
+        if escaped:
+            current.append(character)
+            escaped = False
+        elif character == "\\":
+            escaped = True
+        elif quote:
+            if character == quote:
+                quote = None
+            else:
+                current.append(character)
+        elif character in ("'", '"'):
+            quote = character
+        elif character.isspace():
+            if current:
+                completed.append("".join(current))
+                current = []
+        else:
+            current.append(character)
+    boundary = bool(text) and text[-1].isspace() and quote is None
+    return completed, "" if boundary else "".join(current), boundary
 
 
 class CommandCompleter(Completer):
-    """
-    Simple autocompletion on a list of ctui commands.
+    """Complete command names, options, and validated argument values."""
 
-    :param commands: A ctui Commands object
-    """
+    def __init__(self, commands: Commands, app=None):
+        """Bind completion to a command registry and optional application."""
+        self.commands, self.app = commands, app
 
-    def __init__(self, commands):
-        assert isinstance(commands, Commands)
-        self.commands = commands
+    def _command_completions(self, text):
+        """Yield only the next matching word of commands and aliases."""
+        boundary = bool(text) and text[-1].isspace()
+        parts = text.split()
+        completed = parts if boundary else parts[:-1]
+        word = "" if boundary or not parts else parts[-1]
+        candidates = {}
+
+        def collect(name, item, *, alias=False):
+            name_parts = name.split()
+            if len(name_parts) < len(completed) or any(
+                not actual.startswith(typed)
+                for typed, actual in zip(completed, name_parts)
+            ):
+                return
+            if len(name_parts) <= len(completed):
+                return
+            candidate = name_parts[len(completed)]
+            if not candidate.startswith(word):
+                return
+            help_text = f"Alias for {item.name}" if alias else item.desc
+            candidates.setdefault(candidate, help_text)
+
+        for item in self.commands:
+            collect(item.name, item)
+        for alias, item in self.commands.aliases.items():
+            collect(alias, item, alias=True)
+        for candidate, help_text in candidates.items():
+            yield Completion(
+                candidate,
+                start_position=-len(word),
+                display_meta=help_text,
+            )
 
     def get_completions(self, document, complete_event):
-        parts_before_cursor = document.text_before_cursor.split()  # clean up spaces
-        text_before_cursor = " ".join(parts_before_cursor)
-        current_part = len(parts_before_cursor) - 1
-        next_part = False
-        if document.text_before_cursor[-1] == " ":  # re-add trailing space if present
-            next_part = True
+        """Yield synchronous command-name completions for prompt-toolkit."""
+        text = document.text_before_cursor
+        try:
+            self.commands.resolve(text)
+        except CommandNotFound:
+            yield from self._command_completions(text.lstrip())
 
-        def previous_parts_match(command_parts):
-            if current_part == 0:
-                return True
-            if len(command_parts) == len(parts_before_cursor):
-                for i in range(current_part):
-                    if command_parts[i] == parts_before_cursor[i]:
-                        return True
+    async def get_completions_async(self, document, complete_event):
+        """Yield command or asynchronously generated argument completions."""
+        text = document.text_before_cursor
+        stripped = text.lstrip()
+        command_matches = list(self._command_completions(stripped))
+        if command_matches and not text.endswith(tuple(" \t\r\n")):
+            for result in command_matches:
+                yield result
+            return
+        for result in command_matches:
+            yield result
+        try:
+            item, argument_text = self.commands.resolve(text)
+        except CommandNotFound:
+            for result in self._command_completions(text.lstrip()):
+                yield result
+            return
+        _, _, input_at_boundary = _argument_state(text)
+        if input_at_boundary:
+            argument_text += " "
+        completed, word, _ = _argument_state(argument_text)
+        completion_text = shlex.join(completed)
+        if completion_text:
+            completion_text += " "
+        for result in await item.complete(completion_text, word, self.app):
+            yield Completion(
+                result.value,
+                start_position=-len(word),
+                display=result.display or result.value,
+                display_meta=result.help,
+            )
 
-        def last_part_full_match(command_parts):
-            if next_part and len(command_parts) >= current_part + 2:
-                if command_parts[current_part] == parts_before_cursor[current_part]:
-                    return True
 
-        def last_part_partial_match(command_parts):
-            if len(command_parts) == current_part + 1:
-                if command_parts[current_part] != (parts_before_cursor[current_part]):
-                    return command_parts[current_part].startswith(
-                        parts_before_cursor[current_part]
-                    )
-
-        # Check all commands for matches
-        for command in self.commands:
-            # If all command parts exactly match, suggest the user can hit enter
-            if command.string_parts == parts_before_cursor:
-                yield Completion("", 0, display="<enter>", display_meta=command.desc)
-
-            elif previous_parts_match(command.string_parts):
-                # Suggest next parts (words) for commands that match so far
-                if last_part_full_match(command.string_parts):
-                    yield Completion(
-                        command.string_parts[current_part + 1],
-                        0,
-                        display_meta=command.desc,
-                    )
-
-                # Keep suggesting the parts (words) for commands that still match
-                elif last_part_partial_match(command.string_parts):
-                    yield Completion(
-                        command.string_parts[current_part],
-                        -len(parts_before_cursor[current_part]),
-                        display_meta=command.desc,
-                    )
+__all__ = ["CommandCompleter"]
