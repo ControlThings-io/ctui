@@ -88,6 +88,41 @@ Error: first must be float: 'wrong'
 In the full-screen UI, an invalid command is restored to the input field and the
 cursor moves to the beginning of the argument that needs correction.
 
+## Help and interface guidance
+
+In the full-screen UI, `help` opens a scrollable popup and preserves the main
+output. The introduction explains input editing, output navigation, clipboard
+use, and exit shortcuts. Output scrolling shortcuts work while input retains
+focus: Home/End move through output, while Ctrl-A/Ctrl-E move within input.
+In the popup, use Up/Down or Page Up/Page Down to scroll, Tab to select Ok,
+and Enter on Ok to close and restore focus.
+
+The main command reference lists only top-level commands and groups. Use
+`help history` to see its usage and immediate subcommands, then
+`help history export` for argument details. Help accepts aliases and unique
+command prefixes, and its targets support completion. Detailed command help
+includes additional docstring text, so commands can document examples there.
+
+CLI help prints to the terminal, with invocation and batch-execution guidance:
+
+```bash
+python my_tool.py help history export
+python my_tool.py -c "help history export"
+```
+
+Customize interface introductions independently on your application class:
+
+```python
+class MyTool(CtuiApp):
+    ui_help_intro = "Enter a command below; results appear above."
+    cli_help_intro = "Use -c for individual commands or -f for a command file."
+```
+
+These introductions precede the default interface guidance and generated
+reference on the main help page. Targeted help omits the introduction.
+Shortcuts registered with `add_shortcut(..., description="...")` also appear
+in the UI guidance, using prompt-toolkit key names.
+
 ## Completion and validation
 
 `Literal` and `Enum` annotations automatically produce completion choices. Use

@@ -147,6 +147,7 @@ class MessageDialog:
         width=None,
         wrap_lines=True,
         scrollbar=False,
+        focusable=False,
     ):
         """Construct a message dialog sized to its content."""
         self.future = Future()
@@ -190,7 +191,7 @@ class MessageDialog:
             text=text,
             lexer=lexer,
             read_only=True,
-            focusable=False,
+            focusable=focusable,
             width=get_text_width(),
             wrap_lines=wrap_lines,
             scrollbar=(

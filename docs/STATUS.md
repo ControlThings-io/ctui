@@ -1,6 +1,7 @@
 # Project status
 
-Last reconciled: 2026-09-18, against `main` at `7e4e971`.
+Last reconciled: 2026-09-18, against `main` at `0002665` plus the current
+help changes in the working tree.
 
 ## Scope and evidence
 
@@ -14,8 +15,8 @@ not available. The owner confirmed the August 22, 2026 cutoff and that no
 earlier conversations need preserving. User decisions are distinguished from assistant proposals in
 [DECISIONS.md](DECISIONS.md).
 
-The working tree was clean before these three continuity files were added.
-Local `origin/main` also pointed to `7e4e971`; remote refs were not refreshed.
+Continuity files were committed in `0002665`. The working tree was clean
+before the current help task. Remote refs have not been refreshed.
 
 ## Current state
 
@@ -49,8 +50,11 @@ needed before stable 1.0. Publication and basic functionality of RC1 are
 confirmed by the owner; remaining checks do not imply publication failed.
 
 - [x] Confirm RC1 was published to PyPI and is functional (owner, September 18).
-- [ ] Capture the owner's remaining changes and acceptance tests as concrete
-  RC2 tasks; their details have not yet been supplied.
+- [x] Implement the requested help redesign: UI popup, hierarchical command
+  reference, CLI/UI introductions, and input/output shortcut guidance.
+- [ ] Manually check help scrolling and focus restoration in real terminals,
+  including narrow windows and application-specific shortcuts.
+- [ ] Capture any further owner-requested RC2 changes and acceptance tests.
 - [ ] Complete additional acceptance testing and record the platform, Python
   version, tested package/revision, and outcomes.
 - [ ] Record GitHub release/attestation links and full remote CI results for
@@ -89,16 +93,21 @@ Black/isort and lockfile checks, successful wheel/source builds and isolated
 smoke tests, and correct metadata/license inclusion. These are historical
 session results, not fresh results at `7e4e971` or proof of remote CI success.
 
-This September 18 task changes documentation only. Content was reconciled
-against local conversation records, commit history, source, tests, and release
-workflows. Runtime tests were not rerun for this documentation update.
-All three new files passed local Markdown-link and whitespace checks;
-`git diff --check` also passed for the tracked working tree.
+Current September 18 help work (working tree based on `0002665`):
+- Added hierarchical help with aliases, unique prefixes, and target completion.
+- UI help opens a focusable, scrollable popup and preserves main output;
+  CLI help prints normally, including direct `help history export` invocation.
+- Added independent `ui_help_intro` / `cli_help_intro` customization and
+  documented input editing versus output scrolling, clipboard use, dialog
+  navigation, and application shortcuts. Updated README and decision D12.
+- Python 3.11.16: all 106 unittest tests passed, including five new help
+  regression tests. Black, isort, lockfile, and whitespace checks passed.
+  Full tests and formatting checks ran outside the sandbox after sandbox
+  processes stalled. No remote CI or manual terminal acceptance run performed.
 
 ## Details still needed
 
-- Which changes and additional tests should be completed for RC2? The owner
-  has confirmed they are needed but has not yet listed them.
+- Which additional changes and acceptance tests should be completed for RC2?
 
 ## Laptop handoff
 

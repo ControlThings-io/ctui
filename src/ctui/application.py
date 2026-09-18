@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import shlex
 import sys
 from pathlib import Path
 from typing import TextIO
@@ -32,6 +33,10 @@ class CtuiApp:
     name, version, description = "MyApp", "0.1.0", "My App does something..."
     prompt = "> "
     help_message = "Currently supported commands:"
+    cli_help_intro = "Run without arguments to open the interactive UI."
+    ui_help_intro = (
+        "Type commands in the input window; results appear in the output window."
+    )
     wrap_lines = False
     mouse_support = False
     app_id = None
@@ -186,25 +191,38 @@ class CtuiApp:
         """Return a prompt_toolkit root container, or None for the standard UI."""
         return None
 
-    def format_help(self):
-        """Return application help shared by the UI and terminal modes."""
-        return "\n".join(
-            [self.welcome, "", self.help_message, ""]
-            + [f"{item.name:<20} {item.desc}" for item in self.commands]
-        )
+    def format_help(self, target=""):
+        """Return generated help for a command or its immediate children."""
+        from ctui.help import command_help
 
-    def format_cli_help(self, program=None):
-        """Return terminal usage followed by the standard application help."""
+        return command_help(self, target)
+
+    def format_ui_help(self, target=""):
+        """Return UI guidance followed by generated command help."""
+        from ctui.help import ui_guidance
+
+        reference = self.format_help(target)
+        if target:
+            return reference
+        return f"{self.ui_help_intro}\n\n{ui_guidance(self)}\n\n{reference}"
+
+    def format_cli_help(self, program=None, target=""):
+        """Return terminal guidance followed by generated command help."""
+        if target:
+            return self.format_help(target)
         program = program or Path(sys.argv[0]).name
         usage = [
             f"Usage: {program} [help | -h | --help]",
             f"       {program} [-c COMMAND | --command COMMAND] ...",
             f"       {program} [-f FILE | --file FILE] ...",
             "",
+            self.cli_help_intro,
+            "",
             "Terminal options:",
             "  -c, --command COMMAND  Run a command; may be repeated.",
             "  -f, --file FILE        Run nonblank commands from a file in order.",
             "  -h, --help             Print this help page.",
+            f'  Example: {program} -c "help history export"',
             "",
         ]
         return "\n".join(usage) + "\n" + self.format_help()
@@ -240,8 +258,14 @@ class CtuiApp:
         source_starts = _token_starts(text)
         argument_starts = source_starts[len(item.name.split()) :]
         try:
-            argument_text = await item.expand_unique_arguments(argument_text, self)
-            kwargs = item.parse_args(argument_text)
+            if getattr(item.func, "__ctui_help__", False):
+                try:
+                    kwargs = {"target": " ".join(shlex.split(argument_text))}
+                except ValueError as error:
+                    raise CommandValidationError(str(error)) from error
+            else:
+                argument_text = await item.expand_unique_arguments(argument_text, self)
+                kwargs = item.parse_args(argument_text)
         except CommandValidationError as error:
             expanded_starts = _token_starts(argument_text)
             if error.position is not None and error.position >= len(argument_text):
@@ -341,6 +365,10 @@ class CtuiApp:
         index = 0
         while index < len(arguments):
             token = arguments[index]
+            if token == "help" and index + 1 < len(arguments):
+                return False, [
+                    ("command", "help " + shlex.join(arguments[index + 1 :]))
+                ]
             if token in ("help", "-h", "--help"):
                 return True, []
             if token.startswith("--command="):

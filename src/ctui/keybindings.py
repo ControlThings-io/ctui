@@ -19,8 +19,8 @@ import traceback
 from prompt_toolkit.filters import has_focus
 from prompt_toolkit.key_binding import KeyBindings
 
-from .commands import CommandError
-from .dialogs import YesNoDialog, message_dialog, show_dialog
+from .commands import CommandError, _HelpResult
+from .dialogs import MessageDialog, YesNoDialog, message_dialog, show_dialog
 from .functions import (
     scroll_end,
     scroll_home,
@@ -95,6 +95,15 @@ def get_key_bindings(ctui):
                 return
             if not result.accepted:
                 restore_if_latest()
+                return
+            if isinstance(result, _HelpResult):
+                dialog = MessageDialog(
+                    title="Help",
+                    text=ctui.format_ui_help(result.target),
+                    scrollbar=True,
+                    focusable=True,
+                )
+                await show_dialog(dialog)
                 return
             if result.clear_output:
                 ctui.layout.set_output("")

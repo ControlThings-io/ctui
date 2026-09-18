@@ -101,6 +101,11 @@ class CommandCompleter(Completer):
             for result in self._command_completions(text.lstrip()):
                 yield result
             return
+        if getattr(item.func, "__ctui_help__", False):
+            target = argument_text + (" " if text[-1:].isspace() else "")
+            for result in self._command_completions(target):
+                yield result
+            return
         _, _, input_at_boundary = _argument_state(text)
         if input_at_boundary:
             argument_text += " "

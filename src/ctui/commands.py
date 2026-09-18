@@ -122,6 +122,13 @@ class CommandResult:
         return cls(accepted=False)
 
 
+@dataclass(frozen=True)
+class _HelpResult(CommandResult):
+    """Carry a help target to the interface presenter."""
+
+    target: str = ""
+
+
 def _name(func):
     """Derive a terminal command name from a Python function name."""
     value = func.__name__
@@ -759,9 +766,11 @@ def register_default_commands(app):
         return CommandResult(clear_output=True)
 
     @app.commands.register
-    def help():
-        """Show application help."""
-        return CommandResult.success(app.format_help())
+    def help(target: str = ""):
+        """Show help; use help <command> for subcommands and arguments."""
+        return _HelpResult(output=app.format_cli_help(target=target), target=target)
+
+    help.__ctui_help__ = True
 
     @app.commands.register
     async def history(count: int = 0):

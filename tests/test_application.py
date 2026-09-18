@@ -93,7 +93,8 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
                 f"clear\n{all_command}\n",
             )
 
-            self.assertIn("history export", app.format_help())
+            self.assertNotIn("history export", app.format_help())
+            self.assertIn("export", app.format_help("history"))
 
     async def test_unknown_command(self):
         with self.assertRaises(CommandNotFound):

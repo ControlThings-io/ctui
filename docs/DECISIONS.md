@@ -202,3 +202,19 @@ current work/next steps, and this file for durable decisions and rationale.
 Update them alongside meaningful work and transfer them with the working
 branch. Keep the evidence and outstanding questions visible; neither a new
 session nor another laptop should need the original private transcripts.
+
+## D12 — Hierarchical help with interface-specific presentation
+
+Accepted, September 18, during RC2 development.
+
+In the full-screen UI, explicit help opens a scrollable popup, preserves the
+main output, and restores focus on close. CLI help prints normally. Main help
+lists only root commands/groups; `help <command> [<subcommand> ...]` drills
+into immediate children and command arguments. Commands may have both their
+own arguments and children. Reuse aliases, unique prefixes, and completion.
+
+Main help combines customizable CLI/UI introductions, default interface
+guidance, and a shared generated reference. UI guidance distinguishes input
+editing from output navigation while input retains focus, and lists built-in
+and application shortcuts. Targeted help omits the introduction. Existing
+validation-error presentation remains separate from explicit help.
