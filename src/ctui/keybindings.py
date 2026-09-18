@@ -101,7 +101,6 @@ def get_key_bindings(ctui):
                     title="Help",
                     text=ctui.format_ui_help(result.target),
                     scrollbar=True,
-                    focusable=True,
                 )
                 await show_dialog(dialog)
                 return

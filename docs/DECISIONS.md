@@ -218,3 +218,10 @@ guidance, and a shared generated reference. UI guidance distinguishes input
 editing from output navigation while input retains focus, and lists built-in
 and application shortcuts. Targeted help omits the introduction. Existing
 validation-error presentation remains separate from explicit help.
+
+Follow-up accepted September 18: help opens with Ok focused. Read-only message
+and Yes/No confirmation dialogs scroll with Up/Down and Page Up/Page Down
+without moving focus from their buttons. Enter activates the selected button;
+Tab and Left/Right retain their button-navigation behavior. This supersedes
+the initial help-text focus and Tab-to-Ok interaction. Text-entry dialogs
+continue to focus their editable input.

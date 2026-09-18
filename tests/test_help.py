@@ -113,7 +113,7 @@ class HelpTests(unittest.IsolatedAsyncioTestCase):
 
         async def display(dialog):
             seen.append(dialog)
-            self.assertTrue(dialog.text_area.control.is_focusable())
+            self.assertFalse(dialog.text_area.control.is_focusable())
 
         binding = next(
             binding

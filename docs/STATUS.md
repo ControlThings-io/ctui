@@ -1,7 +1,7 @@
 # Project status
 
-Last reconciled: 2026-09-18, against `main` at `0002665` plus the current
-help changes in the working tree.
+Last reconciled: 2026-09-18, against `main` at `63de2cc` plus the current
+dialog fixes in the working tree.
 
 ## Scope and evidence
 
@@ -115,3 +115,15 @@ Update this file and relevant decisions with the work, commit and push the
 working branch, then pull that branch on the other laptop before starting
 Codex. Start by reading `AGENTS.md` and these notes. Uncommitted/unpushed work
 does not transfer. Do not store full private transcripts in the repository.
+
+## Dialog follow-up (September 18, based on `63de2cc`)
+
+- Help now keeps Ok focused; message and Yes/No dialogs support line/page
+  scrolling from their buttons. Updated help guidance and README.
+- Dialog text width accounts for the scrollbar and trailing buffer cell,
+  preventing avoidable wrapping of the longest line, including wide Unicode.
+- Added rendered-dialog regression coverage for button focus, one-line
+  scrolling, Enter activation, and longest-line sizing.
+- Validation: all 108 tests passed on Python 3.11; Black, isort, and whitespace
+  checks passed. Real-terminal visual acceptance remains outstanding.
+- Owner approved committing and pushing these fixes on September 18.

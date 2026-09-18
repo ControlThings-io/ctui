@@ -26,6 +26,37 @@ from prompt_toolkit.widgets import Dialog, Label, TextArea
 from .base import Button
 
 
+def _text_width(text, scrollbar):
+    """Allow space for the scrollbar and the buffer's trailing cursor cell."""
+    plain = fragment_list_to_text(to_formatted_text(text))
+    longest = max((get_cwidth(line) for line in plain.splitlines()), default=0)
+    return D(preferred=longest + 1 + int(bool(scrollbar)))
+
+
+def _scroll_buttons(text_area, buttons):
+    """Scroll read-only text without moving focus away from dialog buttons."""
+    # Import lazily: functions also exposes convenience dialog helpers.
+    from .functions import (
+        scroll_line_down,
+        scroll_line_up,
+        scroll_page_down,
+        scroll_page_up,
+    )
+
+    for button in buttons:
+        for key, handler in (
+            ("up", scroll_line_up),
+            ("down", scroll_line_down),
+            ("pageup", scroll_page_up),
+            ("pagedown", scroll_page_down),
+        ):
+
+            def scroll(event, handler=handler):
+                handler(event, text_area)
+
+            button.control.key_bindings.add(key)(scroll)
+
+
 class YesNoDialog:
     """Display a modal confirmation with affirmative and negative actions."""
 
@@ -50,25 +81,25 @@ class YesNoDialog:
             """Resolve the dialog with a negative result."""
             self.future.set_result(False)
 
-        text_width = len(max(text.split("\n"), key=len)) + 2
-
         self.text_area = TextArea(
             text=text,
             read_only=True,
             # focus_on_click = True,
             focusable=False,
-            width=D(preferred=text_width),
+            width=_text_width(text, scrollbar),
             wrap_lines=wrap_lines,
             scrollbar=scrollbar,
         )
 
+        buttons = [
+            Button(text=yes_text, width=1, handler=yes_handler),
+            Button(text=no_text, width=1, handler=no_handler),
+        ]
+        _scroll_buttons(self.text_area, buttons)
         self.dialog = Dialog(
             title=title,
             body=self.text_area,
-            buttons=[
-                Button(text=yes_text, width=1, handler=yes_handler),
-                Button(text=no_text, width=1, handler=no_handler),
-            ],
+            buttons=buttons,
             with_background=True,
             modal=True,
             width=width,
@@ -157,25 +188,6 @@ class MessageDialog:
             """Resolve the dialog result after acknowledgement."""
             self.future.set_result(None)
 
-        def get_text_width():
-            """Calculate the preferred width from formatted message text."""
-            if width is None:
-                text_fragments = to_formatted_text(self.text)
-                text = fragment_list_to_text(text_fragments)
-                if text:
-                    longest_line = max(get_cwidth(line) for line in text.splitlines())
-                else:
-                    return D(preferred=0)
-                return D(preferred=longest_line)
-            return width
-
-        # text_width = len(max(self.text.split('\n'), key=len)) + 2
-        # text_height = len(text.split('\n'))
-
-        # TODO: Add dynamic_h_scrollbar to TextArea and this Dialog
-        # def dynamic_horizontal_scrollbar():
-        #     max_text_width = get_app().renderer.output.get_size().columns - 2
-
         def dynamic_vertical_scrollbar():
             """Enable scrolling when content exceeds the terminal height."""
             text_fragments = to_formatted_text(self.text)
@@ -187,19 +199,19 @@ class MessageDialog:
                     return True
             return False
 
+        scrollbar = dynamic_vertical_scrollbar() if scrollbar is None else scrollbar
         self.text_area = TextArea(
             text=text,
             lexer=lexer,
             read_only=True,
             focusable=focusable,
-            width=get_text_width(),
+            width=_text_width(text, scrollbar),
             wrap_lines=wrap_lines,
-            scrollbar=(
-                dynamic_vertical_scrollbar() if scrollbar is None else scrollbar
-            ),
+            scrollbar=scrollbar,
         )
 
         ok_button = Button(text=ok_text, handler=set_done)
+        _scroll_buttons(self.text_area, [ok_button])
 
         self.dialog = Dialog(
             title=title,

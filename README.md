@@ -94,8 +94,9 @@ In the full-screen UI, `help` opens a scrollable popup and preserves the main
 output. The introduction explains input editing, output navigation, clipboard
 use, and exit shortcuts. Output scrolling shortcuts work while input retains
 focus: Home/End move through output, while Ctrl-A/Ctrl-E move within input.
-In the popup, use Up/Down or Page Up/Page Down to scroll, Tab to select Ok,
-and Enter on Ok to close and restore focus.
+In help and confirmation popups, Up/Down scroll one line and Page Up/Page Down
+scroll one page while the buttons retain focus. Press Enter on Ok to close help
+and restore input focus. Tab or Left/Right selects confirmation buttons.
 
 The main command reference lists only top-level commands and groups. Use
 `help history` to see its usage and immediate subcommands, then

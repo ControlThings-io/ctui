@@ -98,7 +98,7 @@ Output window — these keys work while input keeps focus:
 
 Help dialog:
   Help preserves the main output. Use Up/Down or Page Up/Page Down to scroll.
-  Tab moves between help text and Ok; press Enter on Ok to close.
+  Ok stays focused while scrolling; press Enter to close.
   Closing help restores the previous input focus.
 
 Exit:
