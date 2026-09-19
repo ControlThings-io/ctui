@@ -30,13 +30,13 @@ from ctui.style import CtuiStyle
 class CtuiApp:
     """Base class for synchronous or asynchronous terminal applications."""
 
-    name, version, description = "MyApp", "0.1.0", "My App does something..."
-    prompt = "> "
-    help_message = "Currently supported commands:"
+    name, version, prompt = "MyApp", "0.1.0", "> "
+    description = "MyApp description (make sure to set name, version, and description"
     cli_help_intro = "Run without arguments to open the interactive UI."
     ui_help_intro = (
         "Type commands in the input window; results appear in the output window."
     )
+    help_message = "Currently supported commands:"
     wrap_lines = False
     mouse_support = False
     app_id = None
@@ -204,7 +204,10 @@ class CtuiApp:
         reference = self.format_help(target)
         if target:
             return reference
-        return f"{self.ui_help_intro}\n\n{ui_guidance(self)}\n\n{reference}"
+        return (
+            f"{self.welcome}\n\n{self.ui_help_intro}\n\n"
+            f"{ui_guidance(self)}\n\n{reference}"
+        )
 
     def format_cli_help(self, program=None, target=""):
         """Return terminal guidance followed by generated command help."""
@@ -212,6 +215,8 @@ class CtuiApp:
             return self.format_help(target)
         program = program or Path(sys.argv[0]).name
         usage = [
+            self.welcome,
+            "",
             f"Usage: {program} [help | -h | --help]",
             f"       {program} [-c COMMAND | --command COMMAND] ...",
             f"       {program} [-f FILE | --file FILE] ...",

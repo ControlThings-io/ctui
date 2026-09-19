@@ -141,4 +141,13 @@ does not transfer. Do not store full private transcripts in the repository.
   listing, both flags, quoted paths, nested completion, missing-path errors,
   and directory changes. Black, isort, and whitespace checks passed. The
   full framework suite was not rerun for this example-only change.
-- Awaiting owner approval to commit and push.
+- Owner approved submission; filesystem example committed as `e285326` and pushed.
+
+## Help ordering follow-up
+
+- Moved welcome text above interface guidance in UI and CLI main help.
+  The generated command reference no longer embeds the welcome text.
+- Preserved owner edits to default application metadata.
+- All six focused help tests passed, including ordering, single welcome
+  occurrence, and omission from targeted help. Formatting and whitespace
+  checks passed. Owner approved committing and pushing the help changes.

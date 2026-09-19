@@ -31,7 +31,7 @@ def command_help(app, target):
     if item is not None:
         name = item.name
         path = name.split()
-    lines = [f"Help: {name}"] if path else [app.welcome, "", app.help_message]
+    lines = [f"Help: {name}"] if path else [app.help_message]
     if item is not None:
         lines.extend(["", "Usage: " + item.help])
         documentation = inspect.getdoc(item.func) or ""

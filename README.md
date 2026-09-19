@@ -119,8 +119,9 @@ class MyTool(CtuiApp):
     cli_help_intro = "Use -c for individual commands or -f for a command file."
 ```
 
-These introductions precede the default interface guidance and generated
-reference on the main help page. Targeted help omits the introduction.
+The main help page starts with the welcome text (app name, version, and
+description), followed by the interface introduction and guidance, then the
+generated command reference. Targeted help omits the introduction.
 Shortcuts registered with `add_shortcut(..., description="...")` also appear
 in the UI guidance, using prompt-toolkit key names.
 

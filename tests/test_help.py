@@ -89,6 +89,22 @@ class HelpTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertIn("Usage: project export", output.getvalue())
 
+    async def test_main_help_orders_welcome_guidance_and_commands(self):
+        app = HelpApp(
+            name="Order Test", version="2.0", description="Unique description"
+        )
+        for text, guidance in (
+            (app.format_ui_help(), app.ui_help_intro),
+            (app.format_cli_help(), "Usage:"),
+        ):
+            self.assertTrue(text.startswith(app.welcome))
+            self.assertEqual(text.count(app.welcome), 1)
+            self.assertLess(text.index("Unique description"), text.index(guidance))
+            self.assertLess(text.index(guidance), text.index(app.help_message))
+        self.assertNotIn(app.welcome, app.format_help())
+        self.assertNotIn(app.welcome, app.format_ui_help("project"))
+        self.assertNotIn(app.welcome, app.format_cli_help(target="project"))
+
     async def test_help_completion(self):
         completer = CommandCompleter(HelpApp().commands)
         for text, expected in (

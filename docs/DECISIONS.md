@@ -225,3 +225,7 @@ without moving focus from their buttons. Enter activates the selected button;
 Tab and Left/Right retain their button-navigation behavior. This supersedes
 the initial help-text focus and Tab-to-Ok interaction. Text-entry dialogs
 continue to focus their editable input.
+
+Main help ordering clarified: welcome text (app name/version, then description)
+comes first, interface guidance follows, and the generated command reference
+comes last. Targeted help omits the welcome and interface introduction.
