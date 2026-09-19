@@ -8,18 +8,26 @@ Try: hex sample ???????? --count 5 --seed 42
 Try: text expand {admin,user}-[1-2]
 Try: text sample 'device-\d{4}' -n 5
 
-Expansion refuses patterns above its limit before iteration begins. Sampling
+Expansion refuses patterns above its limit before iteration begins. Commands
+translate these ValueErrors into CommandErrors for a concise UI error dialog. Sampling
 selects unique values without constructing the complete expansion.
 Hex separators must divide complete bytes, and ``{n}`` repeats one nibble.
 
 The parsed object retains a finite set, not a precomputed list. count can be
 inspected before choosing expand() or sample(); this tutorial limits expansion
-to 1,000 results unless overridden. Joining results for display still builds an
+to 1,024 results unless overridden. Joining results for display still builds an
 output string, so laziness does not make unlimited terminal output inexpensive.
 String results preserve explicit Unicode; automatic wildcard alphabets are ASCII.
 """
 
-from ctui import Argument, CtuiApp, FuzzyHexPattern, FuzzyStringPattern, command
+from ctui import (
+    Argument,
+    CommandError,
+    CtuiApp,
+    FuzzyHexPattern,
+    FuzzyStringPattern,
+    command,
+)
 
 
 class PatternTool(CtuiApp):
@@ -29,9 +37,13 @@ class PatternTool(CtuiApp):
         name="hex expand",
         arguments={"limit": Argument(flags=("-n", "--limit"))},
     )
-    def hex_expand(self, pattern: FuzzyHexPattern, limit: int = 1_000) -> str:
+    def hex_expand(self, pattern: FuzzyHexPattern, limit: int = 1_024) -> str:
         """Expand a hexadecimal pattern into immutable bytes."""
-        values = (payload.hex(" ") for payload in pattern.expand(limit=limit))
+        try:
+            expanded = pattern.expand(limit=limit)
+        except ValueError as error:
+            raise CommandError(str(error)) from error
+        values = (payload.hex(" ") for payload in expanded)
         return f"{pattern.count:,} possibilities\n" + "\n".join(values)
 
     @command(
@@ -53,11 +65,13 @@ class PatternTool(CtuiApp):
         name="text expand",
         arguments={"limit": Argument(flags=("-n", "--limit"))},
     )
-    def text_expand(self, pattern: FuzzyStringPattern, limit: int = 1_000) -> str:
+    def text_expand(self, pattern: FuzzyStringPattern, limit: int = 1_024) -> str:
         """Expand a finite Unicode string pattern."""
-        return f"{pattern.count:,} possibilities\n" + "\n".join(
-            pattern.expand(limit=limit)
-        )
+        try:
+            expanded = pattern.expand(limit=limit)
+        except ValueError as error:
+            raise CommandError(str(error)) from error
+        return f"{pattern.count:,} possibilities\n" + "\n".join(expanded)
 
     @command(
         name="text sample",

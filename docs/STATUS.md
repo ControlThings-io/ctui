@@ -230,3 +230,13 @@ does not transfer. Do not store full private transcripts in the repository.
   requested inputs, ambiguity rules, invalid underscores, and overflow.
   Changed-file Black, full isort, and whitespace checks passed.
 - Owner approved committing and pushing the HexBytes changes on September 19.
+
+## Pattern example error handling (September 19)
+
+- Example 06 now translates expansion ValueErrors into CommandErrors for
+  concise UI error dialogs, preserving output and restoring submitted input.
+- Both example expansion commands default to 1,024 instead of 1,000; explicit
+  --limit overrides remain supported. Library defaults remain 65,536.
+- All 120 tests passed on Python 3.11, including boundary, override, and UI
+  error-presentation tests. Changed-file Black/isort and whitespace checks passed.
+- Owner approved committing and pushing the pattern example fixes on September 19.
