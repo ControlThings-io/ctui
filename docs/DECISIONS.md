@@ -253,3 +253,11 @@ Binary underscores follow Python placement rules. Reject malformed syntax
 and values outside 0..255. Preserve standalone contiguous 0x multi-byte input
 and existing separate byte-separator and escape formats. Command input may
 use either quote style. Fuzzy pattern parsing is unchanged.
+
+## Command errors and UI containment (September 19)
+
+Accepted: convert expected user-facing failures at command boundaries to
+CommandError. Preserve ordinary exceptions for reusable Python APIs and
+programmer mistakes. Interactive execution, completion, and shortcut boundaries
+contain unexpected exceptions and show diagnostics without reclassifying
+cancellation or process-exit signals as command failures.

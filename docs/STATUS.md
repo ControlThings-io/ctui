@@ -240,3 +240,17 @@ does not transfer. Do not store full private transcripts in the repository.
 - All 120 tests passed on Python 3.11, including boundary, override, and UI
   error-presentation tests. Changed-file Black/isort and whitespace checks passed.
 - Owner approved committing and pushing the pattern example fixes on September 19.
+
+## Error boundary hardening (September 19)
+
+- Examples 06/07 translate sampling and range-limit ValueErrors at command
+  boundaries. Reusable type methods retain their Python exception contracts.
+- Built-in project/config commands translate filesystem, Unicode, and SQLite
+  failures while preserving existing CommandErrors.
+- UI shortcut and completion callbacks contain exceptions; command result
+  presentation also has a fallback dialog. Unexpected errors retain traceback
+  details; cancellation/exit signals are not converted. Dialog cleanup uses
+  finally so cancellation removes its float and restores focus.
+- All 124 tests passed on Python 3.11; new regressions cover example failures,
+  sync/async shortcuts, completion providers, and project export permissions.
+- Owner approved committing and pushing these changes on September 19.

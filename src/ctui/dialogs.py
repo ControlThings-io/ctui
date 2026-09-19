@@ -266,13 +266,12 @@ async def show_dialog(dialog):
     app.layout.container.floats.insert(0, float_)
     focused_before = app.layout.current_window
     app.layout.focus(dialog)
-    result = await dialog.future
-    app.layout.focus(focused_before)
-
-    if float_ in app.layout.container.floats:
-        app.layout.container.floats.remove(float_)
-
-    return result
+    try:
+        return await dialog.future
+    finally:
+        app.layout.focus(focused_before)
+        if float_ in app.layout.container.floats:
+            app.layout.container.floats.remove(float_)
 
 
 # Functions that use dialog classes and return results

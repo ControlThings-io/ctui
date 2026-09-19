@@ -21,6 +21,7 @@ import sqlite3
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from functools import wraps
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -1133,7 +1134,26 @@ def register_project_commands(app: Any) -> None:
 
     backend = app.backend
 
-    @app.commands.register(name="project", record_history=False)
+    def register(*args, **kwargs):
+        """Translate operational failures at the built-in command boundary."""
+
+        def decorate(func):
+            @wraps(func)
+            async def guarded(*values, **options):
+                try:
+                    return await func(*values, **options)
+                except CommandError:
+                    raise
+                except (OSError, UnicodeError, sqlite3.Error) as error:
+                    raise CommandError(
+                        f"{func.__name__.replace('_', ' ')}: {error}"
+                    ) from error
+
+            return app.commands.register(*args, **kwargs)(guarded)
+
+        return decorate
+
+    @register(name="project", record_history=False)
     async def project_status():
         """Show statistics for the active project."""
         info, stats = backend.current, await backend.stats()
@@ -1154,14 +1174,14 @@ def register_project_commands(app: Any) -> None:
             )
         )
 
-    @app.commands.register(name="project create", record_history=False)
+    @register(name="project create", record_history=False)
     async def project_create(name: str):
         """Create and activate an empty project."""
         info = await backend.create(name)
         await app.events.emit("project_changed", previous=None, current=info)
         return f"Created and loaded project {name!r}."
 
-    @app.commands.register(name="project saveas", record_history=False)
+    @register(name="project saveas", record_history=False)
     async def project_saveas(name: str):
         """Clone the active project and activate the copy."""
         previous = backend.current
@@ -1169,7 +1189,7 @@ def register_project_commands(app: Any) -> None:
         await app.events.emit("project_changed", previous=previous, current=info)
         return f"Saved and loaded project {name!r}."
 
-    @app.commands.register(name="project list", record_history=False)
+    @register(name="project list", record_history=False)
     async def project_list():
         """List stored projects."""
         projects = await backend.list_projects()
@@ -1178,7 +1198,7 @@ def register_project_commands(app: Any) -> None:
             for item in projects
         )
 
-    @app.commands.register(name="project load", record_history=False)
+    @register(name="project load", record_history=False)
     async def project_load(name: str):
         """Load a different project."""
         previous = backend.current
@@ -1186,14 +1206,14 @@ def register_project_commands(app: Any) -> None:
         await app.events.emit("project_changed", previous=previous, current=info)
         return f"Loaded project {name!r}."
 
-    @app.commands.register(name="project rename", record_history=False)
+    @register(name="project rename", record_history=False)
     async def project_rename(name: str):
         """Rename the active project."""
         old = backend.current.name
         await backend.rename(name)
         return f"Renamed project {old!r} to {name!r}."
 
-    @app.commands.register(
+    @register(
         name="project delete",
         record_history=False,
         confirmation="Permanently delete project {name} and all of its data?",
@@ -1203,13 +1223,13 @@ def register_project_commands(app: Any) -> None:
         await backend.delete(name)
         return f"Deleted project {name!r}."
 
-    @app.commands.register(name="project export", record_history=False)
+    @register(name="project export", record_history=False)
     async def project_export(path: Path):
         """Export a consistent snapshot of the active project."""
         await backend.export_project(path)
         return f"Exported project to {path}."
 
-    @app.commands.register(
+    @register(
         name="project import",
         record_history=False,
         arguments={"name": Argument(flags=("-n", "--name"))},
@@ -1221,7 +1241,7 @@ def register_project_commands(app: Any) -> None:
         await app.events.emit("project_changed", previous=previous, current=info)
         return f"Imported and loaded project {info.name!r}."
 
-    @app.commands.register(
+    @register(
         name="project reset",
         record_history=False,
         confirmation="Reset {section} in the active project?",
@@ -1234,31 +1254,31 @@ def register_project_commands(app: Any) -> None:
         await backend.reset(section)
         return f"Reset project {section}."
 
-    @app.commands.register(name="configs", record_history=False)
-    @app.commands.register(name="configs list", record_history=False)
+    @register(name="configs", record_history=False)
+    @register(name="configs list", record_history=False)
     async def configs_list():
         """List named configurations."""
         configs = await app.configs.list()
         return "\n".join(configs) if configs else "No configs."
 
-    @app.commands.register(name="configs show", record_history=False)
+    @register(name="configs show", record_history=False)
     async def configs_show(name: str):
         """Show one configuration as JSON."""
         return json.dumps(await app.configs.get(name), indent=2)
 
-    @app.commands.register(name="configs export", record_history=False)
+    @register(name="configs export", record_history=False)
     async def configs_export(path: Path):
         """Export configurations as versioned JSON."""
         await app.configs.export_file(path, app.app_id)
         return f"Exported configs to {path}."
 
-    @app.commands.register(name="configs import", record_history=False)
+    @register(name="configs import", record_history=False)
     async def configs_import(path: Path):
         """Import configurations from versioned JSON."""
         count = await app.configs.import_file(path, app.app_id)
         return f"Imported {count} configs."
 
-    @app.commands.register(
+    @register(
         name="configs reset",
         record_history=False,
         confirmation="Reset all configurations to application templates?",

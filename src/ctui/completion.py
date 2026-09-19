@@ -8,11 +8,18 @@ UI suggestions and dispatch share conversion rules.
 
 from __future__ import annotations
 
+import logging
 import shlex
+import traceback
 
 from prompt_toolkit.completion import Completer, Completion
 
-from ctui.commands import CommandNotFound, Commands, CommandValidationError
+from ctui.commands import (
+    CommandError,
+    CommandNotFound,
+    Commands,
+    CommandValidationError,
+)
 
 
 def _argument_state(text: str) -> tuple[list[str], str, bool]:
@@ -111,6 +118,30 @@ class CommandCompleter(Completer):
             yield from self._command_completions(text.lstrip())
 
     async def get_completions_async(self, document, complete_event):
+        """Contain provider failures at the interactive completion boundary."""
+        try:
+            async for item in self._get_completions_async(document, complete_event):
+                yield item
+        except Exception as error:
+            self.type_hint = None
+            if self.app is not None and getattr(
+                getattr(self.app, "app", None), "is_running", False
+            ):
+                from ctui.dialogs import message_dialog
+
+                message_dialog(
+                    title="Completion error",
+                    text=(
+                        str(error)
+                        if isinstance(error, CommandError)
+                        else traceback.format_exc()
+                    ),
+                    scrollbar=True,
+                )
+            else:
+                logging.getLogger(__name__).exception("Completion failed")
+
+    async def _get_completions_async(self, document, complete_event):
         """Yield suggestions for text before the cursor without changing the input.
 
         Handle help targets as command paths. For arguments, expand earlier unique

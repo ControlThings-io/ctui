@@ -85,7 +85,7 @@ def get_key_bindings(ctui):
                 return True
             return False
 
-        async def execute():
+        async def execute_command():
             """Dispatch input and apply its normalized result to the widgets."""
             try:
                 ctui.output_text = output_field.text
@@ -129,6 +129,15 @@ def get_key_bindings(ctui):
                 ctui.layout.set_output(output)
             if result.exit_requested:
                 ctui.exit()
+
+        async def execute():
+            try:
+                await execute_command()
+            except Exception:
+                restore_if_latest()
+                message_dialog(
+                    title="Error", text=traceback.format_exc(), scrollbar=True
+                )
 
         event.app.create_background_task(execute())
 
@@ -183,9 +192,20 @@ def get_key_bindings(ctui):
         @kb.add(*keys)
         def _(event, shortcut_handler=handler):
             """Invoke a user-defined synchronous or asynchronous shortcut."""
-            result = shortcut_handler()
-            if inspect.isawaitable(result):
-                event.app.create_background_task(result)
+
+            async def invoke():
+                try:
+                    result = shortcut_handler()
+                    if inspect.isawaitable(result):
+                        await result
+                except CommandError as error:
+                    message_dialog(title="Error", text=str(error))
+                except Exception:
+                    message_dialog(
+                        title="Error", text=traceback.format_exc(), scrollbar=True
+                    )
+
+            event.app.create_background_task(invoke())
 
     #############################################
     # Key bindings that affect the output_field #

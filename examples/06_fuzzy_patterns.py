@@ -57,9 +57,12 @@ class PatternTool(CtuiApp):
         self, pattern: FuzzyHexPattern, count: int = 10, seed: int | None = None
     ) -> str:
         """Sample unique byte values without performing full expansion."""
-        return "\n".join(
-            payload.hex(" ") for payload in pattern.sample(count, seed=seed)
-        )
+        try:
+            return "\n".join(
+                payload.hex(" ") for payload in pattern.sample(count, seed=seed)
+            )
+        except ValueError as error:
+            raise CommandError(str(error)) from error
 
     @command(
         name="text expand",
@@ -84,7 +87,10 @@ class PatternTool(CtuiApp):
         self, pattern: FuzzyStringPattern, count: int = 10, seed: int | None = None
     ) -> str:
         """Sample unique strings without performing full expansion."""
-        return "\n".join(pattern.sample(count, seed=seed))
+        try:
+            return "\n".join(pattern.sample(count, seed=seed))
+        except ValueError as error:
+            raise CommandError(str(error)) from error
 
 
 if __name__ == "__main__":

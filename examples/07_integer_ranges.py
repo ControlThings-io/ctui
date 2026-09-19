@@ -15,7 +15,7 @@ uses the union of values so overlaps do not bias selection; a seed makes repeate
 calls reproducible. Expansion has a guard, not a truncation count.
 """
 
-from ctui import Argument, CtuiApp, IntegerRanges, command
+from ctui import Argument, CommandError, CtuiApp, IntegerRanges, command
 
 
 class RangeTool(CtuiApp):
@@ -51,7 +51,10 @@ class RangeTool(CtuiApp):
     )
     def expand(self, ranges: IntegerRanges, limit: int = 1_000) -> str:
         """Lazily expand ranges while enforcing a complete-result limit."""
-        return ", ".join(str(value) for value in ranges.expand(limit=limit))
+        try:
+            return ", ".join(str(value) for value in ranges.expand(limit=limit))
+        except ValueError as error:
+            raise CommandError(str(error)) from error
 
     @command(
         arguments={
@@ -63,7 +66,10 @@ class RangeTool(CtuiApp):
         self, ranges: IntegerRanges, count: int = 10, seed: int | None = None
     ) -> str:
         """Select unique integers without expanding the complete range set."""
-        return ", ".join(str(value) for value in ranges.sample(count, seed=seed))
+        try:
+            return ", ".join(str(value) for value in ranges.sample(count, seed=seed))
+        except ValueError as error:
+            raise CommandError(str(error)) from error
 
 
 if __name__ == "__main__":
