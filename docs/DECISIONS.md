@@ -144,23 +144,18 @@ preserve the active project and avoid orphaned catalog/filesystem state.
 
 Accepted, Sep 13; `1cc1d8e`, `dfa4d88`, `64f813c`, `3fb8ff9`.
 
-- `HexBytes` is an immutable `bytes` subclass used as a parameter annotation.
-  Accept common contiguous, separated, prefixed, and escaped byte notation;
-  validate complete bytes. This combines conversion and validation without
-  another source of type metadata.
-- `FuzzyHexPattern` and `FuzzyStringPattern` represent finite possibilities
-  without eagerly expanding them. Provide exact counts, bounded lazy
-  expansion (default 65,536 results), unique sampling, and fixed repetition.
-  Hex repetition operates on nibbles; formatting remains compatible with
-  `HexBytes`, including fuzzy prefixed/escaped byte forms.
-- Generated string wildcard alphabets/ranges are ASCII-bounded; explicitly
-  supplied Unicode literals are preserved. This is a finite pattern language,
-  not unrestricted regular-expression generation.
-- `IntegerRanges` holds ordered immutable `IntegerSpan(start, count)` values;
-  input ranges are inclusive and `stop` is exclusive. Keep spans compact,
-  provide lazy expansion, sampling and nonmutating sorted/unique/merged
-  operations. Accept nonnegative ascending ranges. Existing collection
-  annotations cover simple comma-separated integers.
+Use dedicated parameter annotations for reusable conversion and validation,
+keeping annotations the single source of type information (D03). Represent
+patterns and integer ranges compactly so argument conversion cannot eagerly
+allocate enormous result sets before application limits can run. Expansion is
+explicit, lazy, and bounded; random sampling is a separate operation. Keep the
+pattern language finite and predictable instead of adopting a general regex
+engine. Align concrete and fuzzy hex formatting to avoid conflicting grammars.
+
+Accepted documentation placement, Sep 18: keep per-type syntax, limits,
+semantics, and local rationale in class and method docstrings in
+[types.py](../src/ctui/types.py). Keep shared architectural rationale here;
+[README](../README.md) and [tutorials](../examples/README.md) provide usage.
 
 ## D10 — Release checks, supported platforms, and prereleases
 

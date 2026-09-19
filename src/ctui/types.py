@@ -1,4 +1,10 @@
-"""Reusable command parameter types."""
+"""Reusable command parameter types and their parsing contracts.
+
+Use these types directly as command parameter annotations. Conversion validates
+syntax before calling the command; application-specific constraints belong in
+argument validators or the command itself. Patterns and integer ranges retain
+compact representations so parsing does not allocate every possible result.
+"""
 
 from __future__ import annotations
 
@@ -22,11 +28,23 @@ _SEPARATED_BYTES = re.compile(
 
 
 class HexBytes(bytes):
-    """Immutable bytes parsed from common hexadecimal text representations.
+    r"""Immutable bytes parsed from common hexadecimal text representations.
 
-    Text may be contiguous, prefixed with ``0x``, expressed as ``\\xNN``
-    escapes, or separated into bytes by spaces, colons, hyphens, or
-    underscores. Hexadecimal digits are case-insensitive.
+    Accepted forms include ``deadbeef``, ``0xdeadbeef``, ``de ad be ef``,
+    ``de:ad:be:ef``, ``de-ad-be-ef``, ``de_ad_be_ef``,
+    ``0xde 0xad 0xbe 0xef``, and ``\xde\xad\xbe\xef``. Hex digits and
+    ``0x`` prefixes are case-insensitive; surrounding whitespace is ignored.
+    Separators must be consistent and divide complete bytes.
+
+    Empty text, odd nibble counts, commas, list or bytes-literal wrappers, and
+    mixed prefixes or separators are rejected rather than guessed. No padding,
+    integer conversion, or byte-order inference occurs. Quote command input
+    containing spaces or backslashes so it remains one shell-like argument.
+
+    Existing bytes, bytearray, and memoryview values are also accepted, including
+    empty values; the no-argument constructor produces empty bytes. The immutable
+    bytes subclass works directly with byte-oriented APIs. For mutation, callers
+    can explicitly construct a bytearray from it.
     """
 
     def __new__(cls, value: str | bytes | bytearray | memoryview = b""):
@@ -70,7 +88,14 @@ class HexBytes(bytes):
 
 @dataclass(frozen=True, order=True)
 class IntegerSpan:
-    """One inclusive input range represented by its start and value count."""
+    """One inclusive input range represented by its start and value count.
+
+    Store a non-negative integer start and a positive integer count; booleans
+    are rejected. Instances are frozen and ordered by start, then count.
+    Start/count matches protocol requests without allocating individual values.
+    The derived stop is exclusive, matching Python's range convention:
+    textual ``15-20`` corresponds to ``IntegerSpan(15, 6)`` with stop 21.
+    """
 
     start: int
     count: int
@@ -91,7 +116,7 @@ class IntegerSpan:
         return self.start + self.count
 
     def values(self) -> range:
-        """Return the integers represented by this span."""
+        """Return a compact Python range from start up to, but excluding, stop."""
         return range(self.start, self.stop)
 
     def __str__(self):
@@ -102,7 +127,26 @@ _INTEGER_RANGE_ITEM = re.compile(r"(?P<start>\d+)(?:\s*-\s*(?P<end>\d+))?")
 
 
 class IntegerRanges:
-    """Ordered, immutable collection of non-negative inclusive integer ranges."""
+    """Ordered collection of compact, non-negative inclusive integer ranges.
+
+    Accept comma-separated text or a nonempty sequence of IntegerSpan objects.
+    For example, ``0-5,9,15-20`` stores spans (0, 6), (9, 1), and (15, 6).
+    Text endpoints are inclusive; singletons have count 1. Whitespace around
+    commas and hyphens is accepted. Empty entries, negative integers, descending
+    ranges, and other notation are rejected.
+
+    Iteration, indexing, and len operate on spans, not expanded integers.
+    Preserve input order, overlaps, and duplicates because callers may intend
+    repeated operations. The stored spans are immutable; sorted(), unique(),
+    and merged() return new collections without modifying the original.
+    Use ordinary list[int] annotations for comma-separated integers alone.
+
+    count includes repeated values; unique_count counts their union. expand()
+    is lazy and bounded, while sample() selects from the union without expanding
+    it. Both default to a 65,536-result limit. Input is limited to 4,096
+    characters after stripping outer whitespace and at most 4,096 spans.
+    source retains the original text, or canonical text for supplied spans.
+    """
 
     DEFAULT_EXPANSION_LIMIT = 65_536
     DEFAULT_SAMPLE_LIMIT = 65_536
@@ -188,7 +232,12 @@ class IntegerRanges:
         return self.merged().count
 
     def expand(self, *, limit: int = DEFAULT_EXPANSION_LIMIT) -> Iterator[int]:
-        """Lazily yield values in span order, preserving overlaps and duplicates."""
+        """Lazily yield values in span order, preserving overlaps and duplicates.
+
+        Raise ValueError before returning an iterator if the complete count
+        exceeds limit; this is a guard, not truncation. The positive integer
+        limit defaults to 65,536 and may be explicitly overridden.
+        """
         _validate_positive_integer(limit, "expansion limit")
         if self.count > limit:
             raise ValueError(
@@ -204,7 +253,14 @@ class IntegerRanges:
         seed: int | None = None,
         limit: int = DEFAULT_SAMPLE_LIMIT,
     ) -> list[int]:
-        """Sample unique integers uniformly from the union of all spans."""
+        """Return a list of unique integers sampled uniformly from the union.
+
+        Overlaps and duplicate spans do not give values extra weight. Sampling
+        uses compact merged spans without expanding the domain. An optional
+        seed makes repeated calls reproducible; count zero returns an empty list.
+        Raise ValueError for a negative count, a non-positive limit, or a count
+        exceeding unique_count or limit (default 65,536).
+        """
         _validate_non_negative_integer(count, "sample size")
         _validate_positive_integer(limit, "sample limit")
         if count > limit:
@@ -227,15 +283,26 @@ class IntegerRanges:
         return results
 
     def sorted(self) -> IntegerRanges:
-        """Return spans ordered by start and count without other changes."""
+        """Return a new collection ordered by start, then count.
+
+        Preserve duplicates and overlaps; do not merge spans.
+        """
         return IntegerRanges(tuple(sorted(self._spans)))
 
     def unique(self) -> IntegerRanges:
-        """Remove exact duplicate spans while preserving their first occurrence."""
+        """Return a new collection keeping only the first of each exact span.
+
+        Preserve order and leave overlaps intact. For example, ``0-5,0-5,3-7``
+        becomes ``0-5,3-7``; use merged() to combine overlapping values.
+        """
         return IntegerRanges(tuple(dict.fromkeys(self._spans)))
 
     def merged(self, *, adjacent: bool = True) -> IntegerRanges:
-        """Sort and combine overlapping, and optionally adjacent, spans."""
+        """Return a new collection with sorted, combined spans.
+
+        Merge overlaps and, by default, adjacent spans: ``0-5,3-7,8`` becomes
+        ``0-8``. With adjacent=False it becomes ``0-7,8``.
+        """
         ordered = sorted(self._spans)
         combined = [ordered[0]]
         for span in ordered[1:]:
@@ -310,7 +377,13 @@ class _FinitePattern(Generic[_Result]):
         return f"{type(self).__name__}({self.source!r})"
 
     def expand(self, *, limit: int = DEFAULT_EXPANSION_LIMIT) -> Iterator[_Result]:
-        """Return a lazy iterator after checking the complete result count."""
+        """Return a lazy iterator after checking the complete result count.
+
+        Raise ValueError immediately if count exceeds the positive integer
+        limit (default 65,536); never silently truncate. Choices expand in
+        their stored order, with the rightmost position varying fastest.
+        Results are bytes for FuzzyHexPattern and str for FuzzyStringPattern.
+        """
         self._validate_limit(limit, "expansion")
         if self.count > limit:
             raise ValueError(
@@ -325,7 +398,14 @@ class _FinitePattern(Generic[_Result]):
         seed: int | None = None,
         limit: int = DEFAULT_SAMPLE_LIMIT,
     ) -> list[_Result]:
-        """Return unique uniformly selected results without full expansion."""
+        """Return a list of unique uniformly sampled results without expansion.
+
+        Sample combination indices so even a huge domain need not be enumerated.
+        An optional seed makes repeated calls reproducible. count may be zero,
+        but must not exceed the available combinations or the positive integer
+        limit (default 65,536); invalid counts or limits raise ValueError.
+        Results are bytes for FuzzyHexPattern and str for FuzzyStringPattern.
+        """
         self._validate_limit(count, "sample size", allow_zero=True)
         self._validate_limit(limit, "sample limit")
         if count > limit:
@@ -479,7 +559,31 @@ def _hex_class(source: str, start: int) -> tuple[tuple[str, ...], int]:
 
 
 class FuzzyHexPattern(_FinitePattern[bytes]):
-    """Finite hexadecimal pattern with lazy expansion and sampling."""
+    r"""Finite hexadecimal pattern producing bytes through expansion or sampling.
+
+    Each atom denotes one nibble: a literal hex digit, ``?`` for 0-f, a class
+    such as ``[015a]``, inclusive ranges such as ``[0-5a-f]``, or a negated
+    class such as ``[!0f]``. Hex digits are case-insensitive; duplicate class
+    choices are removed. Fixed ``{n}`` repetition repeats the preceding nibble
+    atom, not a byte: ``?{4}`` produces two bytes, and ``0{2}`` produces one.
+    Zero repetitions remove the atom, but the whole pattern must remain nonempty.
+
+    Concrete text formats match HexBytes, including prefixes and escapes.
+    Fuzzy forms include ``0xf?``, ``0xde 0x??``, and ``\xde\x??``. Separators
+    must consistently divide complete bytes; mixed separators and nibble-level
+    groups such as ``f-f`` are rejected. A hyphen denotes a range only inside
+    a class. All results must contain complete byte pairs.
+
+    This finite language excludes general regex groups, alternation, and
+    unbounded repetition. Parsing retains source and computes exact count
+    without expanding results. expand() is lazy and sample() draws unique
+    values without full enumeration; randomness is an operation, not syntax.
+    Both operations default to a 65,536-result limit.
+
+    Source length and output length are each limited to 4,096 units; output
+    units and max_length count nibbles, not bytes. A fixed repetition is limited
+    to 1,024. Quote command input containing spaces or backslashes.
+    """
 
     def __init__(self, source: str):
         if not isinstance(source, str):
@@ -658,7 +762,40 @@ def _string_alternatives(source: str, start: int) -> tuple[tuple[str, ...], int]
 
 
 class FuzzyStringPattern(_FinitePattern[str]):
-    """Finite Unicode string pattern with ASCII-bounded generated classes."""
+    r"""Finite Unicode string pattern with ASCII-bounded generated classes.
+
+    Produce str values; callers choose the encoding. Preserve literal Unicode
+    code points without normalization, including explicit classes such as
+    ``[éè]``. Separators, spaces, and punctuation remain literal text outside
+    pattern syntax. Generated ranges such as ``[a-z]`` are inclusive and
+    restricted to ASCII; ``?`` selects from ASCII a-z, A-Z, and 0-9.
+    Negated classes such as ``[!abc]`` exclude from that same default alphabet.
+
+    Shorthand classes are ``\d`` (0-9), ``\h`` (0-9, a-f, A-F), ``\l`` (a-z),
+    ``\u`` (A-Z), ``\w`` (ASCII letters, digits, underscore), and ``\s`` (space,
+    tab, carriage return, newline). Escapes include ``\n``, ``\r``, ``\t``,
+    ``\xNN``, ``\uNNNN``, ``\UNNNNNNNN``, and escaped syntax characters.
+    A complete four-digit Unicode escape takes precedence over the uppercase
+    shorthand; an incomplete \u escape starting with a hex digit is rejected.
+    Quote command input containing spaces or backslashes.
+
+    Literal alternatives such as ``{admin,user}`` may have different lengths.
+    They cannot be empty, nest patterns, or prefix one another; the prefix
+    restriction keeps combination counts and unique sampling unambiguous.
+    Classes and alternatives deduplicate choices. Shorthand classes are not
+    expanded inside classes or alternatives; literal escapes are supported.
+    Fixed ``{n}`` repeats the preceding atom, including an alternative group.
+    Zero removes that atom, but the whole pattern must remain nonempty.
+    General regex operators do not enable unbounded generation.
+
+    Parsing retains source and computes exact count without expansion. expand()
+    lazily yields strings and sample() returns unique strings without enumerating
+    the domain; both default to a 65,536-result limit. Source and maximum output
+    length are each limited to 4,096 code points; repetitions are limited to
+    1,024. max_length reports code points, and max_utf8_bytes reports the largest
+    encoded result size, not an additional enforced byte limit. Surrogate code
+    points are not supported.
+    """
 
     def __init__(self, source: str):
         if not isinstance(source, str):

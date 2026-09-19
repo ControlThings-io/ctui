@@ -1,7 +1,7 @@
 # Project status
 
-Last reconciled: 2026-09-18, against `main` at `f4c48bf` plus the current
-filesystem example changes in the working tree.
+Last reconciled: 2026-09-18, against `main` at `c18ef0c` plus the current
+type documentation changes in the working tree.
 
 ## Scope and evidence
 
@@ -182,3 +182,16 @@ does not transfer. Do not store full private transcripts in the repository.
   argument help, choice descriptions, and the distinction between help and flags.
 - Updated the tutorial index. Seven named-completion tests, Black/isort,
   CLI `help deploy`, and whitespace checks passed. Owner approved submission.
+
+## Type documentation follow-up (September 18, based on `c18ef0c`)
+
+- Expanded all five public type docstrings and their operations in
+  [types.py](../src/ctui/types.py) with syntax, limits, semantics, examples,
+  and local rationale. Shortened D09 to shared architectural rationale and
+  recorded the owner's approved documentation placement.
+- Validation: reviewed documentation against implementation; Black, relative
+  link-target checks, and whitespace checks passed. AST comparison confirmed
+  that Python changes affect only docstrings. Runtime tests were not rerun
+  for this documentation-only change.
+- No blockers. Owner approved committing and pushing these documentation
+  changes on September 18.
