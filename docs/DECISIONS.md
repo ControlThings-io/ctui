@@ -243,3 +243,13 @@ implementation details on framework objects or tutorial module docstrings.
 Test documentation explains fixture scope and regression intent without
 repeating self-explanatory test names. Reconcile session suggestions against
 explicit approval and current code; do not turn proposed features into promises.
+
+## HexBytes whitespace and mixed radix (September 19)
+
+Accepted: plain hex ignores whitespace anywhere between digits, with an even
+total digit count. When any whitespace-separated component has a 0x/0b/0o
+prefix, parse each component as a single byte; bare components are decimal.
+Binary underscores follow Python placement rules. Reject malformed syntax
+and values outside 0..255. Preserve standalone contiguous 0x multi-byte input
+and existing separate byte-separator and escape formats. Command input may
+use either quote style. Fuzzy pattern parsing is unchanged.

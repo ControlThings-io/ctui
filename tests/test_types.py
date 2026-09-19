@@ -45,6 +45,51 @@ class HexBytesTests(unittest.TestCase):
                 self.assertEqual(result, expected)
                 self.assertIsInstance(result, bytes)
 
+    def test_whitespace_and_mixed_radix_bytes(self):
+        for value in ("dead beef", "deadbe ef", "dead b e ef", "dead   b e      ef"):
+            self.assertEqual(HexBytes(value), bytes.fromhex("deadbeef"))
+        for value, expected in (
+            ("0xbe 0b10101100 0xef 10 0o377", "beacef0aff"),
+            ("0xbe   0xef   0b1010_001_1", "beefa3"),
+            ("0b_10100011", "a3"),
+            ("0B10100011 0O377 0XBE 00010", "a3ffbe0a"),
+            ("10 20", "1020"),
+            ("0xbe 10 20", "be0a14"),
+        ):
+            self.assertEqual(HexBytes(value), bytes.fromhex(expected))
+
+        def send(payload: HexBytes):
+            return payload
+
+        for quote in ("'", '"'):
+            for value in ("dead b e ef", "0xbe 0b10101100 10 0o377"):
+                parsed = Command(send).parse_args(quote + value + quote)
+                self.assertEqual(parsed["payload"], HexBytes(value))
+
+    def test_invalid_radix_components(self):
+        for value in (
+            "0b1010__0011",
+            "0b101_",
+            "0b__101",
+            "0b102",
+            "0o378",
+            "0xbe 256",
+            "0xbe -1",
+            "0xbe +1",
+            "0b100000000",
+            "0o400",
+            "0xbe 0xdead",
+            "0xbe ef",
+            "0xbe de:ad",
+            "0xbe 1_0",
+            r"0xbe \xad",
+            "de: ad",
+            "0xdead beef",
+            "dead b",
+        ):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                HexBytes(value)
+
     def test_bytes_like_values_can_be_wrapped_without_text_conversion(self):
         self.assertEqual(HexBytes(b"\x01\x02"), b"\x01\x02")
         self.assertEqual(HexBytes(bytearray((1, 2))), b"\x01\x02")

@@ -19,8 +19,9 @@ from typing import Generic, Iterator, Sequence, TypeVar
 
 _BYTE_ESCAPE = re.compile(r"(?:\\x[0-9a-fA-F]{2})+")
 _CONTIGUOUS = re.compile(r"[0-9a-fA-F]+")
-_PREFIXED_BYTES = re.compile(r"0x[0-9a-f]{2}(?:\s+0x[0-9a-f]{2})*", re.IGNORECASE)
-_WHITESPACE_BYTES = re.compile(r"[0-9a-fA-F]{2}(?:\s+[0-9a-fA-F]{2})+")
+_BYTE_COMPONENT = re.compile(
+    r"(?:0x[0-9a-f]+|0b_?[01](?:_?[01])*|0o[0-7]+|[0-9]+)", re.IGNORECASE
+)
 _SEPARATED_BYTES = re.compile(
     r"[0-9a-fA-F]{2}(?P<separator>[:_-])[0-9a-fA-F]{2}"
     r"(?:(?P=separator)[0-9a-fA-F]{2})*"
@@ -30,16 +31,20 @@ _SEPARATED_BYTES = re.compile(
 class HexBytes(bytes):
     r"""Immutable bytes parsed from common hexadecimal text representations.
 
-    Accepted forms include ``deadbeef``, ``0xdeadbeef``, ``de ad be ef``,
-    ``de:ad:be:ef``, ``de-ad-be-ef``, ``de_ad_be_ef``,
-    ``0xde 0xad 0xbe 0xef``, and ``\xde\xad\xbe\xef``. Hex digits and
-    ``0x`` prefixes are case-insensitive; surrounding whitespace is ignored.
-    Separators must be consistent and divide complete bytes.
+    Plain hex ignores whitespace even within byte pairs: ``dead b e ef``
+    becomes ``deadbeef``. The total digit count must be even. Standalone
+    ``0xdeadbeef`` retains this contiguous multi-byte meaning.
 
-    Empty text, odd nibble counts, commas, list or bytes-literal wrappers, and
-    mixed prefixes or separators are rejected rather than guessed. No padding,
-    integer conversion, or byte-order inference occurs. Quote command input
-    containing spaces or backslashes so it remains one shell-like argument.
+    If any whitespace-separated component has a ``0x``, ``0b``, or ``0o``
+    prefix, each component is one byte (0..255); unprefixed components are
+    decimal. For example, ``0xbe 0b10101100 10 0o377`` becomes ``be ac 0a ff``.
+    Binary underscores follow Python placement rules. Prefixes and hex digits
+    are case-insensitive. Bare ``10 20`` remains hexadecimal, not decimal.
+
+    Colon, hyphen, and underscore-separated hex byte pairs and adjacent
+    ``\xde\xad`` escapes remain separate formats; do not mix them with radix
+    components. No padding or byte-order inference occurs. Quote command input
+    containing spaces or backslashes using single or double quotes.
 
     Existing bytes, bytearray, and memoryview values are also accepted, including
     empty values; the no-argument constructor produces empty bytes. The immutable
@@ -64,15 +69,30 @@ class HexBytes(bytes):
             raise ValueError("hexadecimal input cannot be empty")
         if _BYTE_ESCAPE.fullmatch(text):
             return bytes.fromhex(text.replace(r"\x", ""))
-        if _PREFIXED_BYTES.fullmatch(text):
-            return bytes.fromhex(" ".join(part[2:] for part in text.split()))
-        if text.lower().startswith("0x"):
+        components = text.split()
+        if len(components) == 1 and text.lower().startswith("0x"):
             digits = text[2:]
             if not _CONTIGUOUS.fullmatch(digits) or len(digits) % 2:
                 raise ValueError("0x must be followed by an even number of hex digits")
             return bytes.fromhex(digits)
-        if _WHITESPACE_BYTES.fullmatch(text):
-            return bytes.fromhex(text)
+        if any(part.lower().startswith(("0x", "0b", "0o")) for part in components):
+            result = []
+            for part in components:
+                if not _BYTE_COMPONENT.fullmatch(part):
+                    raise ValueError(f"Invalid byte component: {part!r}")
+                base = {"0x": 16, "0b": 2, "0o": 8}.get(part[:2].lower(), 10)
+                number = int(part, base)
+                if not 0 <= number <= 255:
+                    raise ValueError(
+                        f"Byte component must be between 0 and 255: {part!r}"
+                    )
+                result.append(number)
+            return bytes(result)
+        compact = "".join(components)
+        if _CONTIGUOUS.fullmatch(compact):
+            if len(compact) % 2:
+                raise ValueError("hexadecimal input must contain complete byte pairs")
+            return bytes.fromhex(compact)
         separated = _SEPARATED_BYTES.fullmatch(text)
         if separated:
             return bytes.fromhex(text.replace(separated.group("separator"), ""))

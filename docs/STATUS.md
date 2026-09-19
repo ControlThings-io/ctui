@@ -219,3 +219,14 @@ does not transfer. Do not store full private transcripts in the repository.
   manual terminal acceptance is claimed.
 - Owner approved the local documentation commit on September 19 and handles
   pushes on this computer. No blockers; next step is the owner's push.
+
+## HexBytes extensions (September 19)
+
+- Added whitespace-insensitive plain hex and mixed 0x/0b/0o/decimal byte
+  components, with Python-style binary underscores and byte range checks.
+- Preserved standalone 0x multi-byte notation and other existing formats.
+  Updated type documentation, README, and example 05.
+- All 118 tests passed on Python 3.11, including both command quote styles,
+  requested inputs, ambiguity rules, invalid underscores, and overflow.
+  Changed-file Black, full isort, and whitespace checks passed.
+- Owner approved committing and pushing the HexBytes changes on September 19.

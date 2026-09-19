@@ -196,6 +196,21 @@ space-, colon-, hyphen-, or underscore-separated byte pairs, a whole-value
 `0x` prefix, per-byte `0x` prefixes, and `\xNN` escapes. Quote representations
 containing spaces or backslashes so they remain one shell-like argument.
 
+Plain `HexBytes` hex input ignores whitespace even within byte pairs:
+`"dead beef"`, `"deadbe ef"`, and `"dead   b e      ef"` all produce `de ad be ef`.
+The total number of hex digits must be even.
+
+If any whitespace-separated component starts with `0x`, `0b`, or `0o`, each
+component is a byte from 0 to 255; unprefixed components are decimal integers.
+For example, `"0xbe 0b10101100 0xef 10 0o377"` produces `be ac ef 0a ff`.
+Binary underscores follow Python placement rules: `0b1010_001_1` and
+`0b_10100011` are valid; consecutive or trailing underscores are rejected.
+Extra whitespace between components is ignored. Bare `"10 20"` remains hex;
+`"0xbe 10 20"` produces `be 0a 14`. Standalone `0xdeadbeef` retains its existing
+multi-byte meaning. Do not mix radix components with colon/hyphen/underscore
+byte separators or `\xNN` escapes. Single and double command quotes both work.
+These new whitespace and mixed-radix rules apply to `HexBytes`, not fuzzy patterns.
+
 `FuzzyHexPattern` and `FuzzyStringPattern` represent finite sets without
 materializing them during command conversion. Both provide an exact `count`,
 bounded lazy `expand()`, and unique `sample()` operations. Hex patterns support
