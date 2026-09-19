@@ -13,10 +13,6 @@ Control Things User Interface, aka ctui.py
 # details at <http://www.gnu.org/licenses/>.
 """
 
-from tabulate import tabulate
-
-from .dialogs import message_dialog
-
 
 def _scroll_output(event, output_field, amount):
     """Move the output viewport by *amount* lines without changing focus."""
@@ -80,14 +76,3 @@ def scroll_end(event, output_field):
     render_info = output_field.window.render_info
     if render_info is not None:
         _scroll_output(event, output_field, render_info.ui_content.line_count)
-
-
-def show_help(ctui):
-    """Display a dialog listing top-level commands for *ctui*."""
-    dialog = f"{ctui.welcome}\n\n{ctui.help_message}\n\nAvailable commands are:\n\n"
-    table = []
-    for command in ctui.commands:
-        if len(command.string.split()) == 1:
-            table.append((command.string, command.desc))
-    dialog += tabulate(sorted(table), tablefmt="plain")
-    message_dialog("Help", dialog)

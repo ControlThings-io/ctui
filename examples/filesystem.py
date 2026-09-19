@@ -69,7 +69,9 @@ class FilesystemApp(CtuiApp):
     """Browse directories using several ctui features together."""
 
     name, version, prompt = "Files", "1.0", "files> "
-    description = "A slightly more complex example of a ctui application with multiple commands."
+    description = (
+        "A slightly more complex example of a ctui application with multiple commands."
+    )
 
     def __init__(self):
         super().__init__()

@@ -31,7 +31,6 @@ dependencies = [
     "platformdirs>=4,<5",
     "prompt-toolkit>=3.0.36,<4",
     "Pygments>=2.14.0,<3",
-    "tabulate>=0.8.0,<0.9",
 ]
 
 [project.urls]

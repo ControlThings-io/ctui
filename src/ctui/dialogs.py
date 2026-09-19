@@ -35,7 +35,7 @@ def _text_width(text, scrollbar):
 
 def _scroll_buttons(text_area, buttons):
     """Scroll read-only text without moving focus away from dialog buttons."""
-    # Import lazily: functions also exposes convenience dialog helpers.
+    # Load scrolling helpers only when constructing a dialog.
     from .functions import (
         scroll_line_down,
         scroll_line_up,

@@ -229,3 +229,12 @@ continue to focus their editable input.
 Main help ordering clarified: welcome text (app name/version, then description)
 comes first, interface guidance follows, and the generated command reference
 comes last. Targeted help omits the welcome and interface introduction.
+
+## D13 — Retain reusable dialogs; remove unused legacy metadata
+
+Accepted September 18: keep the dialog classes and convenience wrappers for
+application developers, including text-input and callback-based dialogs.
+Remove obsolete `functions.show_help`, unused `Commands.descriptions`, and
+redundant `Command.string`, `string_parts`, and `func_name`. Keep active command
+descriptions (`desc`/`description`) used by generated help and completion.
+The obsolete helper was the only tabulate consumer, so remove that dependency.

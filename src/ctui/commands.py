@@ -250,11 +250,6 @@ class Command:
             raise ValueError(
                 "Command aliases must be non-empty words separated by single spaces"
             )
-        self.string, self.string_parts, self.func_name = (
-            self.name,
-            self.name.split(),
-            self.func.__name__,
-        )
         self.desc = (
             self.description
             or ((inspect.getdoc(self.func) or "").splitlines() or [""])[0]
@@ -679,11 +674,6 @@ class Commands:
     def strings(self):
         """Return registered command names in alphabetical order."""
         return sorted(self.commands)
-
-    @property
-    def descriptions(self):
-        """Map registered command names to their help summaries."""
-        return {k: v.desc for k, v in self.commands.items()}
 
     def resolve(self, text):
         """Return the matching command and its unparsed argument text.
