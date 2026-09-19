@@ -230,7 +230,11 @@ free-form strings to include spaces: `greet "Ada Lovelace"`.
 
 The dropdown stays on the current argument until an unquoted space is typed.
 Free-form values show a typed aid such as `<NAME: str>` or `<COUNT: int>`;
-typing a space advances the menu to the next argument.
+typing an unquoted, unescaped space advances the menu to the next argument.
+Typed aids appear immediately, including after named options such as
+`--replicas ` or `--replicas=`. Selecting an aid preserves your input.
+Unique choice prefixes also work in `--option=value` form and when continuing
+to later arguments.
 
 ## Events, lifecycle, and services
 

@@ -151,3 +151,34 @@ does not transfer. Do not store full private transcripts in the repository.
 - All six focused help tests passed, including ordering, single welcome
   occurrence, and omission from targeted help. Formatting and whitespace
   checks passed. Owner approved committing and pushing the help changes.
+
+## Legacy cleanup follow-up
+
+- Removed obsolete `show_help`, unused `Commands.descriptions`, and redundant
+  command metadata. Preserved all reusable dialogs and current help summaries.
+- Removed unused tabulate dependency and refreshed the lockfile; no other
+  dependency changes. Fixed existing example description formatting.
+- September 18 validation: all 109 tests passed on Python 3.11. Black, isort,
+  lockfile, whitespace checks, wheel/sdist builds, and isolated smoke tests
+  for both distributions passed. No remote CI run claimed.
+- Owner approved committing and pushing this cleanup.
+
+## Named argument completion fixes
+
+- Fixed disappearing type aids immediately after argument-separating spaces:
+  retain non-inserting hints when prompt-toolkit discards a no-op completion.
+- Expand unique Literal prefixes before completing later arguments, including
+  both `--option value` and `--option=value`; ambiguous prefixes remain errors.
+- Named numeric values show their type before typing. Selecting a type hint
+  preserves existing input. Quoted and escaped spaces stay in the current value.
+- All 116 tests passed on Python 3.11, including real buffer completion tests;
+  Black, isort, lockfile, and whitespace checks passed.
+- Owner approved committing and pushing the completion fixes and legacy cleanup.
+
+## Example 04 argument-help tutorial
+
+- Added help for the positional target and all named options, with separate
+  descriptions for environment choices. The opening docstring introduces
+  argument help, choice descriptions, and the distinction between help and flags.
+- Updated the tutorial index. Seven named-completion tests, Black/isort,
+  CLI `help deploy`, and whitespace checks passed. Owner approved submission.

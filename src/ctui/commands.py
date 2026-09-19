@@ -591,16 +591,18 @@ class Command:
             if token in options:
                 expanded.append(token)
                 continue
-            prefix = shlex.join(expanded)
+            option, equals, value = token.partition("=")
+            inline = bool(equals and option in options)
+            prefix = shlex.join(expanded + ([option] if inline else []))
             if prefix:
                 prefix += " "
             matches = [
                 item.value
-                for item in await self.complete(prefix, token, app)
+                for item in await self.complete(prefix, value if inline else token, app)
                 if item.value
             ]
             if len(matches) == 1:
-                token = matches[0]
+                token = f"{option}={matches[0]}" if inline else matches[0]
             expanded.append(token)
         return shlex.join(expanded)
 
@@ -681,7 +683,7 @@ class Commands:
         Raises:
             CommandNotFound: If no registered command or alias matches.
         """
-        stripped, all_names = text.strip(), {**self.commands, **self.aliases}
+        stripped, all_names = text.lstrip(), {**self.commands, **self.aliases}
         for name in sorted(all_names, key=lambda x: len(x.split()), reverse=True):
             if stripped == name or stripped.startswith(name + " "):
                 return all_names[name], stripped[len(name) :].lstrip()

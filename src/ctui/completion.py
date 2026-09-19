@@ -6,13 +6,15 @@ import shlex
 
 from prompt_toolkit.completion import Completer, Completion
 
-from ctui.commands import CommandNotFound, Commands
+from ctui.commands import CommandNotFound, Commands, CommandValidationError
 
 
 def _argument_state(text: str) -> tuple[list[str], str, bool]:
     """Split partial input while preserving quoted spaces and cursor state."""
     completed, current, quote, escaped = [], [], None, False
+    boundary = False
     for character in text:
+        boundary = False
         if escaped:
             current.append(character)
             escaped = False
@@ -26,12 +28,12 @@ def _argument_state(text: str) -> tuple[list[str], str, bool]:
         elif character in ("'", '"'):
             quote = character
         elif character.isspace():
+            boundary = True
             if current:
                 completed.append("".join(current))
                 current = []
         else:
             current.append(character)
-    boundary = bool(text) and text[-1].isspace() and quote is None
     return completed, "" if boundary else "".join(current), boundary
 
 
@@ -41,6 +43,7 @@ class CommandCompleter(Completer):
     def __init__(self, commands: Commands, app=None):
         """Bind completion to a command registry and optional application."""
         self.commands, self.app = commands, app
+        self.type_hint = None
 
     def _command_completions(self, text):
         """Yield only the next matching word of commands and aliases."""
@@ -86,6 +89,7 @@ class CommandCompleter(Completer):
 
     async def get_completions_async(self, document, complete_event):
         """Yield command or asynchronously generated argument completions."""
+        self.type_hint = None
         text = document.text_before_cursor
         stripped = text.lstrip()
         command_matches = list(self._command_completions(stripped))
@@ -113,13 +117,29 @@ class CommandCompleter(Completer):
         completion_text = shlex.join(completed)
         if completion_text:
             completion_text += " "
-        for result in await item.complete(completion_text, word, self.app):
-            yield Completion(
+        option, equals, value = word.partition("=")
+        if equals and option.startswith("-"):
+            completion_text += option + " "
+            word = value
+        try:
+            completion_text = await item.expand_unique_arguments(
+                completion_text, self.app
+            )
+            if completion_text:
+                completion_text += " "
+            results = await item.complete(completion_text, word, self.app)
+        except CommandValidationError:
+            return
+        for result in results:
+            completion = Completion(
                 result.value,
-                start_position=-len(word),
+                start_position=-len(word) if result.value else 0,
                 display=result.display or result.value,
                 display_meta=result.help,
             )
+            if not result.value and result.display:
+                self.type_hint = (document, completion)
+            yield completion
 
 
 __all__ = ["CommandCompleter"]

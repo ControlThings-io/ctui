@@ -13,6 +13,7 @@ Control Things User Interface, aka ctui.py
 # details at <http://www.gnu.org/licenses/>.
 """
 
+from prompt_toolkit.buffer import CompletionState
 from prompt_toolkit.document import Document
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.layout.containers import Float, FloatContainer, HSplit, Window
@@ -49,6 +50,9 @@ class CtuiLayout:
             history=self.history,
         )
 
+        if input_field is None:
+            self._input_field.buffer.on_completions_changed += self._restore_type_hint
+
         self._header_field = Window(height=1, char="-", style="class:line")
 
         self._output_field = output_field or TextArea(
@@ -80,6 +84,14 @@ class CtuiLayout:
         )
 
         self._root_container = root_container or self._body
+
+    def _restore_type_hint(self, buffer):
+        """Keep non-inserting type aids that prompt-toolkit normally discards."""
+        hint = self._completer.type_hint
+        if buffer.complete_state is None and hint is not None:
+            document, completion = hint
+            if buffer.document == document:
+                buffer.complete_state = CompletionState(document, [completion])
 
     @property
     def completer(self):
