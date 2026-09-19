@@ -23,7 +23,8 @@ this order:
 12. `12_keyboard_shortcuts.py` — register an application-wide shortcut.
 13. `13_custom_layout.py` — compose a layout from reusable widgets.
 14. `14_lifecycle_and_storage.py` — persist projects, configs, and records.
-15. `filesystem.py` — combine several features in a practical tool.
+15. `filesystem.py` — browse with `ls [PATH] [-l|--long]` and `cd DIRECTORY`,
+    with file/directory completion and detailed listings.
 
 Run an example from the repository root:
 

@@ -1,7 +1,7 @@
 # Project status
 
-Last reconciled: 2026-09-18, against `main` at `63de2cc` plus the current
-dialog fixes in the working tree.
+Last reconciled: 2026-09-18, against `main` at `f4c48bf` plus the current
+filesystem example changes in the working tree.
 
 ## Scope and evidence
 
@@ -127,3 +127,18 @@ does not transfer. Do not store full private transcripts in the repository.
 - Validation: all 108 tests passed on Python 3.11; Black, isort, and whitespace
   checks passed. Real-terminal visual acceptance remains outstanding.
 - Owner approved committing and pushing these fixes on September 18.
+
+## Filesystem example follow-up (September 18, based on `f4c48bf`)
+
+- Renamed example commands to `ls` and `cd`. `ls` accepts a file or directory
+  (default current directory) and `-l`/`--long` for permissions, link count,
+  numeric owner/group, byte size, modification time, and symlink targets.
+- Added relative, absolute, home-relative, and nested path suggestions;
+  `cd` suggests directories only. Directory listing runs in a worker thread.
+- Updated example usage and tutorial index. This is a teaching example, not
+  a complete implementation of system ls.
+- Python 3.11 temporary-directory smoke checks passed for file/directory
+  listing, both flags, quoted paths, nested completion, missing-path errors,
+  and directory changes. Black, isort, and whitespace checks passed. The
+  full framework suite was not rerun for this example-only change.
+- Awaiting owner approval to commit and push.
