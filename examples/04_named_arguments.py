@@ -7,6 +7,14 @@ Try: deploy api --environment=production --replicas 3 --verbose
 
 ``target`` is positional because it has no ``flags`` configuration. The other
 parameters are named arguments and cannot be supplied positionally.
+
+``Argument(help=...)`` explains an option in the suggestion menu and in
+``help deploy``. For free-form values, it accompanies the type hint. Adding
+help to ``target`` does not make it named: only ``flags`` does that.
+A ``choices`` mapping supplies a separate description for each suggested value.
+
+Try typing ``deploy `` to see target help, ``deploy api --`` to explore options,
+and ``deploy api -e `` to see descriptions for the environment choices.
 """
 
 from typing import Literal
@@ -19,9 +27,23 @@ class DeployTool(CtuiApp):
 
     @command(
         arguments={
-            "environment": Argument(flags=("-e", "--environment")),
-            "replicas": Argument(flags=("-r", "--replicas")),
-            "verbose": Argument(flags=("-v", "--verbose")),
+            "target": Argument(help="Service to deploy, such as api or worker"),
+            "environment": Argument(
+                flags=("-e", "--environment"),
+                help="Deployment environment (default: development)",
+                choices={
+                    "development": "Testing environment for development work",
+                    "production": "Live environment serving users",
+                },
+            ),
+            "replicas": Argument(
+                flags=("-r", "--replicas"),
+                help="Number of service instances to deploy (default: 1)",
+            ),
+            "verbose": Argument(
+                flags=("-v", "--verbose"),
+                help="Enable verbose logging",
+            ),
         }
     )
     def deploy(

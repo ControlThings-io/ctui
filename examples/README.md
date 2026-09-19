@@ -7,7 +7,7 @@ this order:
 2. `02_class_application.py` — organize commands in a `CtuiApp` subclass.
 3. `03_types_and_options.py` — parse types, defaults, and constrained values.
 4. `04_named_arguments.py` — explicitly declare Linux-style short and long
-   named arguments.
+   named arguments, with argument help and per-choice suggestion descriptions.
 5. `05_hex_bytes.py` — convert familiar hexadecimal formats into immutable
    bytes using a command annotation.
 6. `06_fuzzy_patterns.py` — lazily expand finite byte and string patterns or
