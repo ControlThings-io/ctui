@@ -10,6 +10,10 @@ Try: inspect '\xde\xad\xbe\xef'
 
 Values containing spaces or backslashes are quoted so the shell-like command
 parser passes the entire representation to ``HexBytes`` as one argument.
+
+The result is a bytes subclass, ready for a socket or serial write without
+parsing again. This example only inspects the value. HexBytes validates complete
+byte pairs and never pads ambiguous odd-length input.
 """
 
 from ctui import CtuiApp, HexBytes, command

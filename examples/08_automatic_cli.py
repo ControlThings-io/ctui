@@ -7,6 +7,11 @@ Try:
     uv run examples/08_automatic_cli.py --file examples/commands.txt
 
 Run without arguments to open the same application's full-screen interface.
+
+Repeat -c and -f in the desired execution order. Files contain one command per
+line; blank lines and # comments are skipped. Batch commands run sequentially,
+stop at the first error, and share the same dispatcher as interactive commands.
+Use ``help count-words`` for targeted help without opening the UI.
 """
 
 from ctui import CtuiApp, command

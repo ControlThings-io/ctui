@@ -3,6 +3,11 @@
 Run: uv run examples/02_class_application.py
 Try: add 2 3
 Try: multiply 4 5
+
+Both methods return CommandResult.append so earlier calculations stay visible.
+The UI applies each append when that command completes; do not build an output
+string from a snapshot of previous results. Integer annotations perform input
+conversion before the method runs.
 """
 
 from ctui import CommandResult, CtuiApp, command

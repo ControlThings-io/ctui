@@ -11,6 +11,12 @@ Try: text sample 'device-\d{4}' -n 5
 Expansion refuses patterns above its limit before iteration begins. Sampling
 selects unique values without constructing the complete expansion.
 Hex separators must divide complete bytes, and ``{n}`` repeats one nibble.
+
+The parsed object retains a finite set, not a precomputed list. count can be
+inspected before choosing expand() or sample(); this tutorial limits expansion
+to 1,000 results unless overridden. Joining results for display still builds an
+output string, so laziness does not make unlimited terminal output inexpensive.
+String results preserve explicit Unicode; automatic wildcard alphabets are ASCII.
 """
 
 from ctui import Argument, CtuiApp, FuzzyHexPattern, FuzzyStringPattern, command

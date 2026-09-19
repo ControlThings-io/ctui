@@ -1,3 +1,10 @@
+"""Automatic CLI routing, batch ordering, and error presentation regressions.
+
+Capture streams to verify shared dispatch without terminal initialization. Check
+that repeated commands/files preserve their order and failures map to documented
+exit statuses. Routing tests mock asyncio.run and close the unused coroutines.
+"""
+
 import io
 import tempfile
 import unittest
@@ -24,6 +31,8 @@ class CliApp(CtuiApp):
 
 
 class CliTests(unittest.IsolatedAsyncioTestCase):
+    """Exercise CLI help, command/file batches, and expected versus runtime errors."""
+
     async def test_help_flag_prints_cli_and_application_help(self):
         output = io.StringIO()
         status = await CliApp().run_cli(["--help"], stdout=output, program="tool")
@@ -100,6 +109,8 @@ class CliTests(unittest.IsolatedAsyncioTestCase):
 
 
 class RunRoutingTests(unittest.TestCase):
+    """Check the no-argument UI route and SystemExit for CLI execution."""
+
     def test_no_arguments_select_full_screen_ui(self):
         app = CliApp()
         with patch("asyncio.run", return_value="ui-result") as run:

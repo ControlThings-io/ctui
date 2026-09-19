@@ -1,3 +1,12 @@
+"""Contracts for hex bytes, finite patterns, and compact integer ranges.
+
+Compare concrete/fuzzy hex syntax, require complete byte pairs, and exercise
+Unicode literals with ASCII generation. Expansion tests check laziness and limits;
+sampling tests use huge domains to guard against accidental enumeration. Range
+transformations must preserve the original collection and distinguish exact-span
+deduplication from merging the represented union.
+"""
+
 import unittest
 from collections.abc import Iterator
 
@@ -12,6 +21,8 @@ from ctui.commands import Command
 
 
 class HexBytesTests(unittest.TestCase):
+    """Protect accepted byte notation and rejection of ambiguous text."""
+
     def test_common_hexadecimal_representations(self):
         expected = b"\xde\xad\xbe\xef"
         values = (
@@ -66,6 +77,8 @@ class HexBytesTests(unittest.TestCase):
 
 
 class IntegerRangesTests(unittest.TestCase):
+    """Protect inclusive span parsing, explicit normalization, and union sampling."""
+
     def test_parsing_preserves_order_and_represents_inclusive_ranges(self):
         ranges = IntegerRanges("0-5,9,15-20,75,10-12")
         self.assertEqual(
@@ -132,6 +145,8 @@ class IntegerRangesTests(unittest.TestCase):
 
 
 class FuzzyHexPatternTests(unittest.TestCase):
+    """Protect nibble semantics and formatting compatibility with HexBytes."""
+
     def test_literals_wildcards_classes_ranges_negation_and_repetition(self):
         pattern = FuzzyHexPattern("56:ff:ff:07:f[0-2]:0{2}")
         self.assertEqual(pattern.count, 3)
@@ -207,6 +222,8 @@ class FuzzyHexPatternTests(unittest.TestCase):
 
 
 class FuzzyStringPatternTests(unittest.TestCase):
+    """Protect finite Unicode text generation and bounded ASCII classes."""
+
     def test_literals_ascii_features_unicode_and_fixed_repetition(self):
         pattern = FuzzyStringPattern("{admin,user}-[1-2]é")
         self.assertEqual(pattern.count, 4)

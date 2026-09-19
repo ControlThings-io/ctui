@@ -1,4 +1,9 @@
-"""The event-driven ctui application."""
+"""Application lifecycle and the shared UI/CLI command dispatcher.
+
+CtuiApp owns registration and services; presentation delegates to layout,
+keybindings, and help. Headless dispatch uses the same parsing and validation
+path as either interface, enabling terminal-free application tests.
+"""
 
 from __future__ import annotations
 
@@ -28,7 +33,29 @@ from ctui.style import CtuiStyle
 
 
 class CtuiApp:
-    """Base class for synchronous or asynchronous terminal applications."""
+    """Base class for synchronous or asynchronous terminal applications.
+
+    Define commands with @command on ordinary methods; use self.events for custom
+    events and ordinary instance attributes for clients, sockets, and running tasks.
+    Named persistent profiles belong in configs and protocol traffic in records.
+    A stable app_id enables the default SQLite project backend; individual services
+    remain replaceable. Construction registers commands but does not open databases
+    or create terminal resources.
+
+    run() automatically selects full-screen or CLI mode. Call run_async() or
+    run_cli() inside an existing event loop, or dispatch() for headless execution.
+    Override sync or async lifecycle hooks for resources owned by your application.
+    Commands must return str or CommandResult; use CommandResult.success() when
+    there is no output. Sync handlers execute on the calling event loop, so move
+    blocking work to a worker explicitly.
+
+    Set statusbar to text or a zero-argument callable returning text. It is read
+    on redraw rather than polled on a timer; call self.app.invalidate() after
+    background state changes while the UI is running. Mouse capture defaults off
+    so terminal selection and clipboard shortcuts work while input keeps focus.
+    Customize name, version, description, prompt, interface help introductions,
+    and compose() on the subclass.
+    """
 
     name, version, prompt = "MyApp", "0.1.0", "> "
     description = "MyApp description (make sure to set name, version, and description"
@@ -68,7 +95,7 @@ class CtuiApp:
             version: Optional instance-specific version string.
             description: Optional description shown in help.
             prompt: Text displayed before command input.
-            history: History backend; defaults to in-memory history.
+            history: Override project history, or in-memory history without a backend.
             storage: Key-value backend; defaults to discarded storage.
             backend: Optional project backend; SQLite is used when app_id is set.
             configs: Optional named-configuration repository override.
@@ -147,7 +174,11 @@ class CtuiApp:
 
     @property
     def _statusbar(self):
-        """Resolve the current application-defined status-bar text."""
+        """Resolve the current application-defined status-bar text.
+
+        Evaluate callables on each access; return their value as text. This getter
+        does not schedule refreshes or await asynchronous providers.
+        """
         value = self.statusbar() if callable(self.statusbar) else self.statusbar
         return str(value)
 
@@ -163,6 +194,10 @@ class CtuiApp:
                 ``"c-t"``. Multiple values form a key sequence.
             handler: Synchronous or asynchronous zero-argument callable.
             description: Optional human-readable explanation.
+
+        Register before the UI is built. Bindings apply application-wide, including
+        while a dialog is focused. Descriptions appear in UI help. Awaitable handler
+        results are scheduled as prompt-toolkit background tasks.
         """
         if not keys:
             raise ValueError("A shortcut requires at least one key")
@@ -176,29 +211,58 @@ class CtuiApp:
         return await result if inspect.isawaitable(result) else result
 
     async def on_start(self):
-        """Run before terminal resources are constructed."""
+        """Initialize application resources after the project backend opens.
+
+        Called in UI and CLI execution before any commands. May be sync or async.
+        The framework closes services if this hook fails, but calls on_stop only
+        when on_start has completed successfully.
+        """
         pass
 
     async def on_ready(self):
-        """Run after terminal resources are ready and before input begins."""
+        """Initialize UI-dependent resources after layout and app are constructed.
+
+        Called only in full-screen mode, before the prompt-toolkit run loop begins.
+        May be sync or async; CLI execution does not create widgets or call this hook.
+        """
         pass
 
     async def on_stop(self):
-        """Run during shutdown before the storage backend closes."""
+        """Release application resources before framework services close.
+
+        Called in either execution mode if on_start completed, including after a
+        later failure. May be sync or async. Storage and an opened project backend
+        are still closed if this hook raises.
+        """
         pass
 
     def compose(self):
-        """Return a prompt_toolkit root container, or None for the standard UI."""
+        """Return a prompt-toolkit root container, or None for the standard UI.
+
+        self.layout already exists here. Reuse its input_field so the framework can
+        focus command input. ctui.widgets supplies supported building blocks, and
+        self.layout.body includes the default panes and completion float. Dialogs
+        require a root container exposing a floats list to show_dialog().
+        """
         return None
 
     def format_help(self, target=""):
-        """Return generated help for a command or its immediate children."""
+        """Return the shared reference for a command or its immediate children.
+
+        An empty target lists root commands/groups. Targets accept names, aliases,
+        and unique prefixes; invalid or ambiguous targets raise CommandNotFound.
+        This reference excludes welcome text and interface guidance.
+        """
         from ctui.help import command_help
 
         return command_help(self, target)
 
     def format_ui_help(self, target=""):
-        """Return UI guidance followed by generated command help."""
+        """Return welcome text, UI guidance, and the shared command reference.
+
+        A nonempty target returns only detailed command help. The UI presenter puts
+        this text in a modal popup, preserving the main output.
+        """
         from ctui.help import ui_guidance
 
         reference = self.format_help(target)
@@ -210,7 +274,11 @@ class CtuiApp:
         )
 
     def format_cli_help(self, program=None, target=""):
-        """Return terminal guidance followed by generated command help."""
+        """Return welcome text, CLI usage and guidance, then the command reference.
+
+        program controls the executable name in usage examples. A nonempty target
+        returns only detailed command help, without the welcome or introduction.
+        """
         if target:
             return self.format_help(target)
         program = program or Path(sys.argv[0]).name
@@ -242,16 +310,29 @@ class CtuiApp:
     async def dispatch(self, text, *, confirmed=False, confirm_callback=None):
         """Parse and execute one command without requiring a terminal.
 
-        Args:
-            text: Complete command line, including arguments.
+        text is the complete command line. This method does not open services or
+        run lifecycle hooks; callers using a persistent backend must open it first.
+        Aliases and unique command/choice prefixes resolve before typed conversion.
+        Argument error offsets are mapped back to the originally submitted text.
 
-        Returns:
-            The normalized :class:`~ctui.commands.CommandResult`.
+        Confirmation uses the command's format string and parsed arguments. Pass
+        confirmed=True, append a trailing ``confirm`` token, or supply a sync/async
+        confirm_callback(message). Without approval machinery, raise
+        ConfirmationRequired. A declined callback returns CommandResult.rejected()
+        without executing or recording the command.
 
-        Raises:
-            CommandNotFound: If no command or alias matches the input.
-            CommandValidationError: If argument conversion or validation fails.
-            CommandError: If the command reports another user-facing failure.
+        Emit command_submitted(text=...) before resolution, then
+        command_started(command=..., arguments=...) after validation and approval.
+        Normalize str to CommandResult; other return values besides CommandResult
+        raise TypeError. Accepted results are recorded when record_history is true,
+        then emit command_finished(command=..., result=...). Rejected results do
+        neither. Exceptions from the execution/result/history/finished-event stage
+        emit command_failed(command=...) and propagate; parse and confirmation
+        failures occur before that stage. Listener errors also propagate.
+
+        Return the normalized result. Presentation, including output updates and
+        exit requests, belongs to the caller; this method does not serialize
+        concurrent calls or render widgets.
         """
         await self.events.emit("command_submitted", text=text)
         item, argument_text = self.commands.resolve(text)
@@ -344,7 +425,12 @@ class CtuiApp:
                 await self.backend.close()
 
     async def run_async(self):
-        """Run the terminal application in the caller's event loop."""
+        """Run the full-screen application in the caller's event loop.
+
+        Open the backend, call on_start, build the UI, call on_ready, and await the
+        terminal application. On exit or failure, call on_stop if startup completed,
+        then close storage and the opened backend. Return prompt-toolkit's result.
+        """
         backend_opened = False
         started = False
         try:
@@ -401,7 +487,21 @@ class CtuiApp:
         stderr: TextIO | None = None,
         program=None,
     ):
-        """Execute terminal arguments and return a conventional exit status."""
+        """Execute terminal arguments sequentially and return an exit status.
+
+        Accept help/-h/--help, targeted ``help COMMAND``, and repeatable -c/--command
+        or -f/--file operations in supplied order, including long-option equals
+        forms. Files are UTF-8; skip blank lines and lines beginning with #.
+        Read all command files before starting execution. Main help returns without
+        opening services; command execution opens the backend and runs on_start and
+        on_stop, but never on_ready.
+
+        Print non-None result output to stdout. Stop at an exit request or the first
+        error. Return 0 on success, 2 for command/argument/type or file-opening
+        errors, and 1 for unexpected exceptions during dispatch. Startup/shutdown
+        exceptions propagate. Command errors include a source caret and help on
+        stderr. Streams and the displayed program name can be supplied for testing.
+        """
         stdout, stderr = stdout or sys.stdout, stderr or sys.stderr
         try:
             show_help, operations = self._parse_cli_operations(list(arguments))
@@ -462,7 +562,13 @@ class CtuiApp:
                 await self._close_runtime(backend_opened)
 
     def run(self, argv=None):
-        """Open the UI without arguments, otherwise run terminal operations."""
+        """Open the UI without arguments, otherwise run terminal operations.
+
+        Use sys.argv[1:] when argv is omitted. This synchronous entry point owns an
+        event loop via asyncio.run; use run_async/run_cli inside an existing loop.
+        UI mode returns the terminal result; CLI mode raises SystemExit with its
+        status so application scripts need no separate argument parser.
+        """
         import asyncio
 
         arguments = list(sys.argv[1:] if argv is None else argv)

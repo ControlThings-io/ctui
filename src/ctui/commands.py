@@ -1,4 +1,11 @@
-"""Pythonic, typed and asynchronous command dispatch."""
+"""Typed command registration, parsing, validation, and completion.
+
+Function annotations control conversion. Argument metadata adds help, choices,
+validators, and explicitly opted-in flags; defaults alone never create options.
+Command names derive from method names by replacing underscores with spaces.
+The dispatcher in application.py adds confirmation, history, events, and result
+normalization around these lower-level operations.
+"""
 
 from __future__ import annotations
 
@@ -23,7 +30,11 @@ from typing import (
 
 
 class CommandError(Exception):
-    """An error safe to show to an application user."""
+    """An error safe to show to an application user.
+
+    Raise this for expected application failures. The UI shows the message in a
+    dialog; CLI execution prints it with command context and returns status 2.
+    """
 
 
 class CommandNotFound(CommandError):
@@ -33,7 +44,13 @@ class CommandNotFound(CommandError):
 
 
 class CommandValidationError(CommandError):
-    """Indicate that command arguments could not be parsed or validated."""
+    """Report invalid command input with an optional source offset.
+
+    position is a zero-based character offset, initially relative to argument
+    text and remapped to the full input by dispatch(). argument identifies the
+    parameter when known. Presenters use the offset for the CLI caret or the
+    restored UI input cursor.
+    """
 
     def __init__(self, message, *, position=None, argument=None):
         """Store a user-facing message and optional source location."""
@@ -51,16 +68,27 @@ class CommandValidationError(CommandError):
 
 
 class ConfirmationRequired(CommandError):
-    """Indicate that a command needs explicit approval before execution."""
+    """Request explicit approval before a destructive command executes.
+
+    message is the command's confirmation template formatted with parsed
+    arguments. Headless callers can retry with confirmed=True or supply a
+    confirmation callback to dispatch().
+    """
 
     def __init__(self, message: str):
+        """Store the formatted message for a presenter or headless caller."""
         self.message = message
         super().__init__(message)
 
 
 @dataclass(frozen=True)
 class CompletionItem:
-    """Describe insertable completion text and its dropdown help message."""
+    """Describe a completion value, dropdown explanation, and optional label.
+
+    value is the text inserted into input; help appears beside it and display
+    can replace its visible label. The framework uses an empty value plus a
+    label for non-inserting type hints, so selecting a hint preserves input.
+    """
 
     value: str
     help: str = ""
@@ -69,7 +97,25 @@ class CompletionItem:
 
 @dataclass(frozen=True)
 class Argument:
-    """Configure one parameter, including explicit command-line flags."""
+    """Configure one parameter without duplicating its conversion annotation.
+
+    help explains the parameter in completion and detailed command help.
+    choices is an iterable of values or a value-to-description mapping; it
+    constrains parsed values as well as supplying suggestions. completer accepts
+    CompletionContext and returns strings or CompletionItems, directly or via
+    an awaitable. Suggestions are converted and checked by the validator.
+    A provider suggests candidates; it is not itself an execution allowlist.
+
+    validator is synchronous and receives the converted value. False rejects
+    with a generated message; any string rejects with that message; True or
+    None accepts. metavar replaces the parameter label in usage and type aids.
+
+    flags explicitly makes a parameter named: e.g. ('-n', '--count'). Without
+    flags it remains positional even if it has a default, help, or choices.
+    A named bool acts as a flag. Flags must be unique within the command; short
+    flags have one alphanumeric character and long flags use alphanumerics and
+    hyphens. No flags are inferred from Python names.
+    """
 
     help: str = ""
     choices: Iterable[Any] | Mapping[Any, str] | None = None
@@ -87,7 +133,14 @@ class Argument:
 
 @dataclass(frozen=True)
 class CompletionContext:
-    """Describe the command-line state supplied to a completion provider."""
+    """Snapshot supplied to a sync or async completion provider.
+
+    command is the resolved metadata, parameter is the argument being entered,
+    word is its partial text, and arguments contains earlier parsed values.
+    Omitted defaults need not be present. app is the application when supplied
+    by the caller; providers can inspect application state without adding a
+    hidden context parameter to command signatures.
+    """
 
     command: "Command"
     parameter: inspect.Parameter
@@ -98,7 +151,17 @@ class CompletionContext:
 
 @dataclass(frozen=True)
 class CommandResult:
-    """Describe how a completed command should affect the user interface."""
+    """Describe acceptance and presentation of a completed command.
+
+    output replaces UI output unless append_output is true; None leaves it
+    unchanged. clear_output takes precedence over text in the UI. exit_requested
+    asks the presenter to stop. CLI prints provided output sequentially.
+
+    accepted=False suppresses history and command_finished and lets the UI
+    restore the submission when it is still current. Use success() for commands
+    with no output; returning Python None is not accepted by dispatch().
+    The result is immutable and carries intent rather than a stale widget state.
+    """
 
     output: str | None = None
     clear_output: bool = False
@@ -113,7 +176,11 @@ class CommandResult:
 
     @classmethod
     def append(cls, output: str):
-        """Create a result that appends text to the current output."""
+        """Request an append to the output present when the command finishes.
+
+        The UI applies this after awaiting execution, so overlapping async commands
+        do not overwrite one another with snapshots captured at submission time.
+        """
         return cls(output=output, append_output=True)
 
     @classmethod
@@ -172,6 +239,11 @@ def _convert(value: str, annotation: Any, name: str) -> Any:
     Raises:
         CommandValidationError: If conversion fails or a constrained value does
             not match its annotation.
+
+    Boolean text accepts true/false, yes/no, on/off, and 1/0 case-insensitively.
+    Optional values accept none/null. Lists, tuples, and sets split on commas;
+    Path expands the home directory. Enum accepts a member name or stringified
+    value. Other annotations are called with the text, enabling custom types.
     """
     if annotation in (inspect.Parameter.empty, Any, str):
         return value
@@ -222,7 +294,18 @@ def _convert(value: str, annotation: Any, name: str) -> Any:
 
 @dataclass
 class Command:
-    """Store callable metadata and perform parsing, execution, and completion."""
+    """Store a callable's metadata and handle arguments independently of the UI.
+
+    Registration validates names, aliases, flags, and parameter configuration.
+    Only user-entered parameters appear; bound self is excluded. Positional-only
+    parameters, *args, and **kwargs are rejected because their terminal meaning
+    is not defined. An explicit description overrides the docstring's first
+    line as the summary; remaining docstring text appears in targeted help.
+
+    parse_args handles complete values. Prefix expansion and dynamic completion
+    are separate async operations. execute invokes the callable directly; use
+    CtuiApp.dispatch for confirmation, events, history, and result normalization.
+    """
 
     func: Callable[..., Any]
     name: str | None = None
@@ -347,6 +430,15 @@ class Command:
         Raises:
             CommandValidationError: If syntax, conversion, arity, choices, or a
                 custom validator rejects the input.
+
+        Tokenize with shell-like quoting. Declared options can appear around
+        positional values as -n VALUE or --name=VALUE. A bare bool option means
+        True; explicit equals syntax can set False. -- ends option recognition,
+        allowing positional values beginning with a hyphen. Duplicate options,
+        unknown flags, missing values, and excess arguments are errors. Omitted
+        optional parameters stay absent from the returned mapping so Python applies
+        the callable's defaults. Partial mode still requires valid token quoting
+        and conversion, but skips complete arity, choices, and validator checks.
         """
         try:
             tokens = shlex.split(text)
@@ -477,7 +569,12 @@ class Command:
         return values, next_parameter
 
     async def execute(self, app=None, raw_input="", **kwargs):
-        """Invoke the command and resolve synchronous or awaitable results."""
+        """Call the command with parsed keyword arguments and await its result.
+
+        No context argument is injected; app and raw_input are not passed to the
+        callable. Sync commands run inline. Return the raw value without converting
+        it to CommandResult; application dispatch owns that validation.
+        """
         result = self.func(**kwargs)
         return await result if inspect.isawaitable(result) else result
 
@@ -488,6 +585,12 @@ class Command:
             text: Completed argument text before the current word.
             word: Partial word to complete.
             app: Optional application passed to dynamic providers.
+
+        Providers may be sync or async; validators are synchronous. Candidate
+        values are prefix-filtered, converted, and checked by the validator. If no
+        candidates exist, return a display-only type aid rather than invented input.
+        Completion providers can run during dispatch for unique-prefix expansion,
+        so they should avoid side effects.
         """
         values, parameter = self.parse_args(text, partial=True)
         option_names = {
@@ -636,6 +739,10 @@ class Commands:
 
         Returns:
             The original callable, allowing normal decorator behavior.
+
+        record_history controls accepted-command recording by dispatch();
+        confirmation supplies its formatted approval prompt. Reject name/alias
+        collisions rather than silently replacing registered commands.
         """
 
         def decorate(target):
@@ -678,10 +785,13 @@ class Commands:
         return sorted(self.commands)
 
     def resolve(self, text):
-        """Return the matching command and its unparsed argument text.
+        """Resolve exact names first, then unique word prefixes and aliases.
 
-        Raises:
-            CommandNotFound: If no registered command or alias matches.
+        Prefer the longest matching exact name. If no exact name matches, compare
+        prefixes at each word and retain the deepest matching command. Multiple
+        aliases for the same command are not ambiguity. Return the Command and its
+        remaining argument text; raise CommandNotFound for no match, malformed
+        quoting during prefix resolution, or multiple distinct matches.
         """
         stripped, all_names = text.lstrip(), {**self.commands, **self.aliases}
         for name in sorted(all_names, key=lambda x: len(x.split()), reverse=True):
@@ -728,10 +838,23 @@ def command(
     record_history=True,
     confirmation=None,
 ):
-    """Mark a class method for automatic registration by ``CtuiApp``.
+    """Mark a class method for automatic registration by CtuiApp.
 
-    The decorator supports both ``@command`` and ``@command(...)`` forms and
-    leaves the decorated function callable outside the framework.
+    Support @command and @command(...) while leaving the function directly
+    callable. name overrides the method name (underscores otherwise become
+    spaces); aliases adds alternate names. arguments maps parameter names to
+    Argument metadata. description overrides the docstring's first-line summary.
+    Use the remaining docstring for user-facing details shown by targeted help.
+
+    Parameters are positional unless Argument.flags opts them into named syntax.
+    Conversion follows annotations; command methods access the app through self.
+    Return str or CommandResult, synchronously or asynchronously.
+
+    record_history=False suppresses accepted-command history, useful when
+    switching projects or exporting/resetting state. confirmation is a format
+    string interpolated with parsed arguments, such as "Delete {name}?".
+    Dispatch requires a callback, confirmed=True, or a trailing confirm token
+    before executing such a command. A boolean is not a confirmation template.
     """
 
     def decorate(target):
@@ -750,7 +873,15 @@ def command(
 
 
 def register_default_commands(app):
-    """Install the standard clear, help, history, and exit commands."""
+    """Install the standard clear, help, history, and exit commands.
+
+    History export is a separate command so it is discoverable alongside the
+    parent history command and produces replayable UTF-8 command files. History
+    search/clear are installed only when the history service exposes search.
+    The project backend exposes search, so it also receives history clear in
+    addition to project reset history. Help returns a private result so UI and CLI can
+    present the same reference differently.
+    """
 
     @app.commands.register
     def clear():

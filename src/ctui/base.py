@@ -1,5 +1,7 @@
-"""
-Control Things User Interface, aka ctui.py
+"""Internal button variant used by ctui's reusable dialogs.
+
+This adapts prompt-toolkit's button to fit captions beyond the requested minimum
+width. The public ctui.widgets.Button remains the upstream widget alias.
 
 # Copyright (C) 2019  Justin Searle
 #
@@ -21,12 +23,13 @@ from prompt_toolkit.mouse_events import MouseEventType
 
 
 class Button:
-    """
-    Clickable button, copied from prompt_toolkit/widgets/base.py, fixed width bug.
+    """Focusable dialog button with width at least len(text) + 2.
 
-    :param text: The caption for the button.
-    :param handler: `None` or callable. Called when the button is clicked.
-    :param width: Width of the button.
+    text is the caption, handler is a synchronous zero-argument callback, and
+    width is the minimum character width including angle-bracket decorations.
+    Enter or Space activates a configured handler. Mouse-up activation assumes
+    a handler exists and is relevant only when mouse reporting is enabled.
+    Expose the underlying Window through the prompt-toolkit container protocol.
     """
 
     def __init__(self, text, handler=None, width=12):
@@ -77,7 +80,7 @@ class Button:
         ]
 
     def _get_key_bindings(self):
-        "Key bindings for the Button."
+        """Bind Enter and Space to the optional synchronous handler."""
         kb = KeyBindings()
 
         @kb.add(" ")

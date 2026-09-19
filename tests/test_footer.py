@@ -1,3 +1,10 @@
+"""Dynamic status text and focus-preserving output navigation regressions.
+
+The historical filename refers to the status bar. Verify evaluation on access,
+injected widgets, read-only output writes, and scrolling both the viewport and
+hidden cursor so the next render does not jump back to the old position.
+"""
+
 import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -18,6 +25,8 @@ from ctui.layout import CtuiLayout
 
 
 class StatusbarTests(unittest.TestCase):
+    """Check widget/state contracts without starting a terminal run loop."""
+
     def test_string_statusbar_is_displayed(self):
         app = CtuiApp()
         app.statusbar = "Ready"

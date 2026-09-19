@@ -1,4 +1,11 @@
-"""Exercise installed-package behavior against built distributions."""
+"""Exercise an installed wheel or source distribution in an isolated environment.
+
+Run via the release checklist's uv --isolated --no-project --with ARTIFACT command
+so imports come from the artifact rather than the editable repository package.
+Check public imports, installed version, custom type parsing, headless dispatch,
+and temporary project persistence. Passing locally is artifact evidence, not
+proof of remote CI success or publication.
+"""
 
 import asyncio
 import tempfile
@@ -18,7 +25,11 @@ class SmokeApp(CtuiApp):
 
 
 async def smoke_test() -> None:
-    """Verify public types, dispatch, and persistent project storage."""
+    """Verify representative installed-package behavior without opening a terminal.
+
+    Use a temporary project root and explicitly close the backend in finally.
+    Assertion failures make the script fail for use in build/release workflows.
+    """
     assert __version__ == version("ctui")
     assert HexBytes("be:ef") == b"\xbe\xef"
     assert list(FuzzyHexPattern("f[0-1]").expand()) == [b"\xf0", b"\xf1"]

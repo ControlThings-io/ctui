@@ -1,3 +1,11 @@
+"""Dropdown progression and partial-input tokenization regressions.
+
+Keep suggestions on the current word until a separating space is entered, allow
+child commands beside parent argument hints, and retain quoted spaces. These
+tests inspect completer results; real Buffer behavior is covered separately in
+test_named_completion.py.
+"""
+
 import unittest
 
 from prompt_toolkit.completion import CompleteEvent
@@ -8,7 +16,10 @@ from ctui.completion import CommandCompleter, _argument_state
 
 
 class CompletionTests(unittest.IsolatedAsyncioTestCase):
+    """Collect asynchronous suggestions without requiring a terminal application."""
+
     async def collect(self, completer, text):
+        """Materialize completions for a Document whose cursor is at the end."""
         return [
             item
             async for item in completer.get_completions_async(

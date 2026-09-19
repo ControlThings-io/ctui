@@ -1,3 +1,16 @@
+"""Project persistence, migration, and failure-recovery regression coverage.
+
+Use temporary directories and real aiosqlite connections for catalog operations,
+config/snapshot exchange, sessions, records, and history. Corrupt exported copies
+to test import rejection without touching user data. Quoted command paths keep
+round trips valid on Windows as well as POSIX hosts.
+
+Concurrent append and slow-SQL tests cover write completion and event-loop
+responsiveness, not arbitrary transaction isolation or project-switch races.
+Migration tests check backups, rollback, active-project preservation, and cleanup
+of failed imports.
+"""
+
 import asyncio
 import json
 import sqlite3
@@ -13,13 +26,17 @@ from ctui import CommandError, ConfirmationRequired, CtuiApp, SqliteProjectBacke
 
 
 class ProjectTests(unittest.IsolatedAsyncioTestCase):
+    """Open an isolated project backend with a default config template per test."""
+
     async def asyncSetUp(self):
+        """Create a temporary data root, register a template, and open the backend."""
         self.temporary = tempfile.TemporaryDirectory()
         self.app = CtuiApp(app_id="io.example.test", data_dir=Path(self.temporary.name))
         self.app.configs.register_template("local", {"host": "127.0.0.1"})
         await self.app.backend.open()
 
     async def asyncTearDown(self):
+        """Close database worker connections before deleting their temporary files."""
         await self.app.backend.close()
         self.temporary.cleanup()
 
@@ -45,6 +62,11 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_history_search_clear_and_project_load_are_not_recorded(self):
+        """Check implemented history suppression, including legacy history clear.
+
+        The original decision preferred project reset history, but the current
+        command remains installed; this test records behavior, not a removal decision.
+        """
         await self.app.dispatch("help")
         await self.app.dispatch("project create lab")
         await self.app.dispatch("project load default")
@@ -95,6 +117,7 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.app.backend.stats())["records"], 50)
 
     async def test_slow_sqlite_work_does_not_block_the_event_loop(self):
+        """Run a delaying SQL function while the event loop continues to advance."""
         await self.app.backend.connection.create_function("delay", 1, time.sleep)
         query = asyncio.create_task(
             self.app.backend.connection.execute("SELECT delay(?)", (0.1,))
@@ -122,7 +145,11 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
             await self.app.configs.import_file(invalid, self.app.app_id)
 
     async def _export_with_metadata(self, filename, **metadata):
-        """Export a project and replace selected metadata values."""
+        """Export a consistent snapshot, then alter only that test copy's metadata.
+
+        Use a separate synchronous connection after backup, closing it explicitly
+        so later imports and temporary-directory cleanup work on Windows.
+        """
         path = Path(self.temporary.name) / filename
         await self.app.backend.export_project(path)
         with closing(sqlite3.connect(path)) as connection, connection:

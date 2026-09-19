@@ -8,6 +8,11 @@ Try: sample 0-1000000000 --count 5 --seed 42
 
 The command annotation performs conversion before each function runs. Range
 objects preserve entered order and avoid allocating every represented integer.
+
+Iteration yields spans, with inclusive textual endpoints and an exclusive stop.
+Sorting, exact-span deduplication, and merging return new collections. Sampling
+uses the union of values so overlaps do not bias selection; a seed makes repeated
+calls reproducible. Expansion has a guard, not a truncation count.
 """
 
 from ctui import Argument, CtuiApp, IntegerRanges, command

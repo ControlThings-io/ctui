@@ -1,5 +1,13 @@
-"""
-Control Things User Interface, aka ctui.py
+"""Public imports for typed, asynchronous terminal applications.
+
+Use CtuiApp subclasses and @command for one command engine shared by full-screen
+and CLI execution. The names in __all__ and the exports of ctui.widgets are the
+documented 1.x compatibility surface. Other submodules are implementation details;
+pre-1.0 entry points and registration conventions are not compatibility aliases.
+
+__version__ comes from installed distribution metadata. Direct source imports
+without installed metadata fall back to 0+unknown rather than inventing a release
+version. Supported API removals require documented deprecation and a major release.
 
 # Copyright (C) 2019  Justin Searle
 #

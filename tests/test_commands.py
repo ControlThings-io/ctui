@@ -1,3 +1,11 @@
+"""Contracts for command metadata, annotation conversion, and completion.
+
+Test explicit option opt-in, shell quoting, unique command prefixes, validator
+filtering, and rejection of ambiguous signatures or registry collisions. These
+low-level tests may use no-op handlers because parsing/registration, rather than
+CtuiApp result normalization, is the behavior under test.
+"""
+
 import unittest
 from enum import Enum
 from pathlib import Path
@@ -13,11 +21,15 @@ from ctui.commands import (
 
 
 class Color(Enum):
+    """Enum fixture with distinct member names and integer values."""
+
     red = 1
     blue = 2
 
 
 class CommandTests(unittest.IsolatedAsyncioTestCase):
+    """Exercise parsing and provider contracts without application presentation."""
+
     def test_names_signatures_aliases_and_longest_match(self):
         commands = Commands()
 
@@ -88,6 +100,8 @@ class CommandTests(unittest.IsolatedAsyncioTestCase):
         )
 
     def test_quoted_windows_path_preserves_backslashes_and_spaces(self):
+        """Protect shell-like parsing of quoted Windows paths on every host OS."""
+
         def inspect_path(path: Path):
             return path
 
@@ -306,6 +320,7 @@ class CommandTests(unittest.IsolatedAsyncioTestCase):
             Command(positional_only)
 
     def test_registration_collisions_do_not_partially_modify_registry(self):
+        """Ensure rejected names/aliases leave the original registry intact."""
         commands = Commands()
 
         @commands.register(aliases=("run",))

@@ -1,4 +1,10 @@
-"""Context-aware command and argument completion."""
+"""Quote-aware, incremental completion for the shared command registry.
+
+Suggest one command word at a time, retaining parent arguments alongside child
+commands. Advance to the next argument only after unquoted, unescaped whitespace.
+Dynamic providers and unique choice prefixes use the command parsing layer so
+UI suggestions and dispatch share conversion rules.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +16,12 @@ from ctui.commands import CommandNotFound, Commands, CommandValidationError
 
 
 def _argument_state(text: str) -> tuple[list[str], str, bool]:
-    """Split partial input while preserving quoted spaces and cursor state."""
+    """Return completed tokens, the current word, and whether input ends at a boundary.
+
+    Tolerate an unfinished quote while editing. Spaces inside quotes or escaped
+    spaces stay in the current word; a trailing separator advances completion.
+    This tracks editing state, while shlex performs final command parsing.
+    """
     completed, current, quote, escaped = [], [], None, False
     boundary = False
     for character in text:
@@ -38,7 +49,13 @@ def _argument_state(text: str) -> tuple[list[str], str, bool]:
 
 
 class CommandCompleter(Completer):
-    """Complete command names, options, and validated argument values."""
+    """Complete command words, explicit options, and validated argument values.
+
+    The asynchronous path supports sync/async providers and typed hints; the
+    synchronous fallback suggests command names only. type_hint retains the
+    originating Document and a non-inserting completion so CtuiLayout can restore
+    hints prompt-toolkit discards without applying them to newer input.
+    """
 
     def __init__(self, commands: Commands, app=None):
         """Bind completion to a command registry and optional application."""
@@ -46,7 +63,12 @@ class CommandCompleter(Completer):
         self.type_hint = None
 
     def _command_completions(self, text):
-        """Yield only the next matching word of commands and aliases."""
+        """Yield one next word per matching command or alias, deduplicating words.
+
+        Honor abbreviations in already entered command words. A parent with its own
+        arguments can also expose child commands rather than hiding them behind
+        its next argument's type aid.
+        """
         boundary = bool(text) and text[-1].isspace()
         parts = text.split()
         completed = parts if boundary else parts[:-1]
@@ -54,6 +76,7 @@ class CommandCompleter(Completer):
         candidates = {}
 
         def collect(name, item, *, alias=False):
+            """Collect a next word only when all entered command prefixes match."""
             name_parts = name.split()
             if len(name_parts) < len(completed) or any(
                 not actual.startswith(typed)
@@ -88,7 +111,13 @@ class CommandCompleter(Completer):
             yield from self._command_completions(text.lstrip())
 
     async def get_completions_async(self, document, complete_event):
-        """Yield command or asynchronously generated argument completions."""
+        """Yield suggestions for text before the cursor without changing the input.
+
+        Handle help targets as command paths. For arguments, expand earlier unique
+        choices before parsing later values and support both --option VALUE and
+        --option=VALUE. Invalid partial conversions suppress suggestions; type aids
+        use an empty insertion so selecting them never erases the current value.
+        """
         self.type_hint = None
         text = document.text_before_cursor
         stripped = text.lstrip()

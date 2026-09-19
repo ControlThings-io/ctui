@@ -1,5 +1,8 @@
-"""
-Control Things User Interface, aka ctui.py
+"""Default prompt-toolkit panes, completion float, and dynamic status text.
+
+The output pane is read-only and non-focusable, leaving input focused while the
+terminal handles mouse selection. Framework writes bypass read-only protection
+through set_output(); assigning to the buffer document directly would fail.
 
 # Copyright (C) 2019  Justin Searle
 #
@@ -25,7 +28,13 @@ from ctui.completion import CommandCompleter
 
 
 class CtuiLayout:
-    """Build and expose the standard ctui input and output layout."""
+    """Build input, separator, output, and status panes with a completion float.
+
+    Accept injected widgets or a root container for customization. The default
+    body is a FloatContainer, allowing dialogs to add modal floats. Its editing
+    history belongs to prompt-toolkit and is separate from accepted-command
+    history in CtuiApp. compose() can reuse the body or individual widgets.
+    """
 
     def __init__(
         self,
@@ -35,7 +44,12 @@ class CtuiLayout:
         statusbar=None,
         root_container=None,
     ):
-        """Build the standard input, output, completion, and status layout."""
+        """Build widgets for a configured CtuiApp without starting the UI loop.
+
+        ctui supplies commands, prompt, wrapping, and status text. Optional widgets
+        replace their defaults; a custom input widget owns its own completion setup.
+        Install the non-inserting type-hint restoration hook only on default input.
+        """
         self.ctui = ctui
 
         self._completer = CommandCompleter(ctui.commands, ctui)
@@ -86,7 +100,12 @@ class CtuiLayout:
         self._root_container = root_container or self._body
 
     def _restore_type_hint(self, buffer):
-        """Keep non-inserting type aids that prompt-toolkit normally discards."""
+        """Restore a discarded no-op completion only for its original Document.
+
+        prompt-toolkit can remove hints whose insertion changes nothing, notably
+        just after a separating space. Keep the aid visible without resurrecting
+        stale suggestions after another edit or altering submitted text.
+        """
         hint = self._completer.type_hint
         if buffer.complete_state is None and hint is not None:
             document, completion = hint
@@ -119,7 +138,12 @@ class CtuiLayout:
         return self._output_field
 
     def set_output(self, text: str) -> None:
-        """Replace read-only output through prompt-toolkit's safe bypass."""
+        """Replace output using the buffer's explicit read-only bypass.
+
+        Place its invisible cursor at the end so newly supplied output is visible.
+        This does not append, update CtuiApp.output_text, or explicitly invalidate
+        the application; callers choose presentation and redraw behavior.
+        """
         self._output_field.buffer.set_document(
             Document(text=text, cursor_position=len(text)),
             bypass_readonly=True,
@@ -127,7 +151,12 @@ class CtuiLayout:
 
     @property
     def statusbar_text(self):
-        """Resolve status text dynamically from the application."""
+        """Resolve application text on redraw, evaluating a callable if configured.
+
+        Return text rather than printing it, which would interfere with terminal
+        rendering. Background updates should invalidate the running application;
+        this property does not poll or schedule a refresh timer.
+        """
         return self.ctui._statusbar
 
     @property

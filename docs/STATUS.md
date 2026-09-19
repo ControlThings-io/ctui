@@ -1,7 +1,7 @@
 # Project status
 
-Last reconciled: 2026-09-18, against `main` at `c18ef0c` plus the current
-type documentation changes in the working tree.
+Last reconciled: 2026-09-19, against `main` at `6587918` plus the current
+repository-wide docstring changes in the working tree.
 
 ## Scope and evidence
 
@@ -195,3 +195,27 @@ does not transfer. Do not store full private transcripts in the repository.
   for this documentation-only change.
 - No blockers. Owner approved committing and pushing these documentation
   changes on September 18.
+
+## Repository-wide docstrings (September 18–19, based on `6587918`)
+
+- Reviewed all tracked Python files, locally available session logs/history
+  index, and repository Markdown. Expanded framework contracts, tutorial
+  explanations, and test scope/fixture rationale. Existing type docs remain.
+- Shortened implementation-heavy decision entries to rationale and source
+  links; recorded documentation placement in D14. README keeps practical usage.
+- Corrected D02's stale claim that bare None is an accepted command result.
+  Current code/tests require str or CommandResult. D07 now identifies the
+  historical request to omit history clear versus its current tested presence;
+  resolving that behavior difference remains a separate follow-up.
+- September 19 validation: all 116 tests passed on Python 3.11, including
+  help/CLI, rendered dialogs, completion, and persistence. Black and isort,
+  local documentation links, and whitespace checks passed. AST comparison
+  across all 44 tracked Python files confirmed only docstring changes in the
+  43 edited files; the previously documented types.py is unchanged.
+- Existing implementation limits are documented, not fixed here: example 13's
+  custom root lacks modal float support; the two theme palettes are identical;
+  show_dialog does not guarantee cleanup on cancellation. These are possible
+  follow-ups, not newly accepted feature work. No remote CI, publication, or
+  manual terminal acceptance is claimed.
+- Owner approved the local documentation commit on September 19 and handles
+  pushes on this computer. No blockers; next step is the owner's push.

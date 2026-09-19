@@ -1,5 +1,10 @@
-"""
-Control Things User Interface, aka ctui.py
+"""Reusable modal confirmations, text input, and message dialogs.
+
+Dialog classes expose a future resolved by their buttons. Await show_dialog()
+inside a running prompt-toolkit application, or use convenience wrappers that
+schedule a task and return it. Read-only message and confirmation dialogs keep
+buttons focused while scrolling; text-input dialogs focus their editable field.
+These developer utilities are retained independently of generated command help.
 
 # Copyright (C) 2019  Justin Searle
 #
@@ -52,13 +57,20 @@ def _scroll_buttons(text_area, buttons):
         ):
 
             def scroll(event, handler=handler):
+                """Scroll this dialog text using the handler captured for the bound key."""
                 handler(event, text_area)
 
             button.control.key_bindings.add(key)(scroll)
 
 
 class YesNoDialog:
-    """Display a modal confirmation with affirmative and negative actions."""
+    """Modal confirmation resolving future to True for Yes or False for No.
+
+    Read-only text never takes focus. Up/Down and Page Up/Page Down scroll while
+    buttons retain focus; Enter activates the selected button. Tab and Left/Right
+    use the dialog's button navigation. This class builds the dialog but does
+    not display it; await show_dialog(instance).
+    """
 
     def __init__(
         self,
@@ -111,7 +123,13 @@ class YesNoDialog:
 
 
 class TextInputDialog:
-    """Collect a single line of text in a modal dialog."""
+    """Modal text entry resolving future to the entered str or None on Cancel.
+
+    text labels the prompt; it is not an initial input value. The input accepts
+    a completer and optional password masking. Enter in the input moves focus
+    to Ok and clears completion state; confirmation then resolves the future.
+    Construct in an event-loop context and display with show_dialog().
+    """
 
     def __init__(
         self,
@@ -167,7 +185,15 @@ class TextInputDialog:
 
 
 class MessageDialog:
-    """Display read-only text in a modal dialog."""
+    """Read-only message resolving future to None after acknowledgement.
+
+    By default Ok keeps focus, so Enter closes immediately and arrow/page keys
+    scroll the text without a focus switch. focusable=True permits text focus
+    when an application explicitly wants it. scrollbar=None chooses visibility
+    from content and terminal height at construction; False and True override
+    that choice. Width calculation includes wide characters, the scrollbar,
+    and the buffer's trailing cursor cell to avoid unnecessary wrapping.
+    """
 
     def __init__(
         self,
@@ -227,7 +253,14 @@ class MessageDialog:
 
 
 async def show_dialog(dialog):
-    """Display *dialog* as a modal float and return its result."""
+    """Insert a modal float, await its result, then restore prior focus.
+
+    Require a running prompt-toolkit app whose root container exposes floats.
+    The dialog must provide a future and a prompt-toolkit container. On normal
+    completion, remove the float and return its result. Cancellation/exception
+    cleanup is not protected by a finally block here; callers should not assume
+    it has the same cleanup guarantee as CtuiApp's runtime entry points.
+    """
     app = get_app()
     float_ = Float(content=dialog)
     app.layout.container.floats.insert(0, float_)
@@ -257,9 +290,12 @@ def yes_no_dialog(
     no_text="No",
     no_func=func_pass,
 ):
-    """
-    Display a Yes/No dialog.
-    Execute a passed function.
+    """Schedule a Yes/No dialog and return its asyncio task.
+
+    After approval call yes_func(), otherwise no_func(). Callbacks take no
+    arguments and are synchronous; their return values are ignored. Await the
+    returned task to observe completion or callback errors. For an awaitable
+    boolean result instead, use show_dialog(YesNoDialog(...)).
     """
 
     async def coroutine():
@@ -289,9 +325,11 @@ def input_dialog(
     completer=None,
     password=False,
 ):
-    """
-    Display a text input box.
-    Return the given text, or None when cancelled.
+    """Schedule text entry and return a task yielding str or None on Cancel.
+
+    text is a prompt label, completer supplies input suggestions, and password
+    masks entry. Requires the active application's modal float support, just
+    like show_dialog().
     """
 
     async def coroutine():
@@ -318,8 +356,11 @@ def message_dialog(
     wrap_lines=True,
     scrollbar=None,
 ):
-    """
-    Display a simple message box and wait until the user presses enter.
+    """Schedule a message dialog and return a task yielding None on acknowledgement.
+
+    The call itself does not wait; await the returned task when sequencing
+    matters. scrollbar=None selects based on terminal height at construction.
+    Ok retains focus during scrolling, so Enter acknowledges immediately.
     """
 
     async def coroutine():

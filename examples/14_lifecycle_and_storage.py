@@ -6,6 +6,13 @@ Try: configs show local
 Try: profile save lab 10.0.0.20 502
 Try: traffic record sent 010300000001
 Try: project
+
+The stable app_id enables SQLite persistence in the platform user-data folder.
+run() opens the backend before commands and closes it on shutdown. Register the
+local template before startup; project activation fills missing templates without
+overwriting saved profiles. Keep runtime sockets/clients on instance attributes,
+profiles in configs, and payloads in records. These commands store example data;
+they do not connect to a device.
 """
 
 from ctui import CtuiApp, HexBytes, command
@@ -17,6 +24,7 @@ class SettingsTool(CtuiApp):
     app_id = "io.controlthings.ctui.storage-example"
 
     def __init__(self):
+        """Register a copied default profile before the backend opens."""
         super().__init__()
         self.configs.register_template("local", {"host": "127.0.0.1", "port": 502})
 

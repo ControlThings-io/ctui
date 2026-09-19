@@ -1,4 +1,17 @@
-"""Persistent project services backed by one SQLite database per project."""
+"""Project-scoped SQLite persistence for configs, history, and protocol records.
+
+A catalog maps human names to UUID identities; each project has its own database
+so snapshots can travel between installations of the same application. state.json
+records the last selected UUID. aiosqlite moves SQL work off the event loop;
+filesystem and JSON operations here are still synchronous. Individual SQL calls
+are queued by the connection, not a blanket guarantee of isolation across
+multi-call operations. Applications should coordinate project switches and
+transactional maintenance with their active commands.
+
+Service facades follow the backend's active connection. Command registration
+adds confirmation and history policy around backend operations; calling a
+backend method directly does not display a confirmation dialog.
+"""
 
 from __future__ import annotations
 
@@ -87,7 +100,11 @@ async def _connect(path, *, uri=False) -> aiosqlite.Connection:
 
 @dataclass(frozen=True)
 class ProjectInfo:
-    """Describe a project registered in the application catalog."""
+    """Immutable catalog identity, display name, and ISO-format timestamps.
+
+    id is a UUID used for database filenames, so renaming a project does not
+    change its identity. created_at and modified_at are stored as strings.
+    """
 
     id: str
     name: str
@@ -97,7 +114,13 @@ class ProjectInfo:
 
 @dataclass(frozen=True)
 class RecordEntry:
-    """Represent one stored protocol interaction."""
+    """One stored protocol interaction returned by a record query.
+
+    id and optional session_id belong to the project database. timestamp is a
+    datetime decoded from the stored ISO value; payload retains raw bytes.
+    decoded and metadata are JSON-decoded values or None. direction and protocol
+    are application-supplied labels rather than framework enums.
+    """
 
     id: int
     session_id: int | None
@@ -110,10 +133,12 @@ class RecordEntry:
 
 
 def _now() -> str:
+    """Return a timezone-aware local timestamp serialized as ISO text."""
     return datetime.now().astimezone().isoformat()
 
 
 def _json(value: Any) -> str | None:
+    """Encode compact JSON, using SQL NULL for a Python None value."""
     return None if value is None else json.dumps(value, separators=(",", ":"))
 
 
@@ -127,9 +152,16 @@ def _validate_name(name: str, label: str) -> str:
 
 
 class ProjectHistory:
-    """Store command history in the currently active project."""
+    """Async command history following the currently active project.
+
+    Facades retain the backend rather than a connection snapshot, so project
+    switches also switch history. append() commits and updates modification
+    metadata. History-suppressing command metadata prevents project-management
+    commands from polluting the outgoing or incoming project.
+    """
 
     def __init__(self, backend: "SqliteProjectBackend"):
+        """Bind history operations to the backend without opening a database."""
         self.backend = backend
 
     async def append(self, command: str) -> None:
@@ -153,7 +185,13 @@ class ProjectHistory:
     async def search(
         self, keyword: str, *, limit: int = 0, since: str | None = None
     ) -> list[HistoryEntry]:
-        """Find history containing *keyword*, optionally by age and count."""
+        """Return matching history in insertion order, optionally by age and count.
+
+        Match keyword with SQL LIKE, so % and _ retain wildcard meanings. since
+        accepts non-negative integer durations such as 7d, 12h, or 30m. A positive
+        limit selects the most recent matches before restoring their insertion
+        order; zero means unlimited and negative limits raise CommandError.
+        """
         if limit < 0:
             raise CommandError("history limit cannot be negative")
         sql = "SELECT command, timestamp FROM history WHERE command LIKE ?"
@@ -179,14 +217,27 @@ class ProjectHistory:
 
 
 class ProjectConfigs:
-    """Manage named JSON-compatible configurations and app templates."""
+    """Async named JSON profiles with application-registered templates.
+
+    Templates are copied at registration, inserted when missing on project
+    activation, and restored on reset. Saving a profile does not mutate the
+    registered template. Runtime clients and sockets belong on the app, not in
+    these serialized values. Import/export uses versioned JSON rather than TOML.
+    """
 
     def __init__(self, backend: "SqliteProjectBackend"):
+        """Bind config operations and create an empty in-process template registry."""
         self.backend = backend
         self.templates: dict[str, dict[str, Any]] = {}
 
     def register_template(self, name: str, values: dict[str, Any]) -> None:
-        """Register a JSON-compatible config populated in every project."""
+        """Snapshot a JSON-compatible default profile for future initialization.
+
+        Require a nonblank name and JSON-serializable values. Copy through JSON so
+        later caller mutations do not affect the template. Registration does not
+        write the active database; initialization fills missing profiles and reset
+        restores their registered values.
+        """
         if not isinstance(name, str) or not name.strip():
             raise ValueError("A config template requires a name")
         json.dumps(values)
@@ -245,7 +296,12 @@ class ProjectConfigs:
         await self.backend.touch()
 
     async def export_file(self, path: Path, app_id: str) -> None:
-        """Write configs to a versioned UTF-8 JSON document."""
+        """Write a UTF-8 JSON config document, replacing the destination contents.
+
+        Include format ctui-configs, version 1, app_id, and all named configs.
+        This exports profiles only, not history, sessions, or raw protocol records.
+        Filesystem errors propagate to the caller.
+        """
         document = {
             "format": "ctui-configs",
             "version": 1,
@@ -255,7 +311,13 @@ class ProjectConfigs:
         path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
 
     async def import_file(self, path: Path, app_id: str) -> int:
-        """Merge a compatible config document and return its item count."""
+        """Merge a compatible JSON config document and return its profile count.
+
+        Require format ctui-configs, version 1, matching app_id, and a configs
+        object. Replace values for matching names and retain unrelated profiles.
+        Apply the merge in a transaction with rollback on failure. Invalid files
+        or compatibility metadata raise CommandError; this method does not prompt.
+        """
         try:
             document = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as error:
@@ -288,13 +350,23 @@ class ProjectConfigs:
 
 
 class ProjectRecords:
-    """Append and query protocol records in the active project."""
+    """Append and query raw or decoded traffic in the active project.
+
+    Sessions group related interactions but are optional. Store payload as a
+    SQLite BLOB and decoded/metadata values as JSON. The framework supplies no
+    protocol-specific record commands; applications decide how to inspect traffic.
+    """
 
     def __init__(self, backend: "SqliteProjectBackend"):
+        """Bind record operations to the backend without opening a database."""
         self.backend = backend
 
     async def start_session(self, protocol: str, metadata: Any = None) -> int:
-        """Start a recording session and return its database identifier."""
+        """Create a recording session and return its project-local integer id.
+
+        Record protocol, current time, and optional JSON-compatible metadata. Pass
+        the returned id explicitly to append(); there is no implicit active session.
+        """
         cursor = await self.backend.connection.execute(
             "INSERT INTO record_sessions(protocol, started_at, metadata) VALUES (?, ?, ?)",
             (protocol, _now(), _json(metadata)),
@@ -303,7 +375,10 @@ class ProjectRecords:
         return cursor.lastrowid
 
     async def end_session(self, session_id: int) -> None:
-        """Mark a recording session as ended."""
+        """Set a session's end timestamp; an unknown id updates no rows.
+
+        This records metadata only; it does not prevent later appends to that id.
+        """
         await self.backend.connection.execute(
             "UPDATE record_sessions SET ended_at = ? WHERE id = ?",
             (_now(), session_id),
@@ -320,7 +395,13 @@ class ProjectRecords:
         decoded: Any = None,
         metadata: Any = None,
     ) -> int:
-        """Append a protocol interaction and return its database identifier."""
+        """Commit one protocol interaction and return its project-local id.
+
+        Supply direction and protocol labels, raw payload bytes, and optional
+        JSON-compatible decoded data or metadata. session may be omitted; when
+        provided it must reference an existing session under SQLite foreign keys.
+        Timestamp automatically and update the project's modification metadata.
+        """
         cursor = await self.backend.connection.execute(
             """INSERT INTO records
                (session_id, timestamp, direction, protocol, payload, decoded, metadata)
@@ -347,7 +428,12 @@ class ProjectRecords:
         protocol: str | None = None,
         limit: int = 0,
     ) -> list[RecordEntry]:
-        """Query records using generic fields understood by Ctui."""
+        """Return matching RecordEntry values in ascending insertion order.
+
+        Combine provided session, direction, and protocol filters with equality and
+        AND. A positive limit returns the earliest matching entries; zero means all.
+        Negative limits raise CommandError. Querying materializes the returned list.
+        """
         if limit < 0:
             raise CommandError("record limit cannot be negative")
         clauses, values = [], []
@@ -386,7 +472,30 @@ class ProjectRecords:
 
 
 class SqliteProjectBackend:
-    """Manage a catalog and a separate SQLite database for each project."""
+    """Manage a catalog and one asynchronous SQLite database per project.
+
+    Use a stable app_id to isolate application data and validate imports. The
+    default root comes from platformdirs; data_dir overrides it. Store the
+    catalog at projects/catalog.sqlite3, UUID databases at projects/databases,
+    and active selection in state.json. history, configs, and records facades
+    always follow the current connection.
+
+    Await open() before using services and close() after use; CtuiApp's runtime
+    entry points manage this automatically. Active connections enable foreign
+    keys, WAL journaling, a five-second busy timeout, and NORMAL synchronous
+    mode. SQLite backup APIs produce consistent snapshots, including WAL data.
+
+    Framework and application schemas are versioned separately. Existing
+    projects are checked for identity, integrity, supported versions, required
+    columns/tables, and record-session references before activation. Older
+    schemas need ordered migrations; retain a pre-migration backup and apply
+    framework/application migration statements in one transaction. Reject
+    newer schemas and missing migration paths rather than guessing changes.
+
+    Backend methods perform no interactive confirmation. Built-in commands add
+    that policy. Coordinate project switching with active application work;
+    facades are not permanently bound to the project active at their creation.
+    """
 
     def __init__(
         self,
@@ -398,7 +507,16 @@ class SqliteProjectBackend:
         tool_schema_version: int = 1,
         tool_migrations: Mapping[int, Sequence[str]] | None = None,
     ):
-        """Configure project identity, storage location, and service facades."""
+        """Configure identity, storage paths, migration policy, and service facades.
+
+        app_author is passed to platformdirs when no data_dir is supplied.
+        tool_version is descriptive metadata; tool_schema_version is a positive
+        integer used for compatibility. tool_migrations maps each prior positive
+        version N to SQL statements advancing it to N+1. Reject invalid keys or
+        empty/non-string statements. Database connections open later in open().
+        New projects receive the current framework schema and tool version metadata;
+        application migrations are for existing projects, not a new-schema hook.
+        """
         if (
             isinstance(tool_schema_version, bool)
             or not isinstance(tool_schema_version, int)
@@ -445,7 +563,13 @@ class SqliteProjectBackend:
         self.records = ProjectRecords(self)
 
     async def open(self) -> None:
-        """Open the catalog and activate the last-used or default project."""
+        """Open the catalog and activate the saved, first, or default project.
+
+        Read the selected UUID from state.json. Missing or malformed state falls
+        back to the first catalog project in name order; an empty catalog creates
+        default. Activation validates/migrates the database and adds missing config
+        templates. Call close() even if opening fails partway through.
+        """
         self.databases_dir.mkdir(parents=True, exist_ok=True)
         self.catalog = await _connect(self.catalog_path)
         await self.catalog.execute("PRAGMA foreign_keys = ON")
@@ -475,9 +599,11 @@ class SqliteProjectBackend:
             self.catalog = None
 
     def _database_path(self, project_id: str) -> Path:
+        """Derive the database filename from UUID identity, never the display name."""
         return self.databases_dir / f"{project_id}.sqlite3"
 
     def _read_state(self) -> str | None:
+        """Read the saved project UUID; ignore missing or malformed selection files."""
         try:
             return json.loads(self.state_path.read_text(encoding="utf-8")).get(
                 "active_project"
@@ -486,6 +612,7 @@ class SqliteProjectBackend:
             return None
 
     def _write_state(self) -> None:
+        """Replace state.json atomically with the currently selected project UUID."""
         temporary = self.state_path.with_suffix(".tmp")
         temporary.write_text(
             json.dumps({"active_project": self.current.id}, indent=2) + "\n",
@@ -494,7 +621,12 @@ class SqliteProjectBackend:
         os.replace(temporary, self.state_path)
 
     async def _open_project(self, info: ProjectInfo) -> None:
-        """Validate and prepare a project before replacing the active connection."""
+        """Validate and prepare a candidate before replacing the active connection.
+
+        Close the candidate on preparation failure, preserving the previous active
+        connection. Once validation succeeds, switch, close the previous connection,
+        persist the selected UUID, and initialize missing config templates.
+        """
         path = self._database_path(info.id)
         is_new = not path.exists() or path.stat().st_size == 0
         candidate = await _connect(path)
@@ -625,7 +757,12 @@ class SqliteProjectBackend:
         schema: int,
         tool_schema: int,
     ) -> Path:
-        """Create a timestamped SQLite backup before applying migrations."""
+        """Create a timestamped pre-migration SQLite backup beside the database.
+
+        Include old framework/tool versions in the name for recovery. Use SQLite's
+        backup API for consistency; remove a partially created backup on failure.
+        Successful backups remain on disk for manual recovery.
+        """
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
         backup_path = path.with_name(
             f"{path.name}.pre-migration-v{schema}-tool{tool_schema}-{timestamp}.bak"
@@ -650,7 +787,13 @@ class SqliteProjectBackend:
         start_version: int,
         tool_start_version: int,
     ) -> None:
-        """Apply ordered framework and application migrations transactionally."""
+        """Apply ordered framework and application migrations in one transaction.
+
+        Keys identify the version before each step. Update version metadata after
+        each step, validate the required schema, then commit. Roll back on any error;
+        missing paths and failed statements become user-facing CommandError values.
+        The caller creates the backup before entering this transaction.
+        """
         await connection.execute("BEGIN IMMEDIATE")
         try:
             version = start_version
@@ -787,7 +930,12 @@ class SqliteProjectBackend:
         return self.current
 
     async def delete(self, name: str) -> None:
-        """Permanently delete an inactive project and its database files."""
+        """Permanently delete an inactive project and its associated database files.
+
+        Reject the active project; callers must switch first. Remove its catalog
+        entry, database, journals, and migration backups. No trash or confirmation
+        exists at this layer; the built-in command requires explicit approval.
+        """
         info = await self.find(name)
         if info.id == self.current.id:
             raise CommandError(
@@ -813,7 +961,12 @@ class SqliteProjectBackend:
                 pass
 
     async def saveas(self, name: str) -> ProjectInfo:
-        """Clone the active project under *name* and activate the clone."""
+        """Clone the current database under a new UUID/name and activate the copy.
+
+        Use a consistent SQLite backup, retaining configs, history, sessions, and
+        records. Reject duplicate names. Remove the new catalog entry and partial
+        files if copying or preparing the clone fails.
+        """
         _validate_name(name, "Project")
         project_id, now = str(uuid.uuid4()), _now()
         try:
@@ -838,7 +991,12 @@ class SqliteProjectBackend:
         return info
 
     async def export_project(self, path: Path) -> None:
-        """Export a consistent SQLite snapshot of the active project."""
+        """Write a consistent SQLite snapshot of the active project.
+
+        Use the backup API rather than copying a live WAL database file. The usual
+        exchange suffix is .ctui-project, but no suffix is enforced. This includes
+        all database contents and metadata, not the catalog or state.json.
+        """
         destination = await _connect(path)
         try:
             await self.connection.backup(destination)
@@ -846,7 +1004,14 @@ class SqliteProjectBackend:
             await destination.close()
 
     async def import_project(self, path: Path, name: str | None = None) -> ProjectInfo:
-        """Import and activate a compatible project snapshot."""
+        """Copy and activate a compatible snapshot under a fresh project UUID.
+
+        Open the source read-only and check integrity, app_id, and supported schema
+        versions. Use the supplied name, embedded project name, or filename stem;
+        reject catalog name conflicts. Copy with SQLite backup and prepare/migrate
+        the copy before activation, preserving the source file. Validation/import
+        failures remove the new catalog entry and partial files.
+        """
         if not path.is_file():
             raise CommandError(f"Project file does not exist: {path}")
         source = None
@@ -880,7 +1045,13 @@ class SqliteProjectBackend:
                 await source.close()
 
     async def reset(self, section: str) -> None:
-        """Clear one data section, restoring templates when appropriate."""
+        """Clear configs, records, history, or all data in the current project.
+
+        Delete records before their sessions to respect foreign keys. Table deletion
+        is transactional; configs/all then restore registered config templates.
+        Keep project identity and schema. Unknown sections raise CommandError.
+        Confirmation belongs to the command layer, not this method.
+        """
         tables = {
             "history": ("history",),
             "records": ("records", "record_sessions"),
@@ -951,7 +1122,14 @@ def _parse_since(value: str) -> datetime:
 
 
 def register_project_commands(app: Any) -> None:
-    """Install built-in project and config commands for a project backend."""
+    """Install project/config commands around the configured backend and services.
+
+    These commands suppress history, especially when switching projects or
+    resetting history. Create, saveas, load, and import emit project_changed
+    with previous/current metadata; create uses previous=None. Delete and reset
+    commands require formatted confirmation. Config exchange uses JSON; project
+    exchange uses SQLite. Record-specific commands remain application-owned.
+    """
 
     backend = app.backend
 

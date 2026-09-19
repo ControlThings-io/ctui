@@ -1,4 +1,10 @@
-"""Shared command reference and interface-specific help guidance."""
+"""Shared hierarchical command reference and UI-specific guidance.
+
+Keep generation independent of presentation: CtuiApp supplies welcome and
+interface introductions, CLI prints text, and the UI opens a scrollable popup.
+Developer contracts belong on framework objects; decorated command docstrings
+are also application help and should address the person entering commands.
+"""
 
 import inspect
 
@@ -6,7 +12,18 @@ from ctui.commands import Argument, CommandNotFound
 
 
 def command_help(app, target):
-    """Describe one command level, resolving exact names before prefixes."""
+    """Render one command level, resolving exact words before unique prefixes.
+
+    An empty target lists only root commands/groups. A target may name a group
+    with no callable or a command that has both arguments and children. Resolve
+    aliases to canonical command metadata; reject unknown or ambiguous targets.
+
+    Show usage, aliases, parameter types/defaults/help, and immediate children.
+    The command's first docstring line supplies its summary unless overridden;
+    remaining lines supply detailed help. Do not include application welcome or
+    interface guidance here, so targeted help stays focused and main help can
+    place its introduction first.
+    """
     names = {**app.commands.commands, **app.commands.aliases}
     path = []
     for token in target.split():
@@ -75,7 +92,12 @@ def command_help(app, target):
 
 
 def ui_guidance(app):
-    """Explain the built-in bindings by the window they affect."""
+    """Describe input editing, output navigation, dialogs, and exit bindings.
+
+    Append registered application shortcut descriptions using prompt-toolkit
+    key names. Keep this text aligned with keybindings.py and dialogs.py; output
+    scrolling keeps input focus and read-only dialogs keep their buttons focused.
+    """
     text = """Input window — type and edit commands here:
   Enter                 Run the command; you can enter another while it runs.
   Tab                   Complete a command or argument.

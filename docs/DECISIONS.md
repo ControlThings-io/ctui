@@ -21,124 +21,127 @@ new Python developers; use `self.events` rather than implicit `ctx` injection.
 
 Accepted, Aug 23 and reaffirmed Sep 13; `806187f`, `bfe795c`.
 
-Every application's normal entry point opens the full-screen UI without
-arguments; `help`, `-h`, and `--help` print help. Repeatable `-c`/`--command`
-and `-f`/`--file` run commands sequentially in supplied order. Users should
-not need to write a separate CLI parser.
+Every application entry point supports full-screen and automatic CLI operation
+through one dispatcher, avoiding a separate application-owned CLI parser.
+Routing, batch ordering, lifecycle, and result contracts live in
+[CtuiApp](../src/ctui/application.py); examples remain in the README.
 
 The owner explicitly did not require compatibility with earlier ctui releases.
-Historical `Ctui`, `do_` conventions, instance command registration, and
-special legacy result handling were removed during the overhaul. Use current
-README/tutorials rather than reviving old examples. Strings and `None` remain
-valid current command results; structured `CommandResult` expresses behavior
-such as appending output.
+Historical `Ctui`, `do_` conventions, instance command registration, and special
+legacy result handling were removed during the overhaul. Use current tutorials
+rather than reviving old examples. Correction from implementation review on
+Sep 18: commands return `str` or `CommandResult`; bare `None` is rejected by
+current dispatch and its regression test. The earlier note saying it remained
+valid was stale. Use `CommandResult.success()` for no-output success.
 
 Implemented policy: documented top-level exports and `ctui.widgets` are the
 supported 1.x surface; internal submodules are not generally stable. Follow
 semantic versioning and document deprecations before future major removal.
+The import boundary is documented in [__init__.py](../src/ctui/__init__.py).
 
 ## D03 — Positional by default; named options explicitly declared
 
 Accepted, Sep 13; `b031e15`, `213043a`.
 
-Function parameters are positional unless `Argument(flags=(...))` explicitly
-declares short/long flags. Completion or validation metadata alone does not
-make an option named. Support Linux-style `-e value`, `--environment value`,
-`--environment=value`, and boolean flags. Conversion follows annotations;
-avoid adding a competing `Argument(type=...)` convention.
+Keep positional parameters as the default; named options require explicit
+`Argument(flags=...)` opt-in. Conversion follows function annotations, avoiding
+a competing `Argument(type=...)` source of truth. Parameter help or completion
+metadata alone does not change how users supply a value. See
+[Argument, command, and Command.parse_args](../src/ctui/commands.py) for syntax,
+validation, quoting, and error contracts.
 
-This supersedes the Aug 26 preference for bare keyword/value arguments without
-`--`. Do not restore that syntax based on the earlier discussion. Quote paths
-and other values appropriately for the shell-like parser, especially Windows
-paths (`420daed`).
+This supersedes the Aug 26 preference against `--` options. Quoted Windows-path
+regressions (`420daed`) preserve shell-like tokenization across platforms.
 
 ## D04 — Predictable completion and precise errors
 
 Accepted, Aug 23–27; `9a7611c`, `d106e49`, `4aeb8e6`, `d307e0b`.
 
-Suggest one command word or argument at a time; advance only after an unquoted
-space. Keep typed aids visible for free-form input, honor quoted spaces, and
-allow unique prefixes for command words and constrained choices. Reject
-ambiguity instead of guessing. At a command with subcommands and arguments,
-show the valid next alternatives. Abbreviations such as `conf l` must work
-for both execution and completion.
+Completion should explain the argument currently being entered, advance only
+at an explicit token boundary, and show subcommands alongside parent arguments.
+Allow unique command/choice abbreviations while rejecting ambiguity. Put error
+locations back in the original input so UI users can correct it and CLI users
+can identify the bad argument.
 
-UI argument errors restore input and place the cursor at the offending value;
-CLI errors show the command, a caret, and an explanatory message. Missing
-storage keys without an explicit default raise `StorageKeyError`, allowing
-normal command error handling and a UI popup.
+Detailed contracts belong in [completion.py](../src/ctui/completion.py),
+[commands.py](../src/ctui/commands.py), and
+[application.py](../src/ctui/application.py). Sep 18 completion fixes retain
+non-inserting hints through prompt-toolkit filtering and expand earlier named
+choice prefixes; the local rationale is in completion/layout docstrings.
 
 ## D05 — Terminal-native selection and concurrent output
 
 Accepted, Aug 23; `84679d3`, `1b53da9`.
 
-Leave mouse selection and clipboard operations to the terminal; disable mouse
-capture by default and keep command input focused. The earlier internal
-copy/paste bindings and example were deliberately removed.
+Leave selection and clipboard operations to the terminal, with mouse capture
+disabled by default and command input retaining focus. Earlier internal
+copy/paste bindings and their example were deliberately removed. The temporary
+request for Ctrl-C to exit was explicitly reversed: it clears input, while
+Ctrl-L clears output. Binding details live in
+[keybindings.py](../src/ctui/keybindings.py); focus-preserving scroll mechanics
+live in [functions.py](../src/ctui/functions.py).
 
-Final shortcut preference: Ctrl-C clears/cancels input, Ctrl-L clears output,
-Ctrl-A/Ctrl-E move within input, Home/End move through output, and Page Up/Down
-and Ctrl-Up/Down scroll output. The temporary request for Ctrl-C to exit was
-explicitly reversed. Ctrl-C clearing input is not a background-job cancellation
-API.
-
-Use `CommandResult.append(...)` to apply output appends when commands finish,
-avoiding stale snapshots of existing output during overlapping async work.
-Concurrent progress examples track individual operations and remove completed
-ones from the status bar. Custom layouts and app-wide shortcuts remain supported.
+Apply output appends when commands finish to avoid overwriting concurrent
+results with stale snapshots. See [CommandResult](../src/ctui/commands.py).
+Progress tracking stays application-owned; the
+[progress tutorial](../examples/11_statusbar_progress.py) explains updates and
+cleanup. Custom layouts and application-wide shortcuts remain supported.
 
 ## D06 — Separate runtime state, configs, and records
 
 Accepted, Aug 26; `7a46034`.
 
-Clients, sockets, servers, and tasks belong on ordinary application attributes.
-Named persistent profiles belong in `self.configs`; sent/received raw or decoded
-protocol data belongs in `self.records`, grouped by sessions. Generic `storage`
-remains injectable, but is not the primary home for these distinct concepts.
+Runtime clients, sockets, servers, and tasks belong on application attributes.
+Named persistent profiles belong in configs; sent/received protocol data belongs
+in records, grouped by sessions. Generic storage remains injectable rather than
+being the primary home for these distinct concepts.
 
-An application with a stable `app_id` gets default disk persistence; retain
-replaceable backend/config/record/history interfaces and memory/null options.
-Without a project backend, defaults include memory history and null storage.
-Use platform-appropriate data paths and dependencies available through uv/pip.
+A stable app_id enables default disk persistence, with replaceable service
+implementations and platform-appropriate paths. Constructor defaults and service
+contracts belong in [application.py](../src/ctui/application.py) and
+[services.py](../src/ctui/services.py); the concrete backend is documented in
+[projects.py](../src/ctui/projects.py).
 
 ## D07 — Portable per-project persistence and explicit destructive commands
 
 Accepted, Aug 26; `7a46034`, `fd3e743`.
 
-Use one SQLite database per project under platformdirs, UUID-based identity,
-a catalog database, and `state.json` for selection state. Projects hold configs,
-records, sessions, and command history. Export whole projects as consistent
-SQLite `.ctui-project` snapshots and configs as versioned JSON. Apps can
-register config templates. TOML was discussed for display, not chosen as the
-config exchange format; Python 3.11 became the minimum.
+Use a SQLite database per project for portable snapshots, with UUID identity,
+a catalog, and a separate active-selection file. Export profiles as versioned
+JSON; TOML was discussed for display, not chosen for exchange. Allow application
+config templates. Python 3.11 became the minimum.
 
-Project commands include statistics, create/clone/save-as, list/load/rename,
-import/export, selective reset, and permanent delete. Deletion is permanent
-by explicit preference. Destructive operations use formatted confirmation
-messages, UI confirmation dialogs, and trailing `confirm` in noninteractive
-execution. Do not replace the format string with a boolean-only setting.
+Deletion is permanent by explicit preference. Destructive commands require a
+formatted confirmation message so approval names the affected data. Command
+history can be suppressed, especially for project switching and resets. Export
+history as its own discoverable command producing a replayable UTF-8 file.
+Protocol-specific record commands remain application-owned. Detailed service,
+exchange, and command contracts live in [projects.py](../src/ctui/projects.py)
+and [commands.py](../src/ctui/commands.py).
 
-Support `record_history=False`; loading a project should not enter the outgoing
-project's history. Use `project reset history` rather than a separate
-`history clear`. History export is its own discoverable command, supports all
-or the last N entries, and produces a replayable UTF-8 command file. Generic
-record-management commands were not requested.
+Unresolved implementation discrepancy, identified Sep 18: the Aug 26 request
+preferred `project reset history` and explicitly omitted `history clear`.
+Current registration nevertheless installs `history clear` for searchable
+history backends, and `tests/test_projects.py` exercises it. No later acceptance
+of that difference was found in available logs. This documentation review does
+not remove it or treat its presence as a new user decision.
 
 ## D08 — Real asynchronous SQLite; recoverable migrations
 
 Accepted, Sep 13; `7921344`, `f6b3b98`.
 
-Use `aiosqlite` so database work does not block the event loop, with serialized
-access where required. Current dependency is `aiosqlite>=0.22,<0.23`; Python
-3.11 remains the baseline. This supersedes the Aug 26 standard-library SQLite
-workaround. The earlier observed hang is not an established incompatibility
-or a reason to remove the now-tested async backend.
+Use aiosqlite to keep SQL work off the event loop, superseding the Aug 26
+standard-library workaround. The earlier observed hang is not an established
+incompatibility or a reason to remove the tested async backend. Dependency
+versions belong in packaging metadata and the lockfile; Python 3.11 remains
+the baseline.
 
-Validate integrity and framework/application schema versions on open/import.
-Use ordered SQL migrations keyed by the previous version; run migrations
-transactionally and create a timestamped backup first. Reject newer schemas,
-missing migration paths, corrupt files, and incompatible imports. Failure must
-preserve the active project and avoid orphaned catalog/filesystem state.
+Protect persisted work through integrity/compatibility checks, explicit ordered
+migrations, transactional updates, and backups before migration. Reject newer
+schemas or missing migration paths rather than guessing. Keep an existing
+project usable when candidate validation fails and clean failed imports out of
+the catalog. Mechanisms and limits, including the scope of asynchronous I/O,
+are documented in [SqliteProjectBackend](../src/ctui/projects.py).
 
 ## D09 — Compact, bounded protocol argument types
 
@@ -202,28 +205,19 @@ session nor another laptop should need the original private transcripts.
 
 Accepted, September 18, during RC2 development.
 
-In the full-screen UI, explicit help opens a scrollable popup, preserves the
-main output, and restores focus on close. CLI help prints normally. Main help
-lists only root commands/groups; `help <command> [<subcommand> ...]` drills
-into immediate children and command arguments. Commands may have both their
-own arguments and children. Reuse aliases, unique prefixes, and completion.
+UI help belongs in a scrollable popup that preserves output and restores focus;
+CLI help prints normally. Use one hierarchical reference with separate,
+customizable interface guidance so applications do not maintain two command
+manuals. Main help starts with welcome text, then interface guidance, then
+root commands/groups; targeted help omits the introduction.
 
-Main help combines customizable CLI/UI introductions, default interface
-guidance, and a shared generated reference. UI guidance distinguishes input
-editing from output navigation while input retains focus, and lists built-in
-and application shortcuts. Targeted help omits the introduction. Existing
-validation-error presentation remains separate from explicit help.
-
-Follow-up accepted September 18: help opens with Ok focused. Read-only message
-and Yes/No confirmation dialogs scroll with Up/Down and Page Up/Page Down
-without moving focus from their buttons. Enter activates the selected button;
-Tab and Left/Right retain their button-navigation behavior. This supersedes
-the initial help-text focus and Tab-to-Ok interaction. Text-entry dialogs
-continue to focus their editable input.
-
-Main help ordering clarified: welcome text (app name/version, then description)
-comes first, interface guidance follows, and the generated command reference
-comes last. Targeted help omits the welcome and interface introduction.
+Follow-up accepted Sep 18: read-only message/confirmation dialogs keep buttons
+focused during scrolling, so Enter activates the selected button. This
+supersedes the initial help-text focus and Tab-to-Ok interaction. Text-entry
+dialogs continue to focus input. Detailed hierarchy, rendering, and focus
+contracts live in [help.py](../src/ctui/help.py),
+[application.py](../src/ctui/application.py), and
+[dialogs.py](../src/ctui/dialogs.py).
 
 ## D13 — Retain reusable dialogs; remove unused legacy metadata
 
@@ -233,3 +227,19 @@ Remove obsolete `functions.show_help`, unused `Commands.descriptions`, and
 redundant `Command.string`, `string_parts`, and `func_name`. Keep active command
 descriptions (`desc`/`description`) used by generated help and completion.
 The obsolete helper was the only tabulate consumer, so remove that dependency.
+
+## D14 — Keep implementation contracts beside the code
+
+Accepted, September 18, extending the type-docstring work in D09.
+
+Class, method, and module docstrings own syntax, return values, limits, lifecycle
+and error contracts, and the rationale for locally surprising behavior. This
+log retains shared architecture, accepted historical choices, superseded
+alternatives, and unresolved discrepancies. README/tutorials retain usage;
+release procedures remain in the release checklist and workflow documentation.
+
+Decorated command docstrings are also generated user help, so keep developer
+implementation details on framework objects or tutorial module docstrings.
+Test documentation explains fixture scope and regression intent without
+repeating self-explanatory test names. Reconcile session suggestions against
+explicit approval and current code; do not turn proposed features into promises.

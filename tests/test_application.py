@@ -1,3 +1,11 @@
+"""Regression coverage for shared dispatch and application integration.
+
+Exercise headless command execution, result normalization, approval, history,
+events, error positions, startup cleanup, and input/output bindings. Fixtures
+create widgets without running a real terminal; these checks do not replace
+manual terminal acceptance. Export paths are quoted to preserve Windows paths.
+"""
+
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,26 +19,35 @@ from ctui.services import MemoryHistory, MemoryStorage, NullHistory
 
 
 class Demo(CtuiApp):
+    """Minimal decorated app recording lifecycle calls and a custom greeting event."""
+
     def __init__(self, **kwargs):
+        """Keep test history injectable and omit built-in commands from this fixture."""
         self.lifecycle = []
         super().__init__(register_defaults=False, **kwargs)
 
     @command(arguments={"name": Argument(choices=("Ada", "Grace"))})
     async def greet(self, name: str):
+        """Return a greeting after publishing the selected name."""
         await self.events.emit("greeted", name=name)
         return f"Hello {name}"
 
     async def on_start(self):
+        """Record startup order for lifecycle assertions."""
         self.lifecycle.append("start")
 
     async def on_ready(self):
+        """Record UI readiness separately from generic startup."""
         self.lifecycle.append("ready")
 
     async def on_stop(self):
+        """Record shutdown before services close."""
         self.lifecycle.append("stop")
 
 
 class ApplicationTests(unittest.IsolatedAsyncioTestCase):
+    """Verify dispatcher policy independently of a terminal run loop."""
+
     async def test_class_commands_dispatch_history_and_events(self):
         history, seen = MemoryHistory(), []
         app = Demo(history=history)
@@ -74,6 +91,10 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(called, ["old", "other"])
 
     async def test_history_exports_all_or_recent_commands(self):
+        """Keep exports replayable and quote paths for Windows and spaces.
+
+        An export sees prior history; its own accepted entry is appended afterward.
+        """
         app = CtuiApp()
         await app.dispatch("help")
         await app.dispatch("clear")
@@ -140,6 +161,7 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
             await app.dispatch("invalid")
 
     async def test_all_execution_failures_emit_command_failed(self):
+        """Cover callable failures and invalid result types after execution starts."""
         app = CtuiApp(register_defaults=False)
         failed = []
         app.on("command_failed", lambda command: failed.append(command.name))
@@ -222,6 +244,7 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(CtuiApp.mouse_support)
 
     async def test_startup_failure_still_closes_storage_and_open_backend(self):
+        """Require service cleanup without on_stop when on_start never completes."""
         calls = []
 
         class Backend:

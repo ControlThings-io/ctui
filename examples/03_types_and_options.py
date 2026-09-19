@@ -8,6 +8,11 @@ Try: greet Justin excited true
 
 Parameters are positional unless the ``@command`` configuration gives them
 flags. The next tutorial introduces explicit named arguments.
+
+Literal supplies choices and completion automatically; a bool without flags
+requires an explicit positional value such as true. Omitted trailing values use
+the Python defaults. Type hints remain visible until an unquoted space advances
+to the next parameter.
 """
 
 from typing import Literal

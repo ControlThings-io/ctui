@@ -1,5 +1,8 @@
-"""
-Control Things User Interface, aka ctui.py
+"""Built-in prompt-toolkit styles for panes, dialogs, menus, and progress.
+
+CtuiApp selects a named style when constructing its terminal Application.
+Style names correspond to widget class tokens, allowing layout components to
+share the same palette.
 
 # Copyright (C) 2019  Justin Searle
 #
@@ -17,7 +20,13 @@ from prompt_toolkit.styles import Style
 
 
 class CtuiStyle(object):
-    """Class to expose individual style values to ctui"""
+    """Select one of the built-in dark or light Style objects.
+
+    Construction selects dark. Assign theme by its exact string name; reading
+    it returns a prompt-toolkit Style, not the name. Invalid names raise
+    ValueError. The two current palette definitions contain the same values;
+    selecting light does not currently produce a distinct color scheme.
+    """
 
     def __init__(self):
         """Select the dark theme initially."""

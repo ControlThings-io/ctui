@@ -1,3 +1,10 @@
+"""Event ordering and the interchangeable memory/null service contracts.
+
+Await mixed sync/async listeners in order. Missing storage keys must remain
+user-facing errors unless an explicit default, including None, was supplied;
+null services discard writes without changing that contract.
+"""
+
 import unittest
 
 from ctui.commands import CommandError
@@ -12,6 +19,8 @@ from ctui.services import (
 
 
 class EventTests(unittest.IsolatedAsyncioTestCase):
+    """Verify one emission awaits listeners in registration order."""
+
     async def test_sync_and_async_listeners(self):
         bus, seen = EventBus(), []
         bus.on("work", lambda value: seen.append(value))
@@ -25,6 +34,8 @@ class EventTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ServiceTests(unittest.TestCase):
+    """Verify ephemeral history and explicit-default storage behavior."""
+
     def test_memory_and_null_services(self):
         history = MemoryHistory()
         history.append("help")

@@ -2,6 +2,12 @@
 
 Run: uv run examples/13_custom_layout.py
 Try: system status
+
+compose() runs after self.layout exists. Reusing its body keeps the command
+input and completion container in the layout; Vertical stacks children from top
+to bottom. This wrapper example demonstrates composition only: modal dialogs
+require the root container to expose a floats list, which this Vertical root
+does not provide.
 """
 
 from ctui import CtuiApp, command

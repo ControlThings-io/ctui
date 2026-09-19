@@ -39,8 +39,9 @@ class FileTool(CtuiApp):
 FileTool().run()
 ```
 
-Commands can be sync or async. Applications already inside an event loop can
-use `await app.run_async()`. Test without a terminal using
+Commands can be sync or async and return a string or `CommandResult`. Use
+`CommandResult.success()` when there is no output. Applications already inside
+an event loop can use `await app.run_async()`. Test without a terminal using
 `await app.dispatch("list files . --order size")`.
 
 ## Automatic command-line mode
@@ -360,6 +361,13 @@ The reusable names exported by `ctui.widgets` are also supported for custom
 layouts. Other submodules and names beginning with an underscore are
 implementation details and may change between minor releases. Deprecations to
 the supported API will be documented before removal in a future major release.
+
+Detailed API contracts and implementation rationale live in the class and method
+docstrings in [application.py](src/ctui/application.py),
+[commands.py](src/ctui/commands.py), [types.py](src/ctui/types.py),
+[services.py](src/ctui/services.py), and [projects.py](src/ctui/projects.py).
+The [decision log](docs/DECISIONS.md) records shared architectural choices and
+historical context; it is not a duplicate API reference.
 
 ## Development
 

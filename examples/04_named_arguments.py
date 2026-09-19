@@ -15,6 +15,10 @@ A ``choices`` mapping supplies a separate description for each suggested value.
 
 Try typing ``deploy `` to see target help, ``deploy api --`` to explore options,
 and ``deploy api -e `` to see descriptions for the environment choices.
+
+Only unique choice prefixes expand: ``deploy api -e prod`` selects production.
+A bare --verbose enables the bool; --verbose=false disables it explicitly.
+Defaults are supplied by Python when an option is omitted.
 """
 
 from typing import Literal

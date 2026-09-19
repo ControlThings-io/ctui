@@ -5,6 +5,12 @@ Try: ls
 Try: ls examples --long
 Try: ls README.md -l
 Try: cd examples
+
+A teaching example rather than a complete system ls implementation. Listing and
+completion filesystem work runs in worker threads so it does not block the UI.
+cd changes the process-wide directory; relative paths and the status callback
+then use that directory. Quote paths containing spaces. Long listings report
+numeric ownership and local modification time, without resolving account names.
 """
 
 import asyncio
@@ -17,7 +23,12 @@ from ctui import Argument, CommandError, CtuiApp, command
 
 
 def matching_paths(word, directories_only=False):
-    """Suggest relative, absolute, or home-relative paths one level at a time."""
+    """Return matching children, preserving relative, absolute, or home prefixes.
+
+    Append a path separator to directories so completion can descend another
+    level. directories_only excludes files for cd. An inaccessible parent
+    returns no suggestions rather than raising during input editing.
+    """
     parent, prefix = os.path.split(word)
     try:
         return [
@@ -40,7 +51,12 @@ async def directory_names(context):
 
 
 def list_path(path, long):
-    """List a file or directory, optionally including detailed metadata."""
+    """Format one file or a sorted directory listing, optionally with metadata.
+
+    Use lstat so symlink details describe the link; long mode includes its target.
+    Raise a user-facing CommandError on filesystem failure. This synchronous
+    helper is invoked in a worker by the async ls command.
+    """
     try:
         items = sorted(path.iterdir()) if path.is_dir() else [path]
         lines = []
@@ -74,6 +90,7 @@ class FilesystemApp(CtuiApp):
     )
 
     def __init__(self):
+        """Display the current process directory through a callable status value."""
         super().__init__()
         self.statusbar = lambda: f"CWD: {Path.cwd()}"
 

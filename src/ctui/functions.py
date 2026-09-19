@@ -1,5 +1,9 @@
-"""
-Control Things User Interface, aka ctui.py
+"""Focus-preserving scrolling helpers for output and read-only dialog text.
+
+Pass the target TextArea explicitly: prompt-toolkit events reference its own
+Application, which does not expose CtuiApp's output_field. Scroll the window and
+move the invisible buffer cursor together so the next render retains the chosen
+viewport. Helpers are no-ops until render information is available.
 
 # Copyright (C) 2019  Justin Searle
 #
@@ -15,7 +19,13 @@ Control Things User Interface, aka ctui.py
 
 
 def _scroll_output(event, output_field, amount):
-    """Move the output viewport by *amount* lines without changing focus."""
+    """Clamp the viewport to the available lines and invalidate the application.
+
+    amount is a signed line count. Move the hidden cursor inside the requested
+    viewport because prompt-toolkit otherwise scrolls back to keep the old
+    cursor visible. Preserve focus and buffer contents; use the supplied output
+    field rather than assuming it lives on event.app.
+    """
     window = output_field.window
     render_info = window.render_info
     if render_info is None:

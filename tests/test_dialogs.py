@@ -1,3 +1,10 @@
+"""Rendered dialog regressions for focus, scrolling, and text width.
+
+Use a real prompt-toolkit renderer with dummy terminal output to check button
+focus, one-line scrolling, Enter activation, and wide-character sizing. These
+checks exercise layout behavior without claiming visual acceptance on terminals.
+"""
+
 import unittest
 from types import SimpleNamespace
 
@@ -18,6 +25,8 @@ class TerminalOutput(DummyOutput):
 
 
 class DialogTests(unittest.IsolatedAsyncioTestCase):
+    """Render read-only dialogs to verify keyboard behavior and wrapping bounds."""
+
     async def test_buttons_keep_focus_during_scrolling(self):
         for dialog_type in (MessageDialog, YesNoDialog):
             with self.subTest(dialog=dialog_type.__name__):

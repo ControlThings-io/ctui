@@ -1,4 +1,10 @@
-"""Protect the documented ctui 1.x import surface."""
+"""Protect the documented ctui 1.x top-level import surface.
+
+The expected export set is deliberate: adding or removing a supported name should
+update the public contract and this test together. Compare runtime version with
+installed distribution metadata; this does not assert every internal submodule
+is stable or that widgets are covered by the top-level export assertion.
+"""
 
 import unittest
 from importlib.metadata import version

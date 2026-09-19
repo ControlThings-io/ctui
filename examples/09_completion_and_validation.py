@@ -3,6 +3,12 @@
 Run: uv run examples/09_completion_and_validation.py
 Type ``deploy `` and use the completion menu.
 Try the unique abbreviations: ``dep dev dev-1``.
+
+The provider sees earlier parsed arguments through CompletionContext. A trailing
+space advances the menu; the current choice remains selected until then. The
+validator receives the converted value and returns an error string to reject it.
+Providers supply suggestions, while validators enforce application constraints;
+providers should be safe to call repeatedly during completion and dispatch.
 """
 
 from ctui import Argument, CtuiApp, command

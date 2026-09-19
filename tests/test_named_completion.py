@@ -1,3 +1,10 @@
+"""Named-option completion regressions using the tutorial and real buffers.
+
+Check both separated and equals option values, earlier unique Literal prefixes,
+and non-inserting type hints. Buffer-level checks matter because prompt-toolkit
+can discard a no-op completion even when the completer yielded it correctly.
+"""
+
 import importlib.util
 import unittest
 from pathlib import Path
@@ -10,7 +17,10 @@ from ctui.layout import CtuiLayout
 
 
 class NamedCompletionTests(unittest.IsolatedAsyncioTestCase):
+    """Exercise the named-argument tutorial through completion and dispatch."""
+
     def setUp(self):
+        """Load a fresh tutorial app and attach its standard layout for each test."""
         path = Path(__file__).resolve().parents[1] / "examples/04_named_arguments.py"
         spec = importlib.util.spec_from_file_location("named_example", path)
         module = importlib.util.module_from_spec(spec)
@@ -18,6 +28,7 @@ class NamedCompletionTests(unittest.IsolatedAsyncioTestCase):
         self.app = module.DeployTool()
 
     async def collect(self, text):
+        """Gather completion results at the end of the supplied command text."""
         return [
             item
             async for item in CommandCompleter(

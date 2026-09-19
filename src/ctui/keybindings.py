@@ -1,5 +1,14 @@
-"""
-Control Things User Interface, aka ctui.py
+"""UI submission and navigation bindings around the shared dispatcher.
+
+Enter schedules commands as background tasks so async operations can overlap.
+Result appends use the current output at completion time. Restore failed input
+only if no newer submission or edit has replaced it. Expected command failures
+use message dialogs; unexpected failures display a traceback.
+
+Input editing and output navigation have distinct bindings. Ctrl-C clears input
+without cancelling running tasks; Ctrl-L clears output. Home/End, Page Up/Down,
+and Ctrl-Up/Down scroll output while input retains focus. Mouse selection and
+clipboard operations remain the terminal's responsibility.
 
 # Copyright (C) 2019  Justin Searle
 #
@@ -32,7 +41,14 @@ from .functions import (
 
 
 def get_key_bindings(ctui):
-    """Return keybinding object for application shortcut keys"""
+    """Build bindings for the application's existing input and output widgets.
+
+    Input-specific bindings run only while command input is focused. Ctrl-Q
+    and registered application shortcuts are global. Shortcuts are captured
+    when this function runs, so register them before constructing the UI.
+    Help results open a button-focused modal dialog without replacing output;
+    confirmation callbacks use the same modal mechanism.
+    """
     input_field = ctui.layout.input_field
     output_field = ctui.layout.output_field
     kb = KeyBindings()
@@ -187,22 +203,22 @@ def get_key_bindings(ctui):
 
     @kb.add("pagedown", filter=has_focus(input_field))
     def _(event):
-        """Scroll output_field down one page"""
+        """Scroll output down one page while input keeps focus."""
         scroll_page_down(event, output_field)
 
     @kb.add("pageup", filter=has_focus(input_field))
     def _(event):
-        """Scroll output_field up one page"""
+        """Scroll output up one page while input keeps focus."""
         scroll_page_up(event, output_field)
 
     @kb.add("c-down", filter=has_focus(input_field))
     def _(event):
-        """Scroll output_field down one line"""
+        """Scroll output down one line while input keeps focus."""
         scroll_line_down(event, output_field)
 
     @kb.add("c-up", filter=has_focus(input_field))
     def _(event):
-        """Scroll output_field down one line"""
+        """Scroll output up one line while input keeps focus."""
         scroll_line_up(event, output_field)
 
     return kb

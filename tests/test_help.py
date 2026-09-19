@@ -1,3 +1,10 @@
+"""Hierarchical help, interface introductions, and modal presentation tests.
+
+Keep shared references independent from welcome/guidance, resolve aliases and
+prefixes, and preserve existing UI output when help opens. Mock dialog display
+for command presentation, then separately verify normal focus restoration.
+"""
+
 import asyncio
 import io
 import unittest
@@ -16,6 +23,8 @@ from ctui.keybindings import get_key_bindings
 
 
 class HelpApp(CtuiApp):
+    """Fixture with executable parents, child commands, aliases, and similar roots."""
+
     @command
     def project(self):
         """Show project statistics."""
@@ -43,6 +52,8 @@ class HelpApp(CtuiApp):
 
 
 class HelpTests(unittest.IsolatedAsyncioTestCase):
+    """Protect targeted help and the welcome-guidance-reference ordering."""
+
     async def test_hierarchy_and_details(self):
         app = HelpApp()
         root = app.format_help()
