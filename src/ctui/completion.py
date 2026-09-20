@@ -162,8 +162,7 @@ class CommandCompleter(Completer):
         try:
             item, argument_text = self.commands.resolve(text)
         except CommandNotFound:
-            for result in self._command_completions(text.lstrip()):
-                yield result
+            # Group suggestions were already emitted above.
             return
         if getattr(item.func, "__ctui_help__", False):
             target = argument_text + (" " if text[-1:].isspace() else "")

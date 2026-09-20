@@ -276,3 +276,11 @@ does not transfer. Do not store full private transcripts in the repository.
   whitespace checks. Decimal ranges are bounds-checked before enumeration;
   digit-pattern maxima are checked before Cartesian expansion.
 - Owner approved committing and pushing these changes on September 19.
+
+## Duplicate group suggestions (September 19)
+
+- Fixed duplicate subcommands for groups without an executable parent, such as
+  `hex `: the resolution-failure branch re-emitted existing suggestions.
+- Eight completion tests passed, including a new group-only regression for
+  full/abbreviated names, repeated spaces, and tabs. Changed-file Black and
+  whitespace checks passed. Owner approved committing and pushing this fix.

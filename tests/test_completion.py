@@ -52,6 +52,23 @@ class CompletionTests(unittest.IsolatedAsyncioTestCase):
             str(values[0].display_meta), "FormattedText([('', 'Live systems')])"
         )
 
+    async def test_group_without_parent_command_suggests_children_once(self):
+        commands = Commands()
+
+        @commands.register(name="hex expand")
+        def expand(pattern: str):
+            return pattern
+
+        @commands.register(name="hex sample")
+        def sample(pattern: str):
+            return pattern
+
+        completer = CommandCompleter(commands)
+        for text in ("hex ", "he ", "hex  ", "hex\t"):
+            with self.subTest(text=text):
+                results = await self.collect(completer, text)
+                self.assertEqual([item.text for item in results], ["expand", "sample"])
+
     async def test_empty_document_does_not_crash(self):
         completer = CommandCompleter(Commands())
         self.assertEqual(await self.collect(completer, ""), [])
