@@ -1,17 +1,15 @@
 # Project decisions
 
-## Submission preference (September 19 update)
+Originally recorded 2026-09-18 from locally available ctui conversations and
+Git history since August 22, 2026 (owner-approved cutoff). Private transcripts
+and conversations on other laptops were not repository dependencies. Dates
+below identify discussion/implementation. “Accepted” denotes explicit user
+direction; “Implemented policy” denotes documented codebase policy. Later
+entries supersede earlier choices where noted. Proposals remain in STATUS.
 
-Always suggest a commit message after a coding task. Commit or push only upon
-an explicit user request for that action; a commit request alone does not
-authorize a push. Do not routinely prompt for submission. This supersedes the
-earlier practice of asking whether to commit and push after each change.
-
-Recorded 2026-09-18 from the local conversations and Git history described in
-[STATUS.md](STATUS.md). Dates below are discussion/implementation dates.
-“Accepted” means explicit user direction supported by the implementation;
-“Implemented policy” identifies a documented codebase policy. Later decisions
-supersede earlier ones where noted. New proposals belong in STATUS until accepted.
+Read entries relevant to the task; this is durable rationale, not startup
+reading in full. Personal submission preferences now live in the global
+Codex instructions; their September 19 update is preserved in Git (`88df143`).
 
 ## D01 — A reusable, event-driven tool framework
 
@@ -202,7 +200,7 @@ decision. No license change was accepted in the reviewed conversations.
 
 Accepted, Sep 18.
 
-Maintain root `AGENTS.md` for operating instructions, `docs/STATUS.md` for
+Maintain root `AGENTS.md` for ctui-specific operating instructions, `docs/STATUS.md` for
 current work/next steps, and this file for durable decisions and rationale.
 Update them alongside meaningful work and transfer them with the working
 branch. Keep the evidence and outstanding questions visible; neither a new
@@ -261,6 +259,9 @@ and values outside 0..255. Preserve standalone contiguous 0x multi-byte input
 and existing separate byte-separator and escape formats. Command input may
 use either quote style. Fuzzy pattern parsing is unchanged.
 
+The implicit decimal rule above is superseded by explicit mixed-radix byte
+patterns below.
+
 ## Command errors and UI containment (September 19)
 
 Accepted: convert expected user-facing failures at command boundaries to
@@ -278,6 +279,9 @@ Keep prefixed/escaped and colon/hyphen/underscore formats unchanged. Do not add
 mixed-radix fuzzy syntax. FuzzyStringPattern preserves literal whitespace.
 Example 06 displays expanded and sampled hex without separators.
 
+The earlier exclusion of mixed-radix fuzzy syntax is superseded by the next
+decision; plain-pattern whitespace behavior remains.
+
 ## Explicit mixed-radix byte patterns (September 19)
 
 Accepted: both HexBytes and mixed FuzzyHexPattern require 0x/0b/0o/0d
@@ -288,3 +292,17 @@ consecutive/trailing or inside constructs. Decimal 0d sets reuse IntegerRanges
 syntax, sort and deduplicate choices, and validate bounds before expansion.
 Every possible component value must fit 0..255; reject rather than filter.
 Plain fuzzy hex and standalone contiguous 0x multi-byte notation remain.
+
+## D15 — Separate personal instructions and task-specific context
+
+Accepted scope, September 19: move reusable operating preferences to
+`~/.codex/AGENTS.md` and keep repository instructions specific to ctui, balancing
+quality with context cost. The global file is machine-local and must be copied
+separately when moving laptops; it does not travel with this repository.
+
+Implementation choice: keep STATUS as a current snapshot with dated validation
+and open work; retain detailed chronology in Git. Read decision headings and
+relevant entries per task, broadening for architectural work. Preserve decision
+rationale and supersession history instead of compressing away API constraints.
+This refines D11's instruction placement and startup reading, not its requirement
+for durable project continuity.
