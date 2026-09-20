@@ -200,16 +200,21 @@ Plain `HexBytes` hex input ignores whitespace even within byte pairs:
 `"dead beef"`, `"deadbe ef"`, and `"dead   b e      ef"` all produce `de ad be ef`.
 The total number of hex digits must be even.
 
-If any whitespace-separated component starts with `0x`, `0b`, or `0o`, each
-component is a byte from 0 to 255; unprefixed components are decimal integers.
-For example, `"0xbe 0b10101100 0xef 10 0o377"` produces `be ac ef 0a ff`.
-Binary underscores follow Python placement rules: `0b1010_001_1` and
-`0b_10100011` are valid; consecutive or trailing underscores are rejected.
-Extra whitespace between components is ignored. Bare `"10 20"` remains hex;
-`"0xbe 10 20"` produces `be 0a 14`. Standalone `0xdeadbeef` retains its existing
-multi-byte meaning. Do not mix radix components with colon/hyphen/underscore
-byte separators or `\xNN` escapes. Single and double command quotes both work.
-Mixed-radix rules apply to `HexBytes`, not fuzzy patterns.
+Mixed-radix `HexBytes` uses an explicit prefix on every component: `0x` hex,
+`0b` binary, `0o` octal, or `0d` decimal. Each component must fit 0..255.
+For example, `"0xbe 0b10101100 0xef 0d10 0o377"` produces `be ac ef 0a ff`.
+Bare `"10 20"` remains plain hex; `"0xbe 10 20"` is rejected. Binary, octal,
+and hex components support Python-style underscores. Standalone `0xdeadbeef`
+retains its contiguous multi-byte meaning. Single/double command quotes work.
+
+Fuzzy hex also supports mixed-radix byte components: `0b1010_????`,
+`0o[0-3]??`, and `0d[1-5,10-15,200-216,254,255]`. Decimal sets use inclusive
+IntegerRanges syntax, allow interior whitespace, merge duplicates, and expand
+in ascending order. Each component contributes one byte. Reject the entire
+pattern if any possibility exceeds 255 (for example `0o???`). Decimal digit
+wildcards are not supported. Fuzzy underscores separate complete atoms or
+follow a prefix, never consecutive/trailing or inside classes/repetition counts.
+Global expansion limits, exact counts, and unique sampling remain in effect.
 
 `FuzzyHexPattern` and `FuzzyStringPattern` represent finite sets without
 materializing them during command conversion. Both provide an exact `count`,

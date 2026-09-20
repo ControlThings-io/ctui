@@ -49,12 +49,12 @@ class HexBytesTests(unittest.TestCase):
         for value in ("dead beef", "deadbe ef", "dead b e ef", "dead   b e      ef"):
             self.assertEqual(HexBytes(value), bytes.fromhex("deadbeef"))
         for value, expected in (
-            ("0xbe 0b10101100 0xef 10 0o377", "beacef0aff"),
+            ("0xbe 0b10101100 0xef 0d10 0o377", "beacef0aff"),
             ("0xbe   0xef   0b1010_001_1", "beefa3"),
             ("0b_10100011", "a3"),
-            ("0B10100011 0O377 0XBE 00010", "a3ffbe0a"),
+            ("0B10100011 0O377 0XBE 0d00010", "a3ffbe0a"),
             ("10 20", "1020"),
-            ("0xbe 10 20", "be0a14"),
+            ("0xbe 0d10 0d20", "be0a14"),
         ):
             self.assertEqual(HexBytes(value), bytes.fromhex(expected))
 
@@ -62,7 +62,7 @@ class HexBytesTests(unittest.TestCase):
             return payload
 
         for quote in ("'", '"'):
-            for value in ("dead b e ef", "0xbe 0b10101100 10 0o377"):
+            for value in ("dead b e ef", "0xbe 0b10101100 0d10 0o377"):
                 parsed = Command(send).parse_args(quote + value + quote)
                 self.assertEqual(parsed["payload"], HexBytes(value))
 
@@ -191,6 +191,40 @@ class IntegerRangesTests(unittest.TestCase):
 
 class FuzzyHexPatternTests(unittest.TestCase):
     """Protect nibble semantics and formatting compatibility with HexBytes."""
+
+    def test_mixed_radix_patterns(self):
+        pattern = FuzzyHexPattern("0xbe 0d[1-5, 10-15,200-216,254,255] 0b1010_????")
+        self.assertEqual(pattern.count, 30 * 16)
+        values = list(pattern.expand())
+        self.assertEqual(values[0], bytes([190, 1, 160]))
+        self.assertEqual(values[-1], bytes([190, 255, 175]))
+        self.assertEqual(pattern.max_length, 6)
+        self.assertEqual(len(set(pattern.sample(20, seed=1))), 20)
+        self.assertEqual(FuzzyHexPattern("0o[0-3]??").count, 256)
+        self.assertEqual(FuzzyHexPattern("0b[01]{8}").count, 256)
+        self.assertEqual(
+            list(FuzzyHexPattern("0d[1-3,2-4,1]").expand()),
+            [bytes([i]) for i in range(1, 5)],
+        )
+        for text in (
+            "0xbe 10",
+            "0o???",
+            "0d[0-256]",
+            "0d[9-1]",
+            "0b1__0",
+            "0b1_",
+            "0b[02]",
+            "0d?",
+            "0b111111111",
+        ):
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                FuzzyHexPattern(text)
+        self.assertEqual(
+            HexBytes("0xbe 0d10 0o_377 0b_1010_0011"), bytes.fromhex("be0affa3")
+        )
+        for text in ("0xbe 10", "0d256", "0d-1"):
+            with self.assertRaises(ValueError):
+                HexBytes(text)
 
     def test_flexible_plain_pattern_whitespace(self):
         expected = list(FuzzyHexPattern("dead[0-3]?{2}0").expand())

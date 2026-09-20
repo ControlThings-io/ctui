@@ -264,3 +264,15 @@ does not transfer. Do not store full private transcripts in the repository.
   constructs, preserved string spaces, and existing format regressions.
 - Changed-file Black/isort and whitespace checks passed. Owner approved
   committing and pushing these changes on September 19.
+
+## Mixed-radix byte patterns (September 19)
+
+- HexBytes now requires explicit 0d decimal components; bare numbers in mixed
+  sequences are rejected. Updated examples and documentation.
+- FuzzyHexPattern supports mixed hex/binary/octal byte patterns and decimal
+  sets, including whitespace inside decimal brackets, sorted unique choices,
+  exact counts, bounded lazy expansion, and unique sampling.
+- All 126 tests passed on Python 3.11, plus changed-file Black, full isort, and
+  whitespace checks. Decimal ranges are bounds-checked before enumeration;
+  digit-pattern maxima are checked before Cartesian expansion.
+- Owner approved committing and pushing these changes on September 19.

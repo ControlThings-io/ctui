@@ -20,7 +20,8 @@ from typing import Generic, Iterator, Sequence, TypeVar
 _BYTE_ESCAPE = re.compile(r"(?:\\x[0-9a-fA-F]{2})+")
 _CONTIGUOUS = re.compile(r"[0-9a-fA-F]+")
 _BYTE_COMPONENT = re.compile(
-    r"(?:0x[0-9a-f]+|0b_?[01](?:_?[01])*|0o[0-7]+|[0-9]+)", re.IGNORECASE
+    r"(?:0x_?[0-9a-f](?:_?[0-9a-f])*|0b_?[01](?:_?[01])*|0o_?[0-7](?:_?[0-7])*|0d[0-9]+)",
+    re.IGNORECASE,
 )
 _SEPARATED_BYTES = re.compile(
     r"[0-9a-fA-F]{2}(?P<separator>[:_-])[0-9a-fA-F]{2}"
@@ -35,9 +36,9 @@ class HexBytes(bytes):
     becomes ``deadbeef``. The total digit count must be even. Standalone
     ``0xdeadbeef`` retains this contiguous multi-byte meaning.
 
-    If any whitespace-separated component has a ``0x``, ``0b``, or ``0o``
+    If any whitespace-separated component has a ``0x``, ``0b``, ``0o``, or ``0d``
     prefix, each component is one byte (0..255); unprefixed components are
-    decimal. For example, ``0xbe 0b10101100 10 0o377`` becomes ``be ac 0a ff``.
+    invalid. Decimal bytes require ``0d``. For example, ``0xbe 0b10101100 0d10 0o377`` becomes ``be ac 0a ff``.
     Binary underscores follow Python placement rules. Prefixes and hex digits
     are case-insensitive. Bare ``10 20`` remains hexadecimal, not decimal.
 
@@ -75,13 +76,17 @@ class HexBytes(bytes):
             if not _CONTIGUOUS.fullmatch(digits) or len(digits) % 2:
                 raise ValueError("0x must be followed by an even number of hex digits")
             return bytes.fromhex(digits)
-        if any(part.lower().startswith(("0x", "0b", "0o")) for part in components):
+        if any(
+            part.lower().startswith(("0x", "0b", "0o", "0d")) for part in components
+        ):
             result = []
             for part in components:
                 if not _BYTE_COMPONENT.fullmatch(part):
-                    raise ValueError(f"Invalid byte component: {part!r}")
-                base = {"0x": 16, "0b": 2, "0o": 8}.get(part[:2].lower(), 10)
-                number = int(part, base)
+                    raise ValueError(
+                        f"Invalid byte component (use explicit 0x/0b/0o/0d prefixes): {part!r}"
+                    )
+                base = {"0x": 16, "0b": 2, "0o": 8, "0d": 10}[part[:2].lower()]
+                number = int(part[2:].replace("_", ""), base)
                 if not 0 <= number <= 255:
                     raise ValueError(
                         f"Byte component must be between 0 and 255: {part!r}"
@@ -594,6 +599,87 @@ def _hex_class(source: str, start: int) -> tuple[tuple[str, ...], int]:
     return unique, end + 1
 
 
+def _radix_pattern_components(source):
+    """Split byte components without splitting decimal bracket sets."""
+    components, current, depth = [], [], 0
+    for character in source:
+        if character == "[":
+            depth += 1
+        elif character == "]":
+            depth -= 1
+        if depth not in (0, 1):
+            raise ValueError("invalid byte-pattern brackets")
+        if character.isspace() and depth == 0:
+            if current:
+                components.append("".join(current))
+                current = []
+        else:
+            current.append(character)
+    if depth:
+        raise ValueError("unclosed byte-pattern class")
+    if current:
+        components.append("".join(current))
+    return components
+
+
+def _radix_byte_choices(component):
+    """Build at most 256 byte choices, validating bounds before expansion."""
+    prefix, body = component[:2].lower(), component[2:].lower()
+    if prefix not in ("0x", "0b", "0o", "0d") or not body:
+        raise ValueError("every mixed-radix byte requires a 0x/0b/0o/0d prefix")
+    if prefix == "0d":
+        if body.startswith("[") and body.endswith("]"):
+            spans = IntegerRanges(body[1:-1])
+            if any(span.stop > 256 for span in spans):
+                raise ValueError("decimal byte values must be between 0 and 255")
+            values = sorted(
+                {value for span in spans for value in range(span.start, span.stop)}
+            )
+        elif re.fullmatch(r"[0-9]+", body):
+            values = [int(body)]
+        else:
+            raise ValueError(
+                "decimal bytes require an integer or bracketed integer ranges"
+            )
+        if any(value > 255 for value in values):
+            raise ValueError("decimal byte values must be between 0 and 255")
+        return tuple(f"{value:02x}" for value in values)
+    base = {"0x": 16, "0b": 2, "0o": 8}[prefix]
+    alphabet = _HEX_DIGITS[:base]
+    parts = []
+    index = 1 if body.startswith("_") else 0
+    while index < len(body):
+        char = body[index]
+        if char == "?":
+            parts.append(tuple(alphabet))
+            index += 1
+        elif char == "[":
+            end = body.find("]", index)
+            if end < 0 or any(c not in alphabet + "-!^" for c in body[index + 1 : end]):
+                raise ValueError("invalid digit class for radix")
+            choices, index = _hex_class(body, index)
+            parts.append(tuple(c for c in choices if c in alphabet))
+        elif char in alphabet:
+            parts.append((char,))
+            index += 1
+        else:
+            raise ValueError("invalid radix digit or underscore placement")
+        index = _repeat_previous(parts, body, index)
+        if index < len(body) and body[index] == "_":
+            index += 1
+            if index == len(body):
+                raise ValueError("trailing underscore in byte pattern")
+    if not parts or any(not part for part in parts):
+        raise ValueError("byte pattern must have at least one value")
+    maximum = 0
+    for part in parts:
+        maximum = maximum * base + max(int(c, base) for c in part)
+        if maximum > 255:
+            raise ValueError("every byte-pattern value must be between 0 and 255")
+    values = sorted({int("".join(value), base) for value in product(*parts)})
+    return tuple(f"{value:02x}" for value in values)
+
+
 class FuzzyHexPattern(_FinitePattern[bytes]):
     r"""Finite hexadecimal pattern producing bytes through expansion or sampling.
 
@@ -611,6 +697,15 @@ class FuzzyHexPattern(_FinitePattern[bytes]):
     other than plain whitespace must divide complete bytes; mixed separators and nibble-level
     groups such as ``f-f`` are rejected. A hyphen denotes a range only inside
     a class. All results must contain complete byte pairs.
+
+    Mixed-radix mode uses one prefixed component per byte: 0x hex, 0b binary,
+    0o octal, or 0d decimal. Binary/octal wildcards and digit classes use their
+    radix alphabet. Underscores may separate atoms or follow a prefix, but not
+    appear consecutively, at the end, or inside classes/counts. Decimal accepts
+    fixed values or IntegerRanges sets such as ``0d[1-5,10,200-216]``; overlaps
+    are deduplicated and values sorted. Every possible value must fit 0..255.
+    Whitespace inside decimal sets is supported. Standalone contiguous 0x
+    patterns retain their multi-byte meaning.
 
     This finite language excludes general regex groups, alternation, and
     unbounded repetition. Parsing retains source and computes exact count
@@ -630,6 +725,12 @@ class FuzzyHexPattern(_FinitePattern[bytes]):
             raise ValueError(
                 f"pattern exceeds the {self.MAX_PATTERN_LENGTH:,} character limit"
             )
+        components = _radix_pattern_components(source)
+        if any(c.lower().startswith(("0b", "0o", "0d")) for c in components) or (
+            len(components) > 1 and any(c.lower().startswith("0x") for c in components)
+        ):
+            super().__init__(source, [_radix_byte_choices(c) for c in components])
+            return
         chunks, byte_chunks = _fuzzy_hex_chunks(source)
         parts: list[tuple[str, ...]] = []
         for chunk in chunks:

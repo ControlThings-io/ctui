@@ -270,3 +270,14 @@ classes or repetition counts and require complete bytes after normalization.
 Keep prefixed/escaped and colon/hyphen/underscore formats unchanged. Do not add
 mixed-radix fuzzy syntax. FuzzyStringPattern preserves literal whitespace.
 Example 06 displays expanded and sampled hex without separators.
+
+## Explicit mixed-radix byte patterns (September 19)
+
+Accepted: both HexBytes and mixed FuzzyHexPattern require 0x/0b/0o/0d
+prefixes on every component. This supersedes implicit bare decimal bytes.
+Fuzzy binary/octal components support radix-specific digits, wildcards, classes,
+and digit repetition. Underscores separate atoms or follow prefixes, never
+consecutive/trailing or inside constructs. Decimal 0d sets reuse IntegerRanges
+syntax, sort and deduplicate choices, and validate bounds before expansion.
+Every possible component value must fit 0..255; reject rather than filter.
+Plain fuzzy hex and standalone contiguous 0x multi-byte notation remain.

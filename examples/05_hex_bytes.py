@@ -4,7 +4,7 @@ Run: uv run examples/05_hex_bytes.py
 Try: inspect deadbeef
 Try: inspect "de ad be ef"
 Try: inspect "dead   b e      ef"
-Try: inspect "0xbe 0b10101100 0xef 10 0o377"
+Try: inspect "0xbe 0b10101100 0xef 0d10 0o377"
 Try: inspect '0xbe   0xef   0b1010_001_1'
 Try: inspect de:ad:be:ef
 Try: inspect 0xdeadbeef
@@ -15,8 +15,8 @@ Values containing spaces or backslashes are quoted so the shell-like command
 parser passes the entire representation to ``HexBytes`` as one argument.
 
 Plain hex ignores whitespace, even between nibbles. If any component has a
-0x, 0b, or 0o prefix, each component is one byte and bare integers are decimal.
-Thus "10 20" is hex, but "0xbe 10 20" contains decimal 10 and 20. Standalone
+0x, 0b, 0o, or 0d prefix, every component needs a prefix and is one byte.
+Thus "10 20" is hex, but "0xbe 0d10 0d20" contains explicitly decimal 10 and 20. Standalone
 0xdeadbeef still represents multiple bytes. Binary underscores follow Python
 placement rules; mixed components must each fit in 0..255.
 

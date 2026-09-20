@@ -6,6 +6,8 @@ Try: hex expand "56 ff ff 07 f [0-2] 0 1"
 Try: hex expand '0x56ffff07f[0-2]01'
 Try: hex expand '\x56\xff\xff\x07\xf?\x01'
 Try: hex sample ???????? --count 5 --seed 42
+Try: hex expand "0xbe 0d[1-5,10-15] 0b1010_????"
+Try: hex sample "0o[0-3]?? 0d[200-216,254,255]" --count 5
 Try: text expand {admin,user}-[1-2]
 Try: text sample 'device-\d{4}' -n 5
 
