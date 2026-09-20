@@ -27,9 +27,11 @@
   application code simple and examples approachable for newer Python developers.
 - Use `CtuiApp` subclasses and `@command`, with one dispatch path for the
   full-screen UI and automatic CLI. Preserve the decisions in the decision log.
-- After making changes, suggest a commit message and ask whether to commit
-  and push. Proceed when the user approves; do not ask again for the same
-  approved submission.
+- After every coding task, suggest a concise Conventional Commit message.
+  Leave changes uncommitted unless the user explicitly requests a commit.
+  Never push unless the user explicitly requests a push; permission to commit
+  alone does not authorize pushing. Do not routinely ask whether to commit or
+  push. Task completion and laptop-handoff instructions do not imply permission.
 - Use Conventional Commit messages, such as `feat:`, `fix:`, `docs:`, or
   `test:`, followed by a concise description.
 - Follow applicable Python standards and PEPs; use official Python and PyPA

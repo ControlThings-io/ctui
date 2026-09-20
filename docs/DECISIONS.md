@@ -1,5 +1,12 @@
 # Project decisions
 
+## Submission preference (September 19 update)
+
+Always suggest a commit message after a coding task. Commit or push only upon
+an explicit user request for that action; a commit request alone does not
+authorize a push. Do not routinely prompt for submission. This supersedes the
+earlier practice of asking whether to commit and push after each change.
+
 Recorded 2026-09-18 from the local conversations and Git history described in
 [STATUS.md](STATUS.md). Dates below are discussion/implementation dates.
 “Accepted” means explicit user direction supported by the implementation;

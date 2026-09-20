@@ -1,5 +1,10 @@
 # Project status
 
+Current submission preference: suggest a commit message after coding tasks,
+but commit and push only when explicitly requested for each action. Do not
+routinely ask for submission. Updated September 19 in AGENTS.md and DECISIONS.md;
+this documentation update remains uncommitted.
+
 Last reconciled: 2026-09-19, against `main` at `6587918` plus the current
 repository-wide docstring changes in the working tree.
 
