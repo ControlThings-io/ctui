@@ -254,3 +254,13 @@ does not transfer. Do not store full private transcripts in the repository.
 - All 124 tests passed on Python 3.11; new regressions cover example failures,
   sync/async shortcuts, completion providers, and project export permissions.
 - Owner approved committing and pushing these changes on September 19.
+
+## Fuzzy-hex whitespace follow-up (September 19)
+
+- Plain fuzzy hex accepts whitespace between pattern elements; classes/counts
+  reject internal whitespace. Existing prefixed/separated formats are unchanged.
+- Example 06 emits contiguous hex for expansion and sampling. Updated docs.
+- All 125 tests passed on Python 3.11, including quoting, whitespace, invalid
+  constructs, preserved string spaces, and existing format regressions.
+- Changed-file Black/isort and whitespace checks passed. Owner approved
+  committing and pushing these changes on September 19.

@@ -209,14 +209,17 @@ Extra whitespace between components is ignored. Bare `"10 20"` remains hex;
 `"0xbe 10 20"` produces `be 0a 14`. Standalone `0xdeadbeef` retains its existing
 multi-byte meaning. Do not mix radix components with colon/hyphen/underscore
 byte separators or `\xNN` escapes. Single and double command quotes both work.
-These new whitespace and mixed-radix rules apply to `HexBytes`, not fuzzy patterns.
+Mixed-radix rules apply to `HexBytes`, not fuzzy patterns.
 
 `FuzzyHexPattern` and `FuzzyStringPattern` represent finite sets without
 materializing them during command conversion. Both provide an exact `count`,
 bounded lazy `expand()`, and unique `sample()` operations. Hex patterns support
 `?`, nibble classes and ranges such as `[0-5a-f]`, negated classes such as
 `[!0]`, and fixed repetition such as `?{4}`. Hex formatting follows `HexBytes`:
-separators must consistently divide complete bytes, while one leading `0x`,
+plain hex ignores whitespace between pattern elements, including individual
+nibbles (`"d e a d ? ?"`). Whitespace inside classes (`[0 -3]`) or repetition
+counts (`?{ 2 }`) is invalid. Other separators must consistently divide complete
+bytes, while one leading `0x`,
 per-byte `0x` prefixes, and `\xNN` notation may contain fuzzy nibbles. Repetition
 is nibble-oriented, so `?{4}` produces four nibbles (two bytes). String patterns
 additionally support ASCII wildcard classes (`\d`, `\h`, `\l`, `\u`, `\w`, and

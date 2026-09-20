@@ -261,3 +261,12 @@ CommandError. Preserve ordinary exceptions for reusable Python APIs and
 programmer mistakes. Interactive execution, completion, and shortcut boundaries
 contain unexpected exceptions and show diagnostics without reclassifying
 cancellation or process-exit signals as command failures.
+
+## Flexible plain fuzzy-hex whitespace (September 19)
+
+Accepted: ignore whitespace between plain FuzzyHexPattern elements, including
+nibbles, complete classes, and repetition expressions. Reject whitespace inside
+classes or repetition counts and require complete bytes after normalization.
+Keep prefixed/escaped and colon/hyphen/underscore formats unchanged. Do not add
+mixed-radix fuzzy syntax. FuzzyStringPattern preserves literal whitespace.
+Example 06 displays expanded and sampled hex without separators.

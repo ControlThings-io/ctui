@@ -2,6 +2,7 @@ r"""Lazily expand or sample finite hexadecimal and string patterns.
 
 Run: uv run examples/06_fuzzy_patterns.py
 Try: hex expand 56ffff07f[0-2]01
+Try: hex expand "56 ff ff 07 f [0-2] 0 1"
 Try: hex expand '0x56ffff07f[0-2]01'
 Try: hex expand '\x56\xff\xff\x07\xf?\x01'
 Try: hex sample ???????? --count 5 --seed 42
@@ -11,7 +12,9 @@ Try: text sample 'device-\d{4}' -n 5
 Expansion refuses patterns above its limit before iteration begins. Commands
 translate these ValueErrors into CommandErrors for a concise UI error dialog. Sampling
 selects unique values without constructing the complete expansion.
-Hex separators must divide complete bytes, and ``{n}`` repeats one nibble.
+Plain hex ignores whitespace between pattern elements; whitespace inside
+classes or repetition counts is invalid. Other hex separators must divide
+complete bytes, and ``{n}`` repeats one nibble. Hex output has no separators.
 
 The parsed object retains a finite set, not a precomputed list. count can be
 inspected before choosing expand() or sample(); this tutorial limits expansion
@@ -43,7 +46,7 @@ class PatternTool(CtuiApp):
             expanded = pattern.expand(limit=limit)
         except ValueError as error:
             raise CommandError(str(error)) from error
-        values = (payload.hex(" ") for payload in expanded)
+        values = (payload.hex() for payload in expanded)
         return f"{pattern.count:,} possibilities\n" + "\n".join(values)
 
     @command(
@@ -59,7 +62,7 @@ class PatternTool(CtuiApp):
         """Sample unique byte values without performing full expansion."""
         try:
             return "\n".join(
-                payload.hex(" ") for payload in pattern.sample(count, seed=seed)
+                payload.hex() for payload in pattern.sample(count, seed=seed)
             )
         except ValueError as error:
             raise CommandError(str(error)) from error

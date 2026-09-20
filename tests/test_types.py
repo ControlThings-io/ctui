@@ -192,6 +192,35 @@ class IntegerRangesTests(unittest.TestCase):
 class FuzzyHexPatternTests(unittest.TestCase):
     """Protect nibble semantics and formatting compatibility with HexBytes."""
 
+    def test_flexible_plain_pattern_whitespace(self):
+        expected = list(FuzzyHexPattern("dead[0-3]?{2}0").expand())
+        for text in (
+            "de ad [0-3] ?{2} 0",
+            "d e a d [0-3] ? {2} 0",
+            "de\tad  [0-3]\n?{2} 0",
+        ):
+            self.assertEqual(list(FuzzyHexPattern(text).expand()), expected)
+        for text in (
+            "[0 -3]?",
+            "[0-3 ]?",
+            "?{ 2}",
+            "?{2 }",
+            "d e a",
+            "0xde a d",
+            "de: ad",
+            r"\xde \xad",
+        ):
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                FuzzyHexPattern(text)
+
+        def expand(pattern: FuzzyHexPattern):
+            return pattern
+
+        for quote in ("'", '"'):
+            parsed = Command(expand).parse_args(quote + "d e a d" + quote)
+            self.assertEqual(list(parsed["pattern"].expand()), [bytes.fromhex("dead")])
+        self.assertEqual(list(FuzzyStringPattern("a b").expand()), ["a b"])
+
     def test_literals_wildcards_classes_ranges_negation_and_repetition(self):
         pattern = FuzzyHexPattern("56:ff:ff:07:f[0-2]:0{2}")
         self.assertEqual(pattern.count, 3)

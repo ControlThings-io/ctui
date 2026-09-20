@@ -495,6 +495,22 @@ def _fuzzy_hex_chunks(source: str) -> tuple[list[str], bool]:
         elif not in_class and character in ":_-":
             separators.append((index, character))
     kinds = {kind for _, kind in separators}
+    if kinds <= {"space"} and "0x" not in text.lower():
+        normalized = []
+        construct = None
+        for character in text:
+            if character in "[{":
+                construct = character
+            elif character in "]}":
+                construct = None
+            if character.isspace():
+                if construct is not None:
+                    raise ValueError(
+                        "whitespace inside hex classes or repetitions is invalid"
+                    )
+                continue
+            normalized.append(character)
+        return ["".join(normalized)], False
     if len(kinds) > 1:
         raise ValueError("hexadecimal pattern separators must be consistent")
     separator_kind = next(iter(kinds), None)
@@ -588,9 +604,11 @@ class FuzzyHexPattern(_FinitePattern[bytes]):
     atom, not a byte: ``?{4}`` produces two bytes, and ``0{2}`` produces one.
     Zero repetitions remove the atom, but the whole pattern must remain nonempty.
 
-    Concrete text formats match HexBytes, including prefixes and escapes.
+    Plain hexadecimal patterns ignore whitespace between atoms, including
+    individual nibbles. Whitespace inside classes or repetition counts is invalid.
+    Existing hexadecimal prefixes and escapes remain supported.
     Fuzzy forms include ``0xf?``, ``0xde 0x??``, and ``\xde\x??``. Separators
-    must consistently divide complete bytes; mixed separators and nibble-level
+    other than plain whitespace must divide complete bytes; mixed separators and nibble-level
     groups such as ``f-f`` are rejected. A hyphen denotes a range only inside
     a class. All results must contain complete byte pairs.
 
