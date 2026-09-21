@@ -1,7 +1,7 @@
 # Project status
 
-Last reconciled: 2026-09-21, `main` at `094b932`; working tree was clean before
-the current positional-help task. Remote refs and live CI were not refreshed.
+Last reconciled: 2026-09-21, `main` at `91c3a6c`; working tree was clean before
+the current help-dialog fix. Remote refs and live CI were not refreshed.
 
 ## Current state
 
@@ -10,48 +10,35 @@ the current positional-help task. Remote refs and live CI were not refreshed.
   still requires additional changes and acceptance testing (decision D10).
 - Since RC1: OS classifiers, hierarchical help/dialog scrolling, completion,
   documentation, error containment, and protocol argument types were improved.
-  Latest code change: project-load suggestions added in `b124603`.
+  Latest committed change: positional-help guidance added in `91c3a6c`.
 - Mixed byte input requires explicit `0x`/`0b`/`0o`/`0d` prefixes; fuzzy patterns
   support bounded mixed-radix byte choices. See [types.py](../src/ctui/types.py)
   and the latest entries in [DECISIONS.md](DECISIONS.md).
 
 ## Current work
 
-- Added concise help metadata for every previously undocumented user-facing
-  positional argument in the framework, project commands, and examples 05–14.
-- Preserved tutorial progression by leaving examples 01–03 unchanged; example
-  04 remains the first introduction to `Argument` help metadata.
-- Removed the redundant `(default)` wording from the `history` count description;
-  generated detailed help already displays its default value separately.
-- Recorded positional argument help as an ongoing repository convention in
-  `AGENTS.md`, retaining the examples 01–03 tutorial exception.
+- Fixed missing modal redraws after asynchronous work. With `app_id`, SQLite
+  history writes can finish after the input redraw; help then took focus without
+  becoming visible. `show_dialog` now requests redraws on opening and cleanup.
+- Removed the earlier unnecessary Enter-priority and float-order changes and
+  their unsupported explanation in D12.
+- Replaced the mocked help-opening regression with a real renderer/input test
+  using SQLite history delayed beyond the input redraw. It checks visible help
+  without another keystroke, dismissal, restored focus, and subsequent typing.
 - Changes remain uncommitted.
 
 ## Validation evidence
 
-Historical results recorded in the previous status; not rerun for this task:
-
-- September 19, mixed-radix work (`af7e363`): all 126 tests passed on Python
-  3.11; changed-file Black, full isort, and whitespace checks passed.
-- September 19, completion fix (`6e17839`): eight focused completion tests,
-  changed-file Black, and whitespace checks passed. The full suite was not
-  rerun after this fix.
-- September 18, legacy cleanup (recorded in `ba28f5a`): wheel/sdist builds and
-  isolated artifact smoke tests passed. These predate subsequent runtime changes.
-- Current documentation task: content review, relative-link checks, and
-  `git diff --check` passed. Runtime tests were not needed or rerun.
-- Current project-completion task: all 15 project tests passed on Python 3.11;
-  changed-file Black/isort and whitespace checks passed.
-- Current cursor-restoration task: all five error-boundary tests passed on
-  Python 3.11; changed-file Black/isort and whitespace checks passed.
-- Current argument-order task: all 130 tests passed on Python 3.11; full Black,
-  isort, lockfile, and whitespace checks passed.
-- Current history-help task: all seven help tests passed on Python 3.11;
-  changed-file Black/isort and whitespace checks passed.
-- Current positional-help task: all 131 tests passed on Python 3.11; full Black,
-  isort, lockfile, whitespace, and command-metadata audit checks passed. The
-  audit's only help-free positional arguments are intentionally in examples 01–03.
-- No fresh remote CI, publication, or manual terminal acceptance is claimed.
+- The new regression failed before the redraw fix and passed afterward, with
+  the original Enter binding and float order restored. All eight help tests
+  passed on Python 3.11.
+- All 132 tests passed on Python 3.11; full Black/isort, lockfile, and
+  whitespace checks passed.
+- Earlier tests mocked dialog display and did not detect this rendering bug.
+  The prior PTY verification claim was insufficient; no fresh manual terminal
+  acceptance or remote CI is claimed.
+- Artifact checks from September 18 predate these runtime changes; repeat them
+  for RC2 following the release checklist.
 
 ## Next steps: RC2
 

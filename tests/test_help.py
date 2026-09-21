@@ -7,19 +7,26 @@ for command presentation, then separately verify normal focus restoration.
 
 import asyncio
 import io
+import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from prompt_toolkit.application import Application
 from prompt_toolkit.application.current import set_app
 from prompt_toolkit.completion import CompleteEvent
 from prompt_toolkit.document import Document
+from prompt_toolkit.input import create_pipe_input
+from prompt_toolkit.layout import Layout
+from prompt_toolkit.output import DummyOutput
 
 from ctui import Argument, CtuiApp, command
 from ctui.commands import CommandNotFound, CommandValidationError
 from ctui.completion import CommandCompleter
 from ctui.dialogs import MessageDialog, show_dialog
 from ctui.keybindings import get_key_bindings
+from ctui.layout import CtuiLayout
 
 
 class HelpApp(CtuiApp):
@@ -180,6 +187,73 @@ class HelpTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Input window", seen[0].text)
         self.assertIn("Usage: project export", seen[1].text)
 
+    async def test_help_redraws_after_async_history(self):
+        """A delayed SQLite write must not leave an invisible modal focused."""
+        with tempfile.TemporaryDirectory() as root:
+            app = CtuiApp(app_id="io.example.help", data_dir=Path(root))
+            await app.backend.open()
+            running = None
+            try:
+                app.layout = CtuiLayout(app)
+                history_written = asyncio.Event()
+                release_history = asyncio.Event()
+                help_rendered = asyncio.Event()
+                append = app.history.append
+
+                async def delayed_append(text):
+                    await append(text)
+                    history_written.set()
+                    await release_history.wait()
+
+                def after_render(terminal):
+                    screen = terminal.renderer.last_rendered_screen
+                    if screen is not None:
+                        text = "\n".join(
+                            "".join(row[x].char for x in sorted(row))
+                            for row in screen.data_buffer.values()
+                        )
+                        if "Help" in text:
+                            help_rendered.set()
+
+                with create_pipe_input() as input_pipe:
+                    terminal = Application(
+                        layout=Layout(
+                            app.layout.root_container,
+                            focused_element=app.layout.input_field,
+                        ),
+                        key_bindings=get_key_bindings(app),
+                        input=input_pipe,
+                        output=DummyOutput(),
+                        full_screen=True,
+                        after_render=after_render,
+                    )
+                    app.app = terminal
+                    with patch.object(app.history, "append", delayed_append):
+                        running = asyncio.create_task(terminal.run_async())
+                        await asyncio.sleep(0)
+                        input_pipe.send_text("help\r")
+                        await asyncio.wait_for(history_written.wait(), 2)
+                        # Let the input-triggered redraw finish before dispatch returns.
+                        await asyncio.sleep(0.1)
+                        self.assertFalse(help_rendered.is_set())
+                        release_history.set()
+                        await asyncio.wait_for(help_rendered.wait(), 2)
+                        input_pipe.send_text("\r")
+                        await asyncio.sleep(0.1)
+                        self.assertTrue(
+                            terminal.layout.has_focus(app.layout.input_field)
+                        )
+                        input_pipe.send_text("history")
+                        await asyncio.sleep(0.1)
+                        self.assertEqual(app.layout.input_field.text, "history")
+                        terminal.exit()
+                        await asyncio.wait_for(running, 2)
+            finally:
+                if running is not None and not running.done():
+                    running.cancel()
+                    await asyncio.gather(running, return_exceptions=True)
+                await app.backend.close()
+
     async def test_dialog_restores_focus(self):
         app = HelpApp()
         app._build_application()
@@ -192,6 +266,9 @@ class HelpTests(unittest.IsolatedAsyncioTestCase):
             task = asyncio.create_task(show_dialog(dialog))
             await asyncio.sleep(0)
             self.assertIsNot(app.app.layout.current_window, before)
+            self.assertEqual(
+                len(app.app.layout.container.floats), len(floats_before) + 1
+            )
             dialog.future.set_result(None)
             await task
             self.assertIs(app.app.layout.current_window, before)

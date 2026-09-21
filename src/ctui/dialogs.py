@@ -256,22 +256,24 @@ async def show_dialog(dialog):
     """Insert a modal float, await its result, then restore prior focus.
 
     Require a running prompt-toolkit app whose root container exposes floats.
-    The dialog must provide a future and a prompt-toolkit container. On normal
-    completion, remove the float and return its result. Cancellation/exception
-    cleanup is not protected by a finally block here; callers should not assume
-    it has the same cleanup guarantee as CtuiApp's runtime entry points.
+    The dialog must provide a future and a prompt-toolkit container. Always
+    remove the float and restore focus on completion or cancellation. Request
+    redraws explicitly: callers may resume after asynchronous work, after the
+    input event's redraw has already finished.
     """
     app = get_app()
     float_ = Float(content=dialog)
     app.layout.container.floats.insert(0, float_)
     focused_before = app.layout.current_window
     app.layout.focus(dialog)
+    app.invalidate()
     try:
         return await dialog.future
     finally:
         app.layout.focus(focused_before)
         if float_ in app.layout.container.floats:
             app.layout.container.floats.remove(float_)
+        app.invalidate()
 
 
 # Functions that use dialog classes and return results
