@@ -892,7 +892,13 @@ def register_default_commands(app):
 
     help.__ctui_help__ = True
 
-    @app.commands.register
+    @app.commands.register(
+        arguments={
+            "count": Argument(
+                help="Maximum number of recent commands to show; 0 shows all (default)"
+            )
+        }
+    )
     async def history(count: int = 0):
         """Show recent command history."""
         entries = app.history.all()

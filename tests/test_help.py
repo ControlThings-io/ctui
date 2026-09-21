@@ -131,6 +131,21 @@ class HelpTests(unittest.IsolatedAsyncioTestCase):
             ]
             self.assertIn(expected, matches)
 
+    async def test_history_count_completion_explains_default(self):
+        completer = CommandCompleter(HelpApp().commands)
+        matches = [
+            item
+            async for item in completer.get_completions_async(
+                Document("history "), CompleteEvent()
+            )
+        ]
+        count = next(item for item in matches if item.text == "")
+        self.assertEqual(
+            str(count.display_meta),
+            "FormattedText([('', 'Maximum number of recent commands to show; "
+            "0 shows all (default)')])",
+        )
+
     async def test_ui_help_preserves_output(self):
         app = HelpApp()
         app._build_application()

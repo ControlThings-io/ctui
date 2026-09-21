@@ -1,7 +1,7 @@
 # Project status
 
-Last reconciled: 2026-09-21, `main` at `b124603`; working tree was clean before
-the current cursor-restoration task. Remote refs and live CI were not refreshed.
+Last reconciled: 2026-09-21, `main` at `659dce2`; working tree was clean before
+the current history-help task. Remote refs and live CI were not refreshed.
 
 ## Current state
 
@@ -17,14 +17,9 @@ the current cursor-restoration task. Remote refs and live CI were not refreshed.
 
 ## Current work
 
-- Restored commands now place the cursor at the end after positionless
-  CommandErrors and unexpected exceptions. Validation failures with a source
-  position still select the offending argument location.
-- Added focused TUI keybinding coverage for all three cursor paths.
-- Argument conversion, choices, and custom validators now fail in command-line
-  order across positional and named values. Missing arguments remain deferred.
-- Added parser regressions for an invalid positional value preceding an unknown
-  option and for named choices supplied opposite their declaration order.
+- The `history` count suggestion now explains that it limits recent commands
+  and that 0, the default, shows all commands.
+- Added focused completion coverage for the exact description.
 - Changes remain uncommitted.
 
 ## Validation evidence
@@ -46,6 +41,8 @@ Historical results recorded in the previous status; not rerun for this task:
   Python 3.11; changed-file Black/isort and whitespace checks passed.
 - Current argument-order task: all 130 tests passed on Python 3.11; full Black,
   isort, lockfile, and whitespace checks passed.
+- Current history-help task: all seven help tests passed on Python 3.11;
+  changed-file Black/isort and whitespace checks passed.
 - No fresh remote CI, publication, or manual terminal acceptance is claimed.
 
 ## Next steps: RC2
