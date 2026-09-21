@@ -1,7 +1,7 @@
 # Project status
 
-Last reconciled: 2026-09-21, `main` at `60dc4f7`; working tree was clean before
-the current project-completion task. Remote refs and live CI were not refreshed.
+Last reconciled: 2026-09-21, `main` at `b124603`; working tree was clean before
+the current cursor-restoration task. Remote refs and live CI were not refreshed.
 
 ## Current state
 
@@ -10,16 +10,21 @@ the current project-completion task. Remote refs and live CI were not refreshed.
   still requires additional changes and acceptance testing (decision D10).
 - Since RC1: OS classifiers, hierarchical help/dialog scrolling, completion,
   documentation, error containment, and protocol argument types were improved.
-  Latest code change: duplicate group suggestions fixed in `6e17839`.
+  Latest code change: project-load suggestions added in `b124603`.
 - Mixed byte input requires explicit `0x`/`0b`/`0o`/`0d` prefixes; fuzzy patterns
   support bounded mixed-radix byte choices. See [types.py](../src/ctui/types.py)
   and the latest entries in [DECISIONS.md](DECISIONS.md).
 
 ## Current work
 
-- `project load` now suggests every stored project, including the active one,
-  in the same catalog order displayed by `project list`.
-- Added focused completion coverage comparing suggestions with list output.
+- Restored commands now place the cursor at the end after positionless
+  CommandErrors and unexpected exceptions. Validation failures with a source
+  position still select the offending argument location.
+- Added focused TUI keybinding coverage for all three cursor paths.
+- Argument conversion, choices, and custom validators now fail in command-line
+  order across positional and named values. Missing arguments remain deferred.
+- Added parser regressions for an invalid positional value preceding an unknown
+  option and for named choices supplied opposite their declaration order.
 - Changes remain uncommitted.
 
 ## Validation evidence
@@ -37,6 +42,10 @@ Historical results recorded in the previous status; not rerun for this task:
   `git diff --check` passed. Runtime tests were not needed or rerun.
 - Current project-completion task: all 15 project tests passed on Python 3.11;
   changed-file Black/isort and whitespace checks passed.
+- Current cursor-restoration task: all five error-boundary tests passed on
+  Python 3.11; changed-file Black/isort and whitespace checks passed.
+- Current argument-order task: all 130 tests passed on Python 3.11; full Black,
+  isort, lockfile, and whitespace checks passed.
 - No fresh remote CI, publication, or manual terminal acceptance is claimed.
 
 ## Next steps: RC2

@@ -74,6 +74,10 @@ Detailed contracts belong in [completion.py](../src/ctui/completion.py),
 non-inserting hints through prompt-toolkit filtering and expand earlier named
 choice prefixes; the local rationale is in completion/layout docstrings.
 
+Accepted follow-up, September 21: report supplied-argument errors in command-line
+order across positional and named arguments. Whole-line tokenization errors still
+come first, and missing required arguments remain end-of-input errors.
+
 ## D05 — Terminal-native selection and concurrent output
 
 Accepted, Aug 23; `84679d3`, `1b53da9`.
@@ -269,6 +273,11 @@ CommandError. Preserve ordinary exceptions for reusable Python APIs and
 programmer mistakes. Interactive execution, completion, and shortcut boundaries
 contain unexpected exceptions and show diagnostics without reclassifying
 cancellation or process-exit signals as command failures.
+
+Accepted follow-up, September 21: when failed input is restored, keep precise
+validation-error positions at the offending argument. For a CommandError or
+unexpected exception without a position, place the cursor at the end of the
+restored command so editing can resume from a predictable location.
 
 ## Flexible plain fuzzy-hex whitespace (September 19)
 

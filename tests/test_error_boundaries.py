@@ -15,6 +15,52 @@ from ctui.layout import CtuiLayout
 
 
 class ErrorBoundaryTests(unittest.IsolatedAsyncioTestCase):
+    async def test_failed_command_cursor_uses_position_or_end(self):
+        app = CtuiApp(register_defaults=False)
+        app.layout = CtuiLayout(app)
+
+        @app.commands.register
+        def add(first: int, second: int):
+            return str(first + second)
+
+        @app.commands.register
+        def expected(value: str):
+            raise CommandError("expected failure")
+
+        @app.commands.register
+        def unexpected(value: str):
+            raise RuntimeError("unexpected failure")
+
+        binding = next(
+            item
+            for item in get_key_bindings(app).bindings
+            if str(item.keys[0]) == "Keys.ControlM"
+        )
+
+        for text, position in (
+            ("add 10 wrong", len("add 10 ")),
+            ("expected value", len("expected value")),
+            ("unexpected value", len("unexpected value")),
+        ):
+            with self.subTest(text=text):
+                tasks = []
+                event = SimpleNamespace(
+                    app=SimpleNamespace(
+                        create_background_task=lambda coroutine: tasks.append(
+                            asyncio.create_task(coroutine)
+                        )
+                    )
+                )
+                app.layout.input_field.text = text
+                with patch("ctui.keybindings.message_dialog"):
+                    binding.handler(event)
+                    await tasks[-1]
+                self.assertEqual(app.layout.input_field.text, text)
+                self.assertEqual(
+                    app.layout.input_field.buffer.cursor_position, position
+                )
+                app.layout.input_field.text = ""
+
     async def test_example_value_errors_are_command_errors(self):
         for filename, cls, commands in (
             (

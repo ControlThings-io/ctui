@@ -445,7 +445,7 @@ class Command:
         except ValueError as error:
             raise CommandValidationError(str(error), position=len(text)) from error
         starts = _token_starts(text)
-        values, value_positions, positional, pending = {}, {}, [], None
+        values, pending = {}, None
         options = {
             flag: parameter
             for parameter in self.parameters
@@ -458,9 +458,9 @@ class Command:
         ]
 
         def convert_at(raw, parameter, token_index):
-            """Convert a token and enrich failures with its source position."""
+            """Convert and validate a token at its command-line position."""
             try:
-                return _convert(
+                value = _convert(
                     raw,
                     self.hints.get(parameter.name, parameter.annotation),
                     parameter.name,
@@ -468,8 +468,36 @@ class Command:
             except CommandValidationError as error:
                 error.locate(starts[token_index], parameter.name)
                 raise
+            if partial:
+                return value
+            config = self.arguments.get(parameter.name, Argument())
+            choices = (
+                config.choices.keys()
+                if isinstance(config.choices, Mapping)
+                else config.choices
+            )
+            if choices is not None and str(value) not in {str(x) for x in choices}:
+                raise CommandValidationError(
+                    f"{parameter.name} must be one of: {', '.join(map(str, choices))}",
+                    position=starts[token_index],
+                    argument=parameter.name,
+                )
+            if config.validator:
+                valid = config.validator(value)
+                if valid is False or isinstance(valid, str):
+                    raise CommandValidationError(
+                        (
+                            valid
+                            if isinstance(valid, str)
+                            else f"Invalid {parameter.name}: {value}"
+                        ),
+                        position=starts[token_index],
+                        argument=parameter.name,
+                    )
+            return value
 
         index = 0
+        positional_index = 0
         options_enabled = True
         while index < len(tokens):
             token = tokens[index]
@@ -492,15 +520,12 @@ class Command:
                     )
                 annotation = self.hints.get(parameter.name, parameter.annotation)
                 if annotation is bool and not equals:
-                    values[parameter.name] = True
-                    value_positions[parameter.name] = starts[index]
+                    values[parameter.name] = convert_at("true", parameter, index)
                 elif equals:
                     values[parameter.name] = convert_at(inline, parameter, index)
-                    value_positions[parameter.name] = starts[index]
                 elif index + 1 < len(tokens):
                     index += 1
                     values[parameter.name] = convert_at(tokens[index], parameter, index)
-                    value_positions[parameter.name] = starts[index]
                 elif not partial:
                     raise CommandValidationError(
                         f"Missing value for {option}",
@@ -510,17 +535,17 @@ class Command:
                 else:
                     pending = parameter
             else:
-                positional.append((token, index))
+                if positional_index >= len(positional_parameters):
+                    if not partial:
+                        raise CommandValidationError(
+                            f"Too many arguments\n\n{self.help}",
+                            position=starts[index],
+                        )
+                else:
+                    parameter = positional_parameters[positional_index]
+                    values[parameter.name] = convert_at(token, parameter, index)
+                    positional_index += 1
             index += 1
-        available = [p for p in positional_parameters if p.name not in values]
-        for (raw, token_index), parameter in zip(positional, available):
-            values[parameter.name] = convert_at(raw, parameter, token_index)
-            value_positions[parameter.name] = starts[token_index]
-        if len(positional) > len(available) and not partial:
-            extra_index = positional[len(available)][1]
-            raise CommandValidationError(
-                f"Too many arguments\n\n{self.help}", position=starts[extra_index]
-            )
         if not partial:
             for parameter in self.parameters:
                 if (
@@ -532,39 +557,11 @@ class Command:
                         position=len(text),
                         argument=parameter.name,
                     )
-                if parameter.name in values:
-                    config, value = (
-                        self.arguments.get(parameter.name, Argument()),
-                        values[parameter.name],
-                    )
-                    choices = (
-                        config.choices.keys()
-                        if isinstance(config.choices, Mapping)
-                        else config.choices
-                    )
-                    if choices is not None and str(value) not in {
-                        str(x) for x in choices
-                    }:
-                        raise CommandValidationError(
-                            f"{parameter.name} must be one of: {', '.join(map(str, choices))}",
-                            position=value_positions[parameter.name],
-                            argument=parameter.name,
-                        )
-                    if config.validator:
-                        valid = config.validator(value)
-                        if valid is False or isinstance(valid, str):
-                            raise CommandValidationError(
-                                (
-                                    valid
-                                    if isinstance(valid, str)
-                                    else f"Invalid {parameter.name}: {value}"
-                                ),
-                                position=value_positions[parameter.name],
-                                argument=parameter.name,
-                            )
             return values
         next_parameter = pending or (
-            available[len(positional)] if len(positional) < len(available) else None
+            positional_parameters[positional_index]
+            if positional_index < len(positional_parameters)
+            else None
         )
         return values, next_parameter
 

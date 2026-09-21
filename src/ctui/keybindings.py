@@ -97,14 +97,18 @@ def get_key_bindings(ctui):
                 )
             except CommandError as error:
                 restored = restore_if_latest()
-                if restored and getattr(error, "position", None) is not None:
-                    input_field.buffer.cursor_position = min(
-                        error.position, len(input_field.text)
+                if restored:
+                    position = getattr(error, "position", None)
+                    input_field.buffer.cursor_position = (
+                        len(input_field.text)
+                        if position is None
+                        else max(0, min(position, len(input_field.text)))
                     )
                 message_dialog(title="Error", text=str(error))
                 return
             except Exception:
-                restore_if_latest()
+                if restore_if_latest():
+                    input_field.buffer.cursor_position = len(input_field.text)
                 message_dialog(
                     title="Error", text=traceback.format_exc(), scrollbar=True
                 )
@@ -134,7 +138,8 @@ def get_key_bindings(ctui):
             try:
                 await execute_command()
             except Exception:
-                restore_if_latest()
+                if restore_if_latest():
+                    input_field.buffer.cursor_position = len(input_field.text)
                 message_dialog(
                     title="Error", text=traceback.format_exc(), scrollbar=True
                 )

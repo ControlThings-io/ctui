@@ -206,6 +206,35 @@ class CommandTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(CommandValidationError):
             item.parse_args("good extra")
 
+    def test_argument_errors_follow_command_line_order(self):
+        def connect(protocol: str, host: str):
+            pass
+
+        item = Command(
+            connect,
+            arguments={"protocol": Argument(choices=("tcp", "udp"))},
+        )
+        with self.assertRaises(CommandValidationError) as raised:
+            item.parse_args("tcpp localhost --port 3")
+        self.assertEqual(raised.exception.argument, "protocol")
+        self.assertEqual(raised.exception.position, 0)
+
+        def deploy(target: str, mode: str = "safe", region: str = "us"):
+            pass
+
+        item = Command(
+            deploy,
+            arguments={
+                "mode": Argument(flags=("--mode",), choices=("safe", "fast")),
+                "region": Argument(flags=("--region",), choices=("us", "eu")),
+            },
+        )
+        text = "api --region invalid --mode wrong"
+        with self.assertRaises(CommandValidationError) as raised:
+            item.parse_args(text)
+        self.assertEqual(raised.exception.argument, "region")
+        self.assertEqual(raised.exception.position, text.index("invalid"))
+
     async def test_sync_and_async_execution(self):
         self.assertEqual(
             await Command(lambda value: value).execute(value="sync"), "sync"
