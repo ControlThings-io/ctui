@@ -14,7 +14,7 @@ cancellation, while completion output uses an append result.
 import asyncio
 import random
 
-from ctui import CommandResult, CtuiApp, command
+from ctui import Argument, CommandResult, CtuiApp, command
 
 
 class DownloadTool(CtuiApp):
@@ -47,7 +47,7 @@ class DownloadTool(CtuiApp):
         if hasattr(self, "app"):
             self.app.invalidate()
 
-    @command
+    @command(arguments={"filename": Argument(help="File to download")})
     async def download(self, filename: str) -> CommandResult:
         """Simulate a download while reporting its percentage."""
         delay = random.randint(2, 10)

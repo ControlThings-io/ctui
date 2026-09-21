@@ -26,9 +26,11 @@ class DeployTool(CtuiApp):
     @command(
         arguments={
             "environment": Argument(
-                choices={"development": "Safe sandbox", "production": "Live system"}
+                help="Deployment environment",
+                choices={"development": "Safe sandbox", "production": "Live system"},
             ),
             "server": Argument(
+                help="Server to deploy to",
                 completer=server_names,
                 validator=lambda value: value.endswith(("-1", "-2"))
                 or "Server names must end in -1 or -2",

@@ -40,7 +40,10 @@ class PatternTool(CtuiApp):
 
     @command(
         name="hex expand",
-        arguments={"limit": Argument(flags=("-n", "--limit"))},
+        arguments={
+            "pattern": Argument(help="Hexadecimal pattern to expand"),
+            "limit": Argument(flags=("-n", "--limit")),
+        },
     )
     def hex_expand(self, pattern: FuzzyHexPattern, limit: int = 1_024) -> str:
         """Expand a hexadecimal pattern into immutable bytes."""
@@ -54,6 +57,7 @@ class PatternTool(CtuiApp):
     @command(
         name="hex sample",
         arguments={
+            "pattern": Argument(help="Hexadecimal pattern to sample"),
             "count": Argument(flags=("-n", "--count")),
             "seed": Argument(flags=("-s", "--seed")),
         },
@@ -71,7 +75,10 @@ class PatternTool(CtuiApp):
 
     @command(
         name="text expand",
-        arguments={"limit": Argument(flags=("-n", "--limit"))},
+        arguments={
+            "pattern": Argument(help="String pattern to expand"),
+            "limit": Argument(flags=("-n", "--limit")),
+        },
     )
     def text_expand(self, pattern: FuzzyStringPattern, limit: int = 1_024) -> str:
         """Expand a finite Unicode string pattern."""
@@ -84,6 +91,7 @@ class PatternTool(CtuiApp):
     @command(
         name="text sample",
         arguments={
+            "pattern": Argument(help="String pattern to sample"),
             "count": Argument(flags=("-n", "--count")),
             "seed": Argument(flags=("-s", "--seed")),
         },

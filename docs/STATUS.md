@@ -1,7 +1,7 @@
 # Project status
 
-Last reconciled: 2026-09-21, `main` at `659dce2`; working tree was clean before
-the current history-help task. Remote refs and live CI were not refreshed.
+Last reconciled: 2026-09-21, `main` at `094b932`; working tree was clean before
+the current positional-help task. Remote refs and live CI were not refreshed.
 
 ## Current state
 
@@ -17,9 +17,12 @@ the current history-help task. Remote refs and live CI were not refreshed.
 
 ## Current work
 
-- The `history` count suggestion now explains that it limits recent commands
-  and that 0, the default, shows all commands.
-- Added focused completion coverage for the exact description.
+- Added concise help metadata for every previously undocumented user-facing
+  positional argument in the framework, project commands, and examples 05–14.
+- Preserved tutorial progression by leaving examples 01–03 unchanged; example
+  04 remains the first introduction to `Argument` help metadata.
+- Removed the redundant `(default)` wording from the `history` count description;
+  generated detailed help already displays its default value separately.
 - Changes remain uncommitted.
 
 ## Validation evidence
@@ -43,6 +46,9 @@ Historical results recorded in the previous status; not rerun for this task:
   isort, lockfile, and whitespace checks passed.
 - Current history-help task: all seven help tests passed on Python 3.11;
   changed-file Black/isort and whitespace checks passed.
+- Current positional-help task: all 131 tests passed on Python 3.11; full Black,
+  isort, lockfile, whitespace, and command-metadata audit checks passed. The
+  audit's only help-free positional arguments are intentionally in examples 01–03.
 - No fresh remote CI, publication, or manual terminal acceptance is claimed.
 
 ## Next steps: RC2

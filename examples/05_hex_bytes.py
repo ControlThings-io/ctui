@@ -25,13 +25,13 @@ parsing again. This example only inspects the value. HexBytes validates complete
 byte pairs and never pads ambiguous odd-length input.
 """
 
-from ctui import CtuiApp, HexBytes, command
+from ctui import Argument, CtuiApp, HexBytes, command
 
 
 class HexTool(CtuiApp):
     """Inspect binary data entered using familiar hexadecimal notation."""
 
-    @command
+    @command(arguments={"payload": Argument(help="Bytes to inspect")})
     def inspect(self, payload: HexBytes) -> str:
         """Show normalized hexadecimal and the number of parsed bytes."""
         return f"{payload.hex(' ')} ({len(payload)} bytes)"

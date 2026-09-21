@@ -15,7 +15,7 @@ profiles in configs, and payloads in records. These commands store example data;
 they do not connect to a device.
 """
 
-from ctui import CtuiApp, HexBytes, command
+from ctui import Argument, CtuiApp, HexBytes, command
 
 
 class SettingsTool(CtuiApp):
@@ -28,13 +28,26 @@ class SettingsTool(CtuiApp):
         super().__init__()
         self.configs.register_template("local", {"host": "127.0.0.1", "port": 502})
 
-    @command(name="profile save")
+    @command(
+        name="profile save",
+        arguments={
+            "name": Argument(help="Profile name"),
+            "host": Argument(help="Server hostname or address"),
+            "port": Argument(help="Server port (default: 502)"),
+        },
+    )
     async def profile_save(self, name: str, host: str, port: int = 502) -> str:
         """Save a named connection profile in the active project."""
         await self.configs.save(name, {"host": host, "port": port})
         return f"Saved profile {name!r}."
 
-    @command(name="traffic record")
+    @command(
+        name="traffic record",
+        arguments={
+            "direction": Argument(help="Traffic direction"),
+            "payload": Argument(help="Frame bytes to record"),
+        },
+    )
     async def traffic_record(self, direction: str, payload: HexBytes) -> str:
         """Record one example protocol frame in the active project."""
         await self.records.append(

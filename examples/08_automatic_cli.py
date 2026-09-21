@@ -14,7 +14,7 @@ stop at the first error, and share the same dispatcher as interactive commands.
 Use ``help count-words`` for targeted help without opening the UI.
 """
 
-from ctui import CtuiApp, command
+from ctui import Argument, CtuiApp, command
 
 
 class CommandLineTool(CtuiApp):
@@ -23,18 +23,33 @@ class CommandLineTool(CtuiApp):
     name = "Command Line Example"
     description = "One application that automatically supports two interfaces."
 
-    @command
+    @command(
+        arguments={
+            "name": Argument(help="Person to greet"),
+            "enthusiastic": Argument(
+                help="Whether to use enthusiastic punctuation (default: false)"
+            ),
+        }
+    )
     def greet(self, name: str, enthusiastic: bool = False) -> str:
         """Greet a person by name."""
         punctuation = "!" if enthusiastic else "."
         return f"Hello, {name}{punctuation}"
 
-    @command
+    @command(
+        arguments={
+            "first": Argument(help="First number"),
+            "second": Argument(help="Second number"),
+        }
+    )
     def add(self, first: float, second: float) -> str:
         """Add two numbers."""
         return f"{first} + {second} = {first + second}"
 
-    @command(name="count-words")
+    @command(
+        name="count-words",
+        arguments={"text": Argument(help="Quoted text to count")},
+    )
     def count_words(self, text: str) -> str:
         """Count words in quoted text."""
         count = len(text.split())

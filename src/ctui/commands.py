@@ -885,7 +885,13 @@ def register_default_commands(app):
         """Clear the output."""
         return CommandResult(clear_output=True)
 
-    @app.commands.register
+    @app.commands.register(
+        arguments={
+            "target": Argument(
+                help="Command or command group to describe; omit to show all"
+            )
+        }
+    )
     def help(target: str = ""):
         """Show help; use help <command> for subcommands and arguments."""
         return _HelpResult(output=app.format_cli_help(target=target), target=target)
@@ -895,7 +901,7 @@ def register_default_commands(app):
     @app.commands.register(
         arguments={
             "count": Argument(
-                help="Maximum number of recent commands to show; 0 shows all (default)"
+                help="Maximum number of recent commands to show; 0 shows all"
             )
         }
     )
@@ -908,7 +914,10 @@ def register_default_commands(app):
 
     @app.commands.register(
         name="history export",
-        arguments={"count": Argument(flags=("-n", "--count"))},
+        arguments={
+            "path": Argument(help="Destination text file for exported commands"),
+            "count": Argument(flags=("-n", "--count")),
+        },
     )
     async def history_export(path: Path, count: int = 0):
         """Export all or the most recent commands to a text file."""
@@ -933,6 +942,7 @@ def register_default_commands(app):
             name="history search",
             record_history=False,
             arguments={
+                "keyword": Argument(help="Text to match in recorded commands"),
                 "limit": Argument(flags=("-n", "--limit")),
                 "since": Argument(flags=("-s", "--since")),
             },

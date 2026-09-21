@@ -1174,14 +1174,22 @@ def register_project_commands(app: Any) -> None:
             )
         )
 
-    @register(name="project create", record_history=False)
+    @register(
+        name="project create",
+        record_history=False,
+        arguments={"name": Argument(help="Name for the new project")},
+    )
     async def project_create(name: str):
         """Create and activate an empty project."""
         info = await backend.create(name)
         await app.events.emit("project_changed", previous=None, current=info)
         return f"Created and loaded project {name!r}."
 
-    @register(name="project saveas", record_history=False)
+    @register(
+        name="project saveas",
+        record_history=False,
+        arguments={"name": Argument(help="Name for the project copy")},
+    )
     async def project_saveas(name: str):
         """Clone the active project and activate the copy."""
         previous = backend.current
@@ -1205,7 +1213,9 @@ def register_project_commands(app: Any) -> None:
     @register(
         name="project load",
         record_history=False,
-        arguments={"name": Argument(completer=project_names)},
+        arguments={
+            "name": Argument(help="Project to activate", completer=project_names)
+        },
     )
     async def project_load(name: str):
         """Load a different project."""
@@ -1214,7 +1224,11 @@ def register_project_commands(app: Any) -> None:
         await app.events.emit("project_changed", previous=previous, current=info)
         return f"Loaded project {name!r}."
 
-    @register(name="project rename", record_history=False)
+    @register(
+        name="project rename",
+        record_history=False,
+        arguments={"name": Argument(help="New name for the active project")},
+    )
     async def project_rename(name: str):
         """Rename the active project."""
         old = backend.current.name
@@ -1225,13 +1239,18 @@ def register_project_commands(app: Any) -> None:
         name="project delete",
         record_history=False,
         confirmation="Permanently delete project {name} and all of its data?",
+        arguments={"name": Argument(help="Inactive project to permanently delete")},
     )
     async def project_delete(name: str):
         """Permanently delete an inactive project."""
         await backend.delete(name)
         return f"Deleted project {name!r}."
 
-    @register(name="project export", record_history=False)
+    @register(
+        name="project export",
+        record_history=False,
+        arguments={"path": Argument(help="Destination project snapshot file")},
+    )
     async def project_export(path: Path):
         """Export a consistent snapshot of the active project."""
         await backend.export_project(path)
@@ -1240,7 +1259,10 @@ def register_project_commands(app: Any) -> None:
     @register(
         name="project import",
         record_history=False,
-        arguments={"name": Argument(flags=("-n", "--name"))},
+        arguments={
+            "path": Argument(help="Project snapshot file to import"),
+            "name": Argument(flags=("-n", "--name")),
+        },
     )
     async def project_import(path: Path, name: str | None = None):
         """Import and activate a project snapshot."""
@@ -1254,7 +1276,10 @@ def register_project_commands(app: Any) -> None:
         record_history=False,
         confirmation="Reset {section} in the active project?",
         arguments={
-            "section": Argument(choices=("configs", "records", "history", "all"))
+            "section": Argument(
+                help="Project data to reset",
+                choices=("configs", "records", "history", "all"),
+            )
         },
     )
     async def project_reset(section: str):
@@ -1269,18 +1294,30 @@ def register_project_commands(app: Any) -> None:
         configs = await app.configs.list()
         return "\n".join(configs) if configs else "No configs."
 
-    @register(name="configs show", record_history=False)
+    @register(
+        name="configs show",
+        record_history=False,
+        arguments={"name": Argument(help="Configuration to display")},
+    )
     async def configs_show(name: str):
         """Show one configuration as JSON."""
         return json.dumps(await app.configs.get(name), indent=2)
 
-    @register(name="configs export", record_history=False)
+    @register(
+        name="configs export",
+        record_history=False,
+        arguments={"path": Argument(help="Destination JSON file")},
+    )
     async def configs_export(path: Path):
         """Export configurations as versioned JSON."""
         await app.configs.export_file(path, app.app_id)
         return f"Exported configs to {path}."
 
-    @register(name="configs import", record_history=False)
+    @register(
+        name="configs import",
+        record_history=False,
+        arguments={"path": Argument(help="Versioned JSON file to import")},
+    )
     async def configs_import(path: Path):
         """Import configurations from versioned JSON."""
         count = await app.configs.import_file(path, app.app_id)

@@ -21,7 +21,7 @@ from ctui import Argument, CommandError, CtuiApp, IntegerRanges, command
 class RangeTool(CtuiApp):
     """Demonstrate compact integer ranges and their safe operations."""
 
-    @command
+    @command(arguments={"ranges": Argument(help="Integer ranges to inspect")})
     def inspect(self, ranges: IntegerRanges) -> str:
         """Show each inclusive range as start, count, and exclusive stop."""
         lines = ["range   start  count  stop (exclusive)"]
@@ -33,7 +33,7 @@ class RangeTool(CtuiApp):
         lines.append(f"{ranges.unique_count:,} unique values")
         return "\n".join(lines)
 
-    @command
+    @command(arguments={"ranges": Argument(help="Integer ranges to transform")})
     def transform(self, ranges: IntegerRanges) -> str:
         """Compare non-mutating sorting, deduplication, and merging."""
         return "\n".join(
@@ -47,7 +47,10 @@ class RangeTool(CtuiApp):
         )
 
     @command(
-        arguments={"limit": Argument(flags=("-n", "--limit"))},
+        arguments={
+            "ranges": Argument(help="Integer ranges to expand"),
+            "limit": Argument(flags=("-n", "--limit")),
+        },
     )
     def expand(self, ranges: IntegerRanges, limit: int = 1_000) -> str:
         """Lazily expand ranges while enforcing a complete-result limit."""
@@ -58,6 +61,7 @@ class RangeTool(CtuiApp):
 
     @command(
         arguments={
+            "ranges": Argument(help="Integer ranges to sample"),
             "count": Argument(flags=("-n", "--count")),
             "seed": Argument(flags=("-s", "--seed")),
         },

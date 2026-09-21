@@ -253,6 +253,11 @@ Test documentation explains fixture scope and regression intent without
 repeating self-explanatory test names. Reconcile session suggestions against
 explicit approval and current code; do not turn proposed features into promises.
 
+Accepted follow-up, September 21: give user-facing positional arguments brief
+completion/help descriptions once tutorial 04 has introduced `Argument` metadata.
+Keep examples 01–03 focused on their earlier concepts instead of using argument
+configuration before the tutorial explains it.
+
 ## HexBytes whitespace and mixed radix (September 19)
 
 Accepted: plain hex ignores whitespace anywhere between digits, with an even

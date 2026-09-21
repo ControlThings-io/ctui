@@ -13,7 +13,7 @@ CommandResult.success() avoids replacing messages already displayed by listeners
 import asyncio
 import random
 
-from ctui import CommandResult, CtuiApp, command
+from ctui import Argument, CommandResult, CtuiApp, command
 
 
 class DownloadTool(CtuiApp):
@@ -37,7 +37,7 @@ class DownloadTool(CtuiApp):
         self.layout.set_output(f"{previous}\n{text}".lstrip())
         self.app.invalidate()
 
-    @command
+    @command(arguments={"filename": Argument(help="File to download")})
     async def download(self, filename: str) -> CommandResult:
         """Simulate an asynchronous file download."""
         delay = random.randint(2, 10)
