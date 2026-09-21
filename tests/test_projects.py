@@ -21,8 +21,12 @@ from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 
+from prompt_toolkit.completion import CompleteEvent
+from prompt_toolkit.document import Document
+
 import ctui.projects as projects_module
 from ctui import CommandError, ConfirmationRequired, CtuiApp, SqliteProjectBackend
+from ctui.completion import CommandCompleter
 
 
 class ProjectTests(unittest.IsolatedAsyncioTestCase):
@@ -60,6 +64,23 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
             [item.name for item in await self.app.backend.list_projects()],
             ["default", "lab"],
         )
+
+    async def test_project_load_suggests_all_projects_in_list_order(self):
+        await self.app.dispatch("project create lab")
+        await self.app.dispatch("project create staging")
+        listed = await self.app.dispatch("project list")
+        listed_names = [line[2:] for line in listed.output.splitlines()]
+
+        completer = CommandCompleter(self.app.commands, self.app)
+        suggestions = [
+            item.text
+            async for item in completer.get_completions_async(
+                Document("project load "), CompleteEvent()
+            )
+        ]
+
+        self.assertEqual(suggestions, listed_names)
+        self.assertIn(self.app.backend.current.name, suggestions)
 
     async def test_history_search_clear_and_project_load_are_not_recorded(self):
         """Check implemented history suppression, including legacy history clear.

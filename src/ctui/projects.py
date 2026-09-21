@@ -1198,7 +1198,15 @@ def register_project_commands(app: Any) -> None:
             for item in projects
         )
 
-    @register(name="project load", record_history=False)
+    async def project_names(_context):
+        """Suggest every project in the same catalog order as project list."""
+        return [item.name for item in await backend.list_projects()]
+
+    @register(
+        name="project load",
+        record_history=False,
+        arguments={"name": Argument(completer=project_names)},
+    )
     async def project_load(name: str):
         """Load a different project."""
         previous = backend.current

@@ -1,7 +1,7 @@
 # Project status
 
-Last reconciled: 2026-09-19, `main` at `88df143`; working tree was clean before
-this instruction/documentation task. Remote refs and live CI were not refreshed.
+Last reconciled: 2026-09-21, `main` at `60dc4f7`; working tree was clean before
+the current project-completion task. Remote refs and live CI were not refreshed.
 
 ## Current state
 
@@ -15,16 +15,12 @@ this instruction/documentation task. Remote refs and live CI were not refreshed.
   support bounded mixed-radix byte choices. See [types.py](../src/ctui/types.py)
   and the latest entries in [DECISIONS.md](DECISIONS.md).
 
-## Current documentation work
+## Current work
 
-- Separated personal Git, continuity, documentation, and verification preferences
-  into `~/.codex/AGENTS.md`; repository instructions retain ctui conventions,
-  tooling, compatibility, and a code map.
-- Replaced accumulated status history with this snapshot. Earlier milestones,
-  session evidence, and validation records remain in Git (`88df143` and earlier).
-- Preserved decision rationale, clarified superseded radix rules, and recorded
-  the instruction split in D15. Startup reading now targets relevant decisions.
-- Documentation changes remain uncommitted. No runtime behavior changed.
+- `project load` now suggests every stored project, including the active one,
+  in the same catalog order displayed by `project list`.
+- Added focused completion coverage comparing suggestions with list output.
+- Changes remain uncommitted.
 
 ## Validation evidence
 
@@ -39,6 +35,8 @@ Historical results recorded in the previous status; not rerun for this task:
   isolated artifact smoke tests passed. These predate subsequent runtime changes.
 - Current documentation task: content review, relative-link checks, and
   `git diff --check` passed. Runtime tests were not needed or rerun.
+- Current project-completion task: all 15 project tests passed on Python 3.11;
+  changed-file Black/isort and whitespace checks passed.
 - No fresh remote CI, publication, or manual terminal acceptance is claimed.
 
 ## Next steps: RC2
