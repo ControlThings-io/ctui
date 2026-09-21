@@ -16,6 +16,9 @@
   application code simple and examples approachable for newer Python developers.
 - Use `CtuiApp` subclasses and `@command`, with one dispatch path for the
   full-screen UI and automatic CLI.
+- Give every new positional command argument a brief, meaningful `Argument.help`
+  description for completion and generated help. Examples 01–03 intentionally
+  omit this metadata until example 04 introduces argument configuration.
 - Supported Python baseline is 3.11. CI covers Python 3.11–3.14 on Linux x86-64,
   Linux ARM64, Windows, and macOS. Dependencies must be installable with uv/pip.
 - The supported compatibility surface is documented in `README.md` and tested

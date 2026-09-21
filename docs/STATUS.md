@@ -23,6 +23,8 @@ the current positional-help task. Remote refs and live CI were not refreshed.
   04 remains the first introduction to `Argument` help metadata.
 - Removed the redundant `(default)` wording from the `history` count description;
   generated detailed help already displays its default value separately.
+- Recorded positional argument help as an ongoing repository convention in
+  `AGENTS.md`, retaining the examples 01–03 tutorial exception.
 - Changes remain uncommitted.
 
 ## Validation evidence
