@@ -1,7 +1,7 @@
 # Project status
 
-Last reconciled: 2026-09-21, `main` at `91c3a6c`; working tree was clean before
-the current help-dialog fix. Remote refs and live CI were not refreshed.
+Last reconciled: 2026-09-21, `main` at `cd848e7`; working tree was clean before
+the current path-completion work. Remote refs and live CI were not refreshed.
 
 ## Current state
 
@@ -10,35 +10,29 @@ the current help-dialog fix. Remote refs and live CI were not refreshed.
   still requires additional changes and acceptance testing (decision D10).
 - Since RC1: OS classifiers, hierarchical help/dialog scrolling, completion,
   documentation, error containment, and protocol argument types were improved.
-  Latest committed change: positional-help guidance added in `91c3a6c`.
+  Latest committed change: dialog redraw fix in `cd848e7`, confirmed working
+  by the owner.
 - Mixed byte input requires explicit `0x`/`0b`/`0o`/`0d` prefixes; fuzzy patterns
   support bounded mixed-radix byte choices. See [types.py](../src/ctui/types.py)
   and the latest entries in [DECISIONS.md](DECISIONS.md).
 
 ## Current work
 
-- Fixed missing modal redraws after asynchronous work. With `app_id`, SQLite
-  history writes can finish after the input redraw; help then took focus without
-  becoming visible. `show_dialog` now requests redraws on opening and cleanup.
-- Removed the earlier unnecessary Enter-priority and float-order changes and
-  their unsupported explanation in D12.
-- Replaced the mocked help-opening regression with a real renderer/input test
-  using SQLite history delayed beyond the input redraw. It checks visible help
-  without another keystroke, dismissal, restored focus, and subsequent typing.
-- Changes remain uncommitted.
+- Added public, opt-in `PathCompleter` with threaded directory listing, directory
+  navigation, home expansion, file filters, and directory-only mode.
+- Applied it to project/config import and export, history export, and the
+  filesystem example; new export names remain valid without a suggestion.
+- Completion insertion now replaces raw quoted/escaped token spans and quotes
+  selected values for parsing, including inline named options.
+- Updated public API documentation and regressions. Changes remain uncommitted.
 
 ## Validation evidence
 
-- The new regression failed before the redraw fix and passed afterward, with
-  the original Enter binding and float order restored. All eight help tests
-  passed on Python 3.11.
-- All 132 tests passed on Python 3.11; full Black/isort, lockfile, and
-  whitespace checks passed.
-- Earlier tests mocked dialog display and did not detect this rendering bug.
-  The prior PTY verification claim was insufficient; no fresh manual terminal
-  acceptance or remote CI is claimed.
-- Artifact checks from September 18 predate these runtime changes; repeat them
-  for RC2 following the release checklist.
+- All 135 tests passed on Python 3.11. Full Black/isort, lockfile, and
+  whitespace checks passed. New regressions cover provider filtering, filesystem
+  errors, relative/home paths, quoted insertion, and built-in wiring.
+- Owner confirmed the preceding dialog fix works. No new remote CI or artifact
+  checks claimed; repeat release checks for RC2.
 
 ## Next steps: RC2
 

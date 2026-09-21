@@ -29,14 +29,23 @@ def _argument_state(text: str) -> tuple[list[str], str, bool]:
     spaces stay in the current word; a trailing separator advances completion.
     This tracks editing state, while shlex performs final command parsing.
     """
+    completed, word, boundary, _ = _argument_details(text)
+    return completed, word, boundary
+
+
+def _argument_details(text):
+    """Track the raw token span as well as its shell-decoded editing value."""
     completed, current, quote, escaped = [], [], None, False
+    start = 0
     boundary = False
-    for character in text:
+    for index, character in enumerate(text):
         boundary = False
         if escaped:
+            if quote == '"' and character not in ('"', "\\"):
+                current.append("\\")
             current.append(character)
             escaped = False
-        elif character == "\\":
+        elif character == "\\" and quote != "'":
             escaped = True
         elif quote:
             if character == quote:
@@ -47,12 +56,13 @@ def _argument_state(text: str) -> tuple[list[str], str, bool]:
             quote = character
         elif character.isspace():
             boundary = True
-            if current:
+            if index > start:
                 completed.append("".join(current))
                 current = []
+            start = index + 1
         else:
             current.append(character)
-    return completed, "" if boundary else "".join(current), boundary
+    return completed, "" if boundary else "".join(current), boundary, start
 
 
 class CommandCompleter(Completer):
@@ -172,11 +182,16 @@ class CommandCompleter(Completer):
         _, _, input_at_boundary = _argument_state(text)
         if input_at_boundary:
             argument_text += " "
-        completed, word, _ = _argument_state(argument_text)
+        completed, word, _, token_start = _argument_details(argument_text)
+        raw_length = len(argument_text) - token_start
         completion_text = shlex.join(completed)
         if completion_text:
             completion_text += " "
         option, equals, value = word.partition("=")
+        inline_option = option + "=" if equals and option.startswith("-") else ""
+        if inline_option and argument_text[token_start:].startswith(inline_option):
+            raw_length -= len(inline_option)
+            inline_option = ""
         if equals and option.startswith("-"):
             completion_text += option + " "
             word = value
@@ -191,8 +206,8 @@ class CommandCompleter(Completer):
             return
         for result in results:
             completion = Completion(
-                result.value,
-                start_position=-len(word) if result.value else 0,
+                inline_option + shlex.quote(result.value) if result.value else "",
+                start_position=-raw_length if result.value else 0,
                 display=result.display or result.value,
                 display_meta=result.help,
             )

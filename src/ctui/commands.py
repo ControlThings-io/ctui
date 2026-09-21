@@ -28,6 +28,8 @@ from typing import (
     get_type_hints,
 )
 
+from ctui.path_completion import PathCompleter
+
 
 class CommandError(Exception):
     """An error safe to show to an application user.
@@ -915,7 +917,10 @@ def register_default_commands(app):
     @app.commands.register(
         name="history export",
         arguments={
-            "path": Argument(help="Destination text file for exported commands"),
+            "path": Argument(
+                help="Destination text file for exported commands",
+                completer=PathCompleter(),
+            ),
             "count": Argument(flags=("-n", "--count")),
         },
     )

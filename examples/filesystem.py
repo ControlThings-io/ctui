@@ -19,35 +19,7 @@ import stat
 from datetime import datetime
 from pathlib import Path
 
-from ctui import Argument, CommandError, CtuiApp, command
-
-
-def matching_paths(word, directories_only=False):
-    """Return matching children, preserving relative, absolute, or home prefixes.
-
-    Append a path separator to directories so completion can descend another
-    level. directories_only excludes files for cd. An inaccessible parent
-    returns no suggestions rather than raising during input editing.
-    """
-    parent, prefix = os.path.split(word)
-    try:
-        return [
-            os.path.join(parent, path.name) + (os.sep if path.is_dir() else "")
-            for path in sorted(Path(parent or ".").expanduser().iterdir())
-            if path.name.startswith(prefix) and (not directories_only or path.is_dir())
-        ]
-    except OSError:
-        return []
-
-
-async def path_names(context):
-    """Suggest files and directories for ls."""
-    return await asyncio.to_thread(matching_paths, context.word)
-
-
-async def directory_names(context):
-    """Suggest only directories for cd."""
-    return await asyncio.to_thread(matching_paths, context.word, True)
+from ctui import Argument, CommandError, CtuiApp, PathCompleter, command
 
 
 def list_path(path, long):
@@ -96,7 +68,9 @@ class FilesystemApp(CtuiApp):
 
     @command(
         arguments={
-            "path": Argument(help="File or directory to list", completer=path_names),
+            "path": Argument(
+                help="File or directory to list", completer=PathCompleter()
+            ),
             "long": Argument(
                 flags=("-l", "--long"),
                 help="Show permissions, links, numeric owner/group, size, and time",
@@ -111,7 +85,7 @@ class FilesystemApp(CtuiApp):
         arguments={
             "directory": Argument(
                 help="Existing directory",
-                completer=directory_names,
+                completer=PathCompleter(directories_only=True),
                 validator=lambda path: path.is_dir() or f"Not a directory: {path}",
             )
         }

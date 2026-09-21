@@ -78,6 +78,12 @@ Accepted follow-up, September 21: report supplied-argument errors in command-lin
 order across positional and named arguments. Whole-line tokenization errors still
 come first, and missing required arguments remain end-of-input errors.
 
+Accepted follow-up, September 21: provide a reusable, explicitly configured
+`PathCompleter` rather than inferring filesystem completion from `Path` types.
+Use it for built-in file arguments and the filesystem example. Keep directory
+navigation available with file filters; suggestions do not restrict execution.
+Project import does not filter by extension because snapshot suffixes are optional.
+
 ## D05 — Terminal-native selection and concurrent output
 
 Accepted, Aug 23; `84679d3`, `1b53da9`.

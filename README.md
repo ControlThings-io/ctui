@@ -151,6 +151,27 @@ partial word, parsed arguments, and app. It may return strings or
 `CompletionItem` values with dropdown help. Results pass through type conversion
 and validation, so the menu does not recommend invalid input. Arguments remain
 positional even when they have `Argument` completion or validation metadata.
+For filesystem arguments, opt into the reusable `PathCompleter`:
+
+```python
+from pathlib import Path
+from ctui import Argument, PathCompleter, command
+
+@command(arguments={
+    "path": Argument(help="File to read", completer=PathCompleter()),
+})
+def read(self, path: Path): ...
+```
+
+It lists files and directories in a worker thread, supports relative, absolute,
+and `~/` paths, and quotes inserted values when needed. Directories include a
+trailing separator for navigation. Use `PathCompleter(directories_only=True)`
+for directory arguments, or `PathCompleter(file_filter=lambda p: p.suffix ==
+".json")` to filter files while retaining directories. Filters affect suggestions,
+not validation; new export filenames can still be typed. No completer is inferred
+from a `Path` annotation. Built-in project/config import and export, and history
+export, use this provider without restricting file extensions.
+
 To make a parameter a named option, declare its short and/or long flags
 explicitly:
 
@@ -371,7 +392,7 @@ imports from `ctui` are the supported compatibility surface:
 
 - Application and commands: `CtuiApp`, `command`, `Argument`, `CommandResult`,
   `CommandError`, `CommandNotFound`, `CommandValidationError`,
-  `ConfirmationRequired`, `CompletionContext`, and `CompletionItem`.
+  `ConfirmationRequired`, `CompletionContext`, `CompletionItem`, and `PathCompleter`.
 - Parameter types: `HexBytes`, `FuzzyHexPattern`, `FuzzyStringPattern`,
   `IntegerRanges`, and `IntegerSpan`.
 - Service interfaces and implementations: `HistoryStore`, `Storage`,

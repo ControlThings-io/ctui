@@ -28,6 +28,8 @@ from typing import Any, Mapping, Sequence
 import aiosqlite
 from platformdirs import user_data_path
 
+from ctui.path_completion import PathCompleter
+
 from .commands import Argument, CommandError, CommandResult
 from .services import HistoryEntry
 
@@ -1249,7 +1251,11 @@ def register_project_commands(app: Any) -> None:
     @register(
         name="project export",
         record_history=False,
-        arguments={"path": Argument(help="Destination project snapshot file")},
+        arguments={
+            "path": Argument(
+                help="Destination project snapshot file", completer=PathCompleter()
+            )
+        },
     )
     async def project_export(path: Path):
         """Export a consistent snapshot of the active project."""
@@ -1260,7 +1266,9 @@ def register_project_commands(app: Any) -> None:
         name="project import",
         record_history=False,
         arguments={
-            "path": Argument(help="Project snapshot file to import"),
+            "path": Argument(
+                help="Project snapshot file to import", completer=PathCompleter()
+            ),
             "name": Argument(flags=("-n", "--name")),
         },
     )
@@ -1306,7 +1314,9 @@ def register_project_commands(app: Any) -> None:
     @register(
         name="configs export",
         record_history=False,
-        arguments={"path": Argument(help="Destination JSON file")},
+        arguments={
+            "path": Argument(help="Destination JSON file", completer=PathCompleter())
+        },
     )
     async def configs_export(path: Path):
         """Export configurations as versioned JSON."""
@@ -1316,7 +1326,11 @@ def register_project_commands(app: Any) -> None:
     @register(
         name="configs import",
         record_history=False,
-        arguments={"path": Argument(help="Versioned JSON file to import")},
+        arguments={
+            "path": Argument(
+                help="Versioned JSON file to import", completer=PathCompleter()
+            )
+        },
     )
     async def configs_import(path: Path):
         """Import configurations from versioned JSON."""

@@ -35,6 +35,7 @@ from ctui.commands import (
     ConfirmationRequired,
     command,
 )
+from ctui.path_completion import PathCompleter
 from ctui.projects import ProjectInfo, RecordEntry, SqliteProjectBackend
 from ctui.services import (
     ConfigStore,
@@ -84,6 +85,7 @@ __all__ = [
     "MemoryStorage",
     "NullHistory",
     "NullStorage",
+    "PathCompleter",
     "ProjectInfo",
     "RecordEntry",
     "RecordStore",

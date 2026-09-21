@@ -37,6 +37,7 @@ class PublicApiTests(unittest.TestCase):
         "MemoryStorage",
         "NullHistory",
         "NullStorage",
+        "PathCompleter",
         "ProjectInfo",
         "RecordEntry",
         "RecordStore",
