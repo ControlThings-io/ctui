@@ -1,67 +1,56 @@
 # Project status
 
-Last reconciled: 2026-09-21, `main` at `cd848e7`; working tree was clean before
-the current path-completion work. Remote refs and live CI were not refreshed.
+Last reconciled: 2026-10-01, web frontend work on `feat/web-frontend`, based on
+`main` at `fdda194`. Main was fetched from GitHub at workspace setup; no live
+remote CI or publication checks are claimed.
 
 ## Current state
 
-- Package metadata and lockfile remain `1.0.0rc1`. The owner confirmed RC1
-  publication and basic functionality on September 18. RC2 is next; stable 1.0
-  still requires additional changes and acceptance testing (decision D10).
-- Since RC1: OS classifiers, hierarchical help/dialog scrolling, completion,
-  documentation, error containment, and protocol argument types were improved.
-  Latest committed change: dialog redraw fix in `cd848e7`, confirmed working
-  by the owner.
-- Mixed byte input requires explicit `0x`/`0b`/`0o`/`0d` prefixes; fuzzy patterns
-  support bounded mixed-radix byte choices. See [types.py](../src/ctui/types.py)
-  and the latest entries in [DECISIONS.md](DECISIONS.md).
-
-## Current work
-
-- Added public, opt-in `PathCompleter` with threaded directory listing, directory
-  navigation, home expansion, file filters, and directory-only mode.
-- Applied it to project/config import and export, history export, and the
-  filesystem example; new export names remain valid without a suggestion.
-- Completion insertion now replaces raw quoted/escaped token spans and quotes
-  selected values for parsing, including inline named options.
-- Updated public API documentation and regressions. Changes remain uncommitted.
+- Metadata remains `1.0.0rc1`; RC2 is next, pending owner acceptance and the
+  release checks in [RELEASE_CHECKLIST.md](../RELEASE_CHECKLIST.md).
+- Main includes reusable path completion (`fdda194`), dialog redraw, command
+  error containment, and the post-RC1 help/type improvements.
+- Added optional `ctui[web]` support with aiohttp. `--web` runs a browser-only
+  session; default full-screen UI and command/file CLI behavior remain intact.
+- Existing supported compose() widgets render in plain HTML/CSS/JavaScript.
+  One app process/port owns a shared session; tabs keep local drafts/scrolling.
+  Submitted commands survive disconnect; unanswered dialogs cancel. Help opens
+  a popup and preserves output. See D15 and the README for the accepted design.
+- Remote binds require supplied TLS cert/key files. Session token authentication,
+  origin/host checks, bounded update queues, and independent per-process cookies
+  are implemented. Web dependencies remain optional for terminal-only users.
 
 ## Validation evidence
 
-- All 135 tests passed on Python 3.11. Full Black/isort, lockfile, and
-  whitespace checks passed. New regressions cover provider filtering, filesystem
-  errors, relative/home paths, quoted insertion, and built-in wiring.
-- Owner confirmed the preceding dialog fix works. No new remote CI or artifact
-  checks claimed; repeat release checks for RC2.
+- All 152 unittest tests passed on Python 3.11.16 and 3.14.7 on Linux x86-64.
+  The web tests exercise real HTTP/WebSocket connections, independent sessions,
+  multi-tab output, reconnect, completion, dialogs, custom controls, TLS, malformed
+  input, disconnect behavior, and startup/shutdown cleanup.
+- Chromium checked shared output, local drafts, both main and targeted help
+  popups, preserved output, focus restoration, buttons, completion, and narrow
+  browser layout. The reusable check is [browser_smoke.py](../tests/browser_smoke.py).
+- Wheel and source distribution built and passed isolated base and optional-web
+  smoke tests, including bundled static assets and WebSocket dispatch.
+- Black/isort, lockfile, JavaScript syntax and whitespace checks passed. CI now
+  installs the web extra for platform tests and checks installed web artifacts.
+  Remote CI has not been run from this workspace.
 
-## Next steps: RC2
+## Next steps
 
-- Manually check help scrolling and focus restoration in real terminals,
-  including narrow windows and application-specific shortcuts.
-- Capture further owner-requested RC2 changes and acceptance tests. Record
-  platform, Python version, package/revision, and results for acceptance runs.
-- Reconcile release documentation: CHANGELOG currently labels `[1.0.0]` stable
-  while metadata remains RC1. Confirm intended labels/date and readiness
-  classifier; RC note fallback alone is not a workflow failure.
-- Prepare `1.0.0rc2` after remaining changes/testing, including post-RC1 fixes.
-  Follow [RELEASE_CHECKLIST.md](../RELEASE_CHECKLIST.md) for that revision,
-  including full source/artifact checks, remote CI, matching tag, publication,
-  and release/attestation links. Do not reuse RC1 validation as RC2 evidence.
-- Resolve D07's outstanding `history clear` versus `project reset history`
-  discrepancy with the owner before changing that behavior.
-
-## Optional follow-ups, not release commitments
-
-- Background-job service and `py.typed` remain explicitly optional (D10).
-- Assess existing tests before adding cancellation/database, large-transfer,
-  or repeated-lifecycle stress coverage; reduce duplicate CI runs if warranted.
-- Previously documented limits: example 13's custom root lacks modal float
-  support; theme palettes are identical; dialogs have a horizontal-scrollbar
-  TODO. Cancellation cleanup was subsequently fixed in `be050b8`.
+- Owner acceptance: try actual downstream tools in terminal, CLI and --web modes,
+  including custom layouts, background progress and remote trusted certificates.
+- Confirm browser behavior in Firefox/Safari and the cross-platform CI matrix.
+  Arbitrary third-party prompt-toolkit controls, custom floats and renderer
+  internals require dedicated browser adapters; these are documented limitations.
+- Reconcile release labels: CHANGELOG says stable 1.0 while package metadata is
+  RC1. Prepare RC2 only after acceptance, complete release verification and
+  matching tag/publication checks. No release/version change made here.
+- Resolve D07's outstanding history-clear naming discrepancy with the owner
+  before changing that behavior. Existing palette definitions remain identical;
+  no theme redesign is included in this work.
 
 ## Handoff
 
-No implementation blocker identified. Remaining validation is listed above.
-Repository notes transfer with the branch only after explicitly authorized
-commit/push, followed by a pull on the receiving laptop. Copy the global
-`~/.codex/AGENTS.md` separately; it is not tracked by this repository.
+Development is isolated on `feat/web-frontend`. Check its Git history and status
+for the latest local commits. Push/pull that branch to transfer it to another
+machine; main is unchanged. A merge and package publication are separate steps.

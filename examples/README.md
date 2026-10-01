@@ -23,7 +23,9 @@ this order:
 12. `12_keyboard_shortcuts.py` — register an application-wide shortcut.
 13. `13_custom_layout.py` — compose a layout from reusable widgets.
 14. `14_lifecycle_and_storage.py` — persist projects, configs, and records.
-15. `filesystem.py` — browse with `ls [PATH] [-l|--long]` and `cd DIRECTORY`,
+15. `15_web_frontend.py` — serve the same custom layout in a browser with
+    optional asyncio HTTP/WebSocket support.
+16. `filesystem.py` — browse with `ls [PATH] [-l|--long]` and `cd DIRECTORY`,
     with file/directory completion and detailed listings.
 
 Run an example from the repository root:
@@ -40,3 +42,13 @@ uv run examples/08_automatic_cli.py --help
 uv run examples/08_automatic_cli.py -c "add 12 30"
 uv run examples/08_automatic_cli.py --file examples/commands.txt
 ```
+
+Install the optional web extra to try browser mode with any UI example:
+
+```bash
+uv run --extra web examples/15_web_frontend.py --web --web-port 0
+```
+
+Open the printed URL. `help` opens a popup without replacing output; multiple
+tabs at the same address view one session. Without `--web`, the example opens
+the terminal UI.

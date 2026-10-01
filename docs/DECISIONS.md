@@ -326,3 +326,32 @@ relevant entries per task, broadening for architectural work. Preserve decision
 rationale and supersession history instead of compressing away API constraints.
 This refines D11's instruction placement and startup reading, not its requirement
 for durable project continuity.
+
+## D15 — Optional asyncio browser frontend
+
+Accepted, October 1, during web frontend development on `feat/web-frontend`.
+
+One CtuiApp definition supplies three mutually exclusive startup modes: no
+arguments opens the existing terminal UI, -c/--command and -f/--file run CLI
+operations, and --web starts only the browser frontend. Print a connection URL
+and keep the process running. A process owns one live session; separate
+processes/ports own separate sessions. Multiple tabs at the same address share
+app state/output while drafts, focus, scrolling and dialogs stay per-view.
+Submitted commands continue after their tab disconnects; unanswered confirmation
+or input dialogs cancel on disconnect, preserving explicit approval.
+
+Use packaged HTML/CSS and small JavaScript modules/functions with no frontend
+framework or build step. aiohttp is an optional `web` extra for HTTP/1.1 and
+WebSockets on the existing asyncio loop. Loopback HTTP is the default; explicit
+remote binds require supplied TLS certificate/key files and authenticated access.
+HTTPS uses secure WebSockets. Automatic certificate issuance is deferred.
+
+Preserve the existing supported compose() API using a browser adapter over its
+prompt-toolkit tree. Compatible Button/Frame/ProgressBar subclasses retain
+widget identity through upstream container conversion. This avoids forcing
+existing apps to define a second layout or migrating the supported terminal API.
+An independent declarative widget model is not introduced in this change.
+Arbitrary third-party controls and custom floats require future adapters and
+fail explicitly. Implementation/lifecycle, queue bounds, session credentials,
+and limitations live in the application/web/layout/dialog docstrings and README.
+Help remains a per-view scrollable popup that preserves the main output.
