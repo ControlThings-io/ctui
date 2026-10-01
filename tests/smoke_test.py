@@ -10,6 +10,7 @@ proof of remote CI success or publication.
 import asyncio
 import tempfile
 from importlib.metadata import version
+from importlib.resources import files
 from pathlib import Path
 
 from ctui import CtuiApp, FuzzyHexPattern, HexBytes, __version__, command
@@ -31,6 +32,8 @@ async def smoke_test() -> None:
     Assertion failures make the script fail for use in build/release workflows.
     """
     assert __version__ == version("ctui")
+    for name in ("index.html", "app.js", "style.css"):
+        assert files("ctui").joinpath("web_assets", name).is_file(), name
     assert HexBytes("be:ef") == b"\xbe\xef"
     assert list(FuzzyHexPattern("f[0-1]").expand()) == [b"\xf0", b"\xf1"]
 

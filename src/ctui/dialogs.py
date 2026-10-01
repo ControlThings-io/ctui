@@ -84,6 +84,7 @@ class YesNoDialog:
     ):
         """Construct a confirmation dialog and its result future."""
         self.future = Future()
+        self._web_dialog = (title, text, [yes_text, no_text], None)
 
         def yes_handler():
             """Resolve the dialog with an affirmative result."""
@@ -143,6 +144,7 @@ class TextInputDialog:
     ):
         """Construct a text-input dialog and its result future."""
         self.future = Future()
+        self._web_dialog = (title, text, [ok_text, cancel_text], {"password": password})
 
         def accept_text(buf):
             """Move focus to confirmation after accepting the input buffer."""
@@ -209,6 +211,7 @@ class MessageDialog:
         """Construct a message dialog sized to its content."""
         self.future = Future()
         self.text = text
+        self._web_dialog = (title, text, [ok_text], None)
 
         def set_done():
             """Resolve the dialog result after acknowledgement."""
@@ -220,6 +223,10 @@ class MessageDialog:
             text = fragment_list_to_text(text_fragments)
             if text:
                 text_height = len(self.text.splitlines())
+                from ctui.web import web_client
+
+                if web_client.get() is not None:
+                    return True
                 max_text_height = get_app().renderer.output.get_size().rows - 6
                 if text_height > max_text_height:
                     return True
@@ -255,12 +262,18 @@ class MessageDialog:
 async def show_dialog(dialog):
     """Insert a modal float, await its result, then restore prior focus.
 
-    Require a running prompt-toolkit app whose root container exposes floats.
+    In web mode, route to the browser view that initiated the command/callback.
+    Otherwise require a running prompt-toolkit app whose root exposes floats.
     The dialog must provide a future and a prompt-toolkit container. Always
     remove the float and restore focus on completion or cancellation. Request
     redraws explicitly: callers may resume after asynchronous work, after the
     input event's redraw has already finished.
     """
+    from ctui.web import web_client
+
+    client = web_client.get()
+    if client is not None:
+        return await client.show_dialog(dialog)
     app = get_app()
     float_ = Float(content=dialog)
     app.layout.container.floats.insert(0, float_)
@@ -277,6 +290,16 @@ async def show_dialog(dialog):
 
 
 # Functions that use dialog classes and return results
+
+
+def _schedule(coroutine):
+    """Track web convenience dialogs for runtime cancellation, retaining results."""
+    from ctui.web import web_client
+
+    client = web_client.get()
+    if client is not None:
+        return client.session.create_background_task(coroutine)
+    return ensure_future(coroutine)
 
 
 def func_pass():
@@ -308,7 +331,7 @@ def yes_no_dialog(
         else:
             no_func()
 
-    return ensure_future(coroutine())
+    return _schedule(coroutine())
 
 
 # def button_dialog(title='', text='', buttons=[], style=None):
@@ -345,7 +368,7 @@ def input_dialog(
         )
         return await show_dialog(open_dialog)
 
-    return ensure_future(coroutine())
+    return _schedule(coroutine())
 
 
 def message_dialog(
@@ -377,7 +400,7 @@ def message_dialog(
         )
         await show_dialog(dialog)
 
-    return ensure_future(coroutine())
+    return _schedule(coroutine())
 
 
 # def radiolist_dialog(title='', text='', ok_text='Ok', cancel_text='Cancel',

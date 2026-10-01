@@ -42,8 +42,9 @@ class CtuiApp:
     remain replaceable. Construction registers commands but does not open databases
     or create terminal resources.
 
-    run() automatically selects full-screen or CLI mode. Call run_async() or
-    run_cli() inside an existing event loop, or dispatch() for headless execution.
+    run() selects full-screen, CLI, or explicit --web mode. Call run_async(),
+    run_web(), or run_cli() inside an existing event loop, or dispatch() for
+    headless execution.
     Override sync or async lifecycle hooks for resources owned by your application.
     Commands must return str or CommandResult; use CommandResult.success() when
     there is no output. Sync handlers execute on the calling event loop, so move
@@ -222,7 +223,7 @@ class CtuiApp:
     async def on_ready(self):
         """Initialize UI-dependent resources after layout and app are constructed.
 
-        Called only in full-screen mode, before the prompt-toolkit run loop begins.
+        Called in full-screen or web mode after widgets and the runtime exist.
         May be sync or async; CLI execution does not create widgets or call this hook.
         """
         pass
@@ -288,10 +289,17 @@ class CtuiApp:
             f"Usage: {program} [help | -h | --help]",
             f"       {program} [-c COMMAND | --command COMMAND] ...",
             f"       {program} [-f FILE | --file FILE] ...",
+            f"       {program} --web [--web-port PORT] [--web-host HOST] ...",
             "",
             self.cli_help_intro,
             "",
-            "Terminal options:",
+            "Interface options:",
+            "  --web                 Start browser-only mode (requires ctui[web]).",
+            "  --web-host HOST       Bind address (default: 127.0.0.1).",
+            "  --web-port PORT       Listen port (default: 8080; 0 selects a free port).",
+            "  --web-cert FILE       TLS certificate; required for remote access.",
+            "  --web-key FILE        TLS private key; use with --web-cert.",
+            "  --web-token-env NAME  Read session token from an environment variable.",
             "  -c, --command COMMAND  Run a command; may be repeated.",
             "  -f, --file FILE        Run nonblank commands from a file in order.",
             "  -h, --help             Print this help page.",
@@ -449,6 +457,69 @@ class CtuiApp:
             finally:
                 await self._close_runtime(backend_opened)
 
+    async def run_web(
+        self,
+        *,
+        host="127.0.0.1",
+        port=8080,
+        cert=None,
+        key=None,
+        token=None,
+        stdout=None,
+    ):
+        """Run an optional browser-only session in the caller's asyncio loop.
+
+        Each invocation owns one app session; all browser connections share it.
+        Open services and call on_start, compose widgets, start the server, then
+        call on_ready. No terminal Application or renderer is started. self.app
+        supports invalidate(), exit(), and create_background_task() in this mode.
+        Cancel pending commands/background tasks before on_stop and service cleanup.
+        Loopback HTTP is the default; other bind addresses require TLS certificate
+        and key paths. A random token is printed in the startup URL fragment unless
+        supplied explicitly. Treat that URL as a credential. port=0 selects a free
+        port. Closing browser tabs leaves the process running; exit() stops it.
+        """
+        from ctui.web import WebSession
+
+        session = WebSession(
+            self, host=host, port=port, cert=cert, key=key, token=token, stdout=stdout
+        )
+        backend_opened = started = False
+        try:
+            if self.backend is not None:
+                backend_opened = True
+                await self.backend.open()
+            await self._hook(self.on_start)
+            started = True
+            await session.start()
+            await self._hook(self.on_ready)
+            session.invalidate()
+            await session.stopped.wait()
+        finally:
+            try:
+                await session.close()
+            finally:
+                try:
+                    if started:
+                        await self._hook(self.on_stop)
+                finally:
+                    await self._close_runtime(backend_opened)
+
+    async def _run_web_arguments(self, arguments):
+        """Translate web startup failures into ordinary CLI exit statuses."""
+        from ctui.web import parse_web_options
+
+        try:
+            options = parse_web_options(arguments)
+            await self.run_web(**options)
+        except CommandError as error:
+            print(f"Error: {error}", file=sys.stderr)
+            return 2
+        except OSError as error:
+            print(f"Error starting web server: {error}", file=sys.stderr)
+            return 1
+        return 0
+
     @staticmethod
     def _parse_cli_operations(arguments):
         """Parse ordered command and file operations without losing their order."""
@@ -562,10 +633,10 @@ class CtuiApp:
                 await self._close_runtime(backend_opened)
 
     def run(self, argv=None):
-        """Open the UI without arguments, otherwise run terminal operations.
+        """Open the UI without arguments, or select CLI operations or --web.
 
         Use sys.argv[1:] when argv is omitted. This synchronous entry point owns an
-        event loop via asyncio.run; use run_async/run_cli inside an existing loop.
+        event loop via asyncio.run; use run_async/run_cli/run_web in an existing loop.
         UI mode returns the terminal result; CLI mode raises SystemExit with its
         status so application scripts need no separate argument parser.
         """
@@ -574,9 +645,15 @@ class CtuiApp:
         arguments = list(sys.argv[1:] if argv is None else argv)
         if not arguments:
             return asyncio.run(self.run_async())
+        if "--web" in arguments:
+            try:
+                status = asyncio.run(self._run_web_arguments(arguments))
+            except KeyboardInterrupt:
+                status = 0
+            raise SystemExit(status)
         raise SystemExit(asyncio.run(self.run_cli(arguments)))
 
     def exit(self):
-        """Request termination when the terminal application is running."""
+        """Request termination of the active terminal or web session."""
         if hasattr(self, "app"):
             self.app.exit()

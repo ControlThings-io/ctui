@@ -134,8 +134,11 @@ class CommandCompleter(Completer):
                 yield item
         except Exception as error:
             self.type_hint = None
-            if self.app is not None and getattr(
-                getattr(self.app, "app", None), "is_running", False
+            from ctui.web import web_client
+
+            if self.app is not None and (
+                web_client.get() is not None
+                or getattr(getattr(self.app, "app", None), "is_running", False)
             ):
                 from ctui.dialogs import message_dialog
 
