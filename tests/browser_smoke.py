@@ -1,8 +1,9 @@
-"""Optional real-browser check (requires Playwright and a Chromium installation).
+"""Optional real-browser check (requires Playwright and Chromium or Firefox).
 
 Run: uv run --extra web --with playwright tests/browser_smoke.py
 Set CTUI_CHROMIUM_EXECUTABLE to use a system Chromium, or install Playwright's
 browser with: uv run --with playwright python -m playwright install chromium
+Set CTUI_BROWSER=firefox and install Firefox to run the same checks there.
 This check is separate from the portable unittest suite.
 """
 
@@ -22,10 +23,12 @@ async def main():
     try:
         async with async_playwright() as playwright:
             options = {"headless": True}
+            browser_name = os.environ.get("CTUI_BROWSER", "chromium")
             executable = os.environ.get("CTUI_CHROMIUM_EXECUTABLE")
-            if executable:
+            if executable and browser_name == "chromium":
                 options["executable_path"] = executable
-            browser = await playwright.chromium.launch(**options)
+            browser_type = getattr(playwright, browser_name)
+            browser = await browser_type.launch(**options)
             try:
                 context = await browser.new_context()
                 first = await context.new_page()
@@ -86,7 +89,7 @@ async def main():
                 )
                 assert not errors, errors
                 print(
-                    "Chromium: multi-tab output, local drafts, help popup, focus, buttons, completion and mobile layout passed"
+                    f"{browser_name}: multi-tab output, local drafts, help popup, focus, buttons, completion and mobile layout passed"
                 )
             finally:
                 await browser.close()

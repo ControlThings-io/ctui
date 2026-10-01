@@ -26,9 +26,17 @@ remote CI or publication checks are claimed.
   The web tests exercise real HTTP/WebSocket connections, independent sessions,
   multi-tab output, reconnect, completion, dialogs, custom controls, TLS, malformed
   input, disconnect behavior, and startup/shutdown cleanup.
-- Chromium checked shared output, local drafts, both main and targeted help
-  popups, preserved output, focus restoration, buttons, completion, and narrow
-  browser layout. The reusable check is [browser_smoke.py](../tests/browser_smoke.py).
+- Chromium and Firefox checked shared output, local drafts, both main and targeted
+  help popups, preserved output, keyboard popup scrolling, focus restoration,
+  buttons, F2 shortcuts, completion, and narrow browser layout. The reusable check
+  is [browser_smoke.py](../tests/browser_smoke.py).
+- All 16 tutorial applications passed in Firefox through real --web startup,
+  including async downloads, progress, storage, custom layouts, filesystem/path
+  completion and per-app help popups. A test timing issue in tutorial 15 reproduced
+  in Chromium; awaiting its progress update fixed the check in both browsers.
+  [browser_tutorials.py](../tests/browser_tutorials.py) supports individual repeats.
+  Tutorial 15's progress command was also checked in CLI mode after guarding UI
+  invalidation when no frontend exists.
 - Wheel and source distribution built and passed isolated base and optional-web
   smoke tests, including bundled static assets and WebSocket dispatch.
 - Black/isort, lockfile, JavaScript syntax and whitespace checks passed. CI now
@@ -39,7 +47,7 @@ remote CI or publication checks are claimed.
 
 - Owner acceptance: try actual downstream tools in terminal, CLI and --web modes,
   including custom layouts, background progress and remote trusted certificates.
-- Confirm browser behavior in Firefox/Safari and the cross-platform CI matrix.
+- Confirm Safari behavior and the cross-platform CI matrix.
   Arbitrary third-party prompt-toolkit controls, custom floats and renderer
   internals require dedicated browser adapters; these are documented limitations.
 - Reconcile release labels: CHANGELOG says stable 1.0 while package metadata is

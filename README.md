@@ -506,3 +506,20 @@ uv sync
 uv run python -m unittest discover -s tests -v
 uv run examples/filesystem.py
 ```
+
+## Browser verification for contributors
+
+The portable unittest suite includes real HTTP/WebSocket integration tests when
+the web extra is installed. Additional Playwright checks exercise browser behavior
+and all 16 tutorial apps through their actual `--web` entry points:
+
+```bash
+uv run --extra web --with playwright python -m playwright install firefox
+CTUI_BROWSER=firefox uv run --extra web --with playwright tests/browser_smoke.py
+CTUI_BROWSER=firefox uv run --extra web --with playwright tests/browser_tutorials.py
+```
+
+Use `CTUI_BROWSER=chromium` for Chromium; `CTUI_CHROMIUM_EXECUTABLE` can select
+a system installation. To repeat one tutorial, append its filename, such as
+`15_web_frontend.py`, to `browser_tutorials.py`. These checks use temporary
+application storage and close their servers; they do not require real devices.
