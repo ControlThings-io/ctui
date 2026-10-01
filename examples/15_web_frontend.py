@@ -51,7 +51,8 @@ class WebTool(CtuiApp):
     def progress(self, percent: int) -> CommandResult:
         """Set the progress bar percentage."""
         self.progress_bar.percentage = max(0, min(100, percent))
-        self.app.invalidate()
+        if hasattr(self, "app"):
+            self.app.invalidate()
         return CommandResult.success()
 
 
