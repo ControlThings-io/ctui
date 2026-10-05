@@ -193,11 +193,15 @@ function connect() {
     else if(message.type==='error'||message.type==='rejected') {
       if(message.id===latestCommand&&commandInput&&!commandInput.value){commandInput.value=message.text;const pos=message.position??message.text.length;commandInput.setSelectionRange(pos,pos);rememberDraft();}
       if(message.message)openDialog({title:'Error',text:message.message,buttons:['OK']});
+    } else if(message.type==='session-ended') {
+      stopped=true;clearTimeout(retry);
+      notice('Session stopped. You can close this tab.');
+      if(message.close_tab)window.close();
     } else if(message.type==='notice')notice(message.message);
   };
   socket.onclose=event=>{
     for(const dialog of document.querySelectorAll('dialog'))dialog.remove();dialogs.length=0;hideCompletions();
-    if(event.code===1001){stopped=true;notice('Session stopped.');}
+    if(event.code===1001||stopped){stopped=true;notice('Session stopped. You can close this tab.');}
     else {notice('Disconnected. Reconnecting…');if(!stopped)retry=setTimeout(connect,1500);}
   };
 }

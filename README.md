@@ -124,6 +124,11 @@ append results use current output when each command finishes. Each view has a
 bounded, coalescing update queue so a slow browser does not hold up other views.
 Reconnecting views receive the current layout and output.
 
+Typing `exit` asks for confirmation in both terminal and browser UIs. An approved
+exit stops the shared application session. In browser mode, the submitting tab
+attempts to close; if browser policy blocks it, a message tells you to close it
+manually. Other tabs disconnect. Noninteractive CLI use requires `exit confirm`.
+
 ### Custom layouts and lifecycle
 
 Reuse `compose()` and `ctui.widgets`: Vertical, Horizontal, Frame, Label, TextArea,

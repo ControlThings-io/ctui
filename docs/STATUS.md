@@ -20,7 +20,16 @@ remote CI or publication checks are claimed.
   origin/host checks, bounded update queues, and independent per-process cookies
   are implemented. The web extra was removed at the owner's direction (D15).
 
+- Typed `exit` now uses the shared confirmation flow in both interactive UIs.
+  Approved web exit stops the shared session and asks only the submitting tab
+  to close, with a manual-close message when browser policy blocks closure.
+
 ## Validation evidence
+
+- October 5 exit change: all 154 unittest tests passed on Python 3.11.16,
+  Linux x86-64, including rejection/approval and per-tab shutdown notification.
+  Black/isort and whitespace checks passed. Manual terminal and real-browser
+  tab-close acceptance remain pending; browser tutorial checks now approve exit.
 
 - October 5 dependency change: standard locked sync installed aiohttp without
   extras; all 152 tests passed on Python 3.11.16, Linux x86-64. Black/isort,
@@ -47,7 +56,7 @@ remote CI or publication checks are claimed.
 - Wheel and source distribution built and passed isolated base and web
   smoke tests, including bundled static assets and WebSocket dispatch.
 - Black/isort, lockfile, JavaScript syntax and whitespace checks passed. CI now
-  now uses standard installs for platform tests and installed web artifacts.
+  uses standard installs for platform tests and installed web artifacts.
   Remote CI has not been run from this workspace.
 
 ## Next steps

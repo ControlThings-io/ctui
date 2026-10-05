@@ -201,7 +201,11 @@ class WebClient:
         return task
 
     async def command(self, text, identifier):
-        """Dispatch with per-view confirmation and broadcast accepted results."""
+        """Confirm per view; notify the exiting view before stopping the session.
+
+        The browser attempts to close only the tab submitting an accepted exit.
+        Other views disconnect when the shared session shuts down.
+        """
         try:
             self.session.ctui.output_text = self.session.ctui.layout.output_field.text
 
@@ -218,6 +222,8 @@ class WebClient:
                     "Help", self.session.ctui.format_ui_help(result.target), ["OK"]
                 )
             else:
+                if result.exit_requested:
+                    await self.send({"type": "session-ended", "close_tab": True})
                 self.session.apply_result(result)
             await self.send({"type": "finished", "id": identifier})
         except Exception as error:

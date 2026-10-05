@@ -172,6 +172,8 @@ async def check_tutorial(browser, name, commands, directory):
         assert await output.text_content() == previous
         await dialog.get_by_role("button", name="OK", exact=True).click()
         await submit("exit")
+        await dialog.wait_for(state="visible")
+        await dialog.get_by_role("button", name="Yes", exact=True).click()
         await asyncio.wait_for(process.wait(), 5)
         assert process.returncode == 0, (await process.stderr.read()).decode()
         assert not errors, errors

@@ -340,6 +340,11 @@ operations, and --web starts only the browser frontend. Print a connection URL
 and keep the process running. A process owns one live session; separate
 processes/ports own separate sessions. Multiple tabs at the same address share
 app state/output while drafts, focus, scrolling and dialogs stay per-view.
+Owner direction, October 5: typed `exit` requires confirmation in both interactive
+frontends. On approval the shared session stops; the submitting browser tab
+attempts to close, with a manual-close message if browser policy prevents it.
+Existing explicit confirmation tokens remain available to noninteractive callers.
+
 Submitted commands continue after their tab disconnects; unanswered confirmation
 or input dialogs cancel on disconnect, preserving explicit approval.
 

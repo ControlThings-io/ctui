@@ -243,6 +243,28 @@ class WebTests(unittest.IsolatedAsyncioTestCase):
         await self.receive(socket, "finished")
         self.assertEqual(self.app.layout.output_field.text, "preserved")
 
+    async def test_exit_confirms_and_notifies_only_submitting_tab(self):
+        await self.login()
+        socket, _ = await self.connect()
+        other, _ = await self.connect()
+        await socket.send_json({"type": "command", "text": "exit", "id": 1})
+        dialog = await self.receive(socket, "dialog")
+        self.assertEqual(dialog["text"], "Exit the application?")
+        await socket.send_json({"type": "answer", "id": dialog["id"], "button": 1})
+        await self.receive(socket, "rejected")
+        self.assertFalse(self.session.stopped.is_set())
+        await socket.send_json({"type": "command", "text": "exit", "id": 2})
+        dialog = await self.receive(socket, "dialog")
+        await socket.send_json({"type": "answer", "id": dialog["id"], "button": 0})
+        ended = await self.receive(socket, "session-ended")
+        self.assertTrue(ended["close_tab"])
+        await self.receive(socket, "finished")
+        await asyncio.wait_for(self.session.stopped.wait(), 1)
+        await self.session.close()
+        async for message in other:
+            if message.type.name == "TEXT":
+                self.assertNotEqual(message.json()["type"], "session-ended")
+
     async def test_confirmation_and_existing_dialogs(self):
         await self.login()
         socket, _ = await self.connect()

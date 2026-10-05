@@ -48,6 +48,16 @@ class Demo(CtuiApp):
 class ApplicationTests(unittest.IsolatedAsyncioTestCase):
     """Verify dispatcher policy independently of a terminal run loop."""
 
+    async def test_builtin_exit_requires_confirmation(self):
+        app = CtuiApp()
+        with self.assertRaises(ConfirmationRequired):
+            await app.dispatch("exit")
+        rejected = await app.dispatch("exit", confirm_callback=lambda _: False)
+        self.assertFalse(rejected.accepted)
+        self.assertFalse(rejected.exit_requested)
+        accepted = await app.dispatch("exit", confirm_callback=lambda _: True)
+        self.assertTrue(accepted.exit_requested)
+
     async def test_class_commands_dispatch_history_and_events(self):
         history, seen = MemoryHistory(), []
         app = Demo(history=history)
