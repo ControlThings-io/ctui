@@ -253,7 +253,8 @@ def read(self, path: Path): ...
 
 It lists files and directories in a worker thread, supports relative, absolute,
 and `~/` paths, and quotes inserted values when needed. Directories include a
-trailing separator for navigation. Use `PathCompleter(directories_only=True)`
+trailing separator for navigation. Suggestions preserve typed path separators,
+including forward slashes on Windows. Use `PathCompleter(directories_only=True)`
 for directory arguments, or `PathCompleter(file_filter=lambda p: p.suffix ==
 ".json")` to filter files while retaining directories. Filters affect suggestions,
 not validation; new export filenames can still be typed. No completer is inferred

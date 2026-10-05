@@ -14,7 +14,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from prompt_toolkit.application import Application
-from prompt_toolkit.application.current import set_app
+from prompt_toolkit.application.current import create_app_session, set_app
 from prompt_toolkit.completion import CompleteEvent
 from prompt_toolkit.document import Document
 from prompt_toolkit.input import create_pipe_input
@@ -155,7 +155,9 @@ class HelpTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_ui_help_preserves_output(self):
         app = HelpApp()
-        app._build_application()
+        with create_pipe_input() as input_pipe:
+            with create_app_session(input=input_pipe, output=DummyOutput()):
+                app._build_application()
         app.layout.set_output("Keep this output")
         tasks = []
         seen = []
@@ -256,7 +258,9 @@ class HelpTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_dialog_restores_focus(self):
         app = HelpApp()
-        app._build_application()
+        with create_pipe_input() as input_pipe:
+            with create_app_session(input=input_pipe, output=DummyOutput()):
+                app._build_application()
         dialog = MessageDialog(
             title="Help", text=app.format_ui_help(), scrollbar=True, focusable=True
         )

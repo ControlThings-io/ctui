@@ -1,8 +1,8 @@
 # Project status
 
-Last reconciled: 2026-10-05, web frontend work on `feat/web-frontend`, based on
-`main` at `fdda194`. Main was fetched from GitHub at workspace setup; no live
-remote CI or publication checks are claimed.
+Last reconciled: 2026-10-05 on `main` at `0c9a25f`, after PR #7 merged the
+web frontend. Owner-supplied Windows CI output reports seven test errors across
+Python 3.11–3.14; no successful remote rerun or publication is claimed.
 
 ## Current state
 
@@ -28,6 +28,13 @@ remote CI or publication checks are claimed.
   aligned columns and a subtle divider; narrow screens stack indented help.
 
 ## Validation evidence
+
+- October 5 Windows CI fix: help fixtures use explicit pipe input/dummy output,
+  avoiding Windows console discovery. Path suggestions preserve typed separators
+  so forward-slash Windows prefixes survive dispatcher filtering. All 155 tests
+  passed locally on Python 3.11.16/Linux x86-64, including simulated Windows path
+  operations. Black/isort, lockfile and whitespace checks passed. A Windows CI
+  rerun on Python 3.11–3.14 is still required.
 
 - October 5 completion layout: Chromium browser smoke check passed, including
   separate label/help columns, stacked mobile help, Tab insertion, shared output,
@@ -71,6 +78,7 @@ remote CI or publication checks are claimed.
 
 - Owner acceptance: try actual downstream tools in terminal, CLI and --web modes,
   including custom layouts, background progress and remote trusted certificates.
+- Rerun Windows CI on Python 3.11–3.14 for the console/path fixes.
 - Confirm Safari behavior and the cross-platform CI matrix.
   Arbitrary third-party prompt-toolkit controls, custom floats and renderer
   internals require dedicated browser adapters; these are documented limitations.
@@ -83,6 +91,5 @@ remote CI or publication checks are claimed.
 
 ## Handoff
 
-Development is isolated on `feat/web-frontend`. Check its Git history and status
-for the latest local commits. Push/pull that branch to transfer it to another
-machine; main is unchanged. A merge and package publication are separate steps.
+Web frontend changes are merged into `main` via PR #7. Current Windows CI fixes
+are local and uncommitted; commit/push only with explicit authorization.

@@ -1,5 +1,6 @@
 """Filesystem providers and completion insertion must preserve usable paths."""
 
+import ntpath
 import os
 import shlex
 import tempfile
@@ -51,13 +52,29 @@ class PathCompletionTests(unittest.IsolatedAsyncioTestCase):
                 os.chdir(previous)
             with patch.dict(os.environ, {"HOME": str(root), "USERPROFILE": str(root)}):
                 self.assertIn(
-                    os.path.join("~", "other.json"),
+                    "~/other.json",
                     await matches(PathCompleter(), "~/"),
                 )
             with patch(
                 "ctui.path_completion.Path.iterdir", side_effect=PermissionError
             ):
                 self.assertEqual(await matches(PathCompleter(), prefix), [])
+
+    async def test_forward_slash_prefix_survives_windows_path_operations(self):
+        """Windows path joining must not change a prefix used by the dispatcher."""
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            (root / "a file.json").touch()
+            (root / "a folder").mkdir()
+            prefix = root.as_posix() + "/"
+            with (
+                patch("ctui.path_completion.os.path.split", ntpath.split),
+                patch("ctui.path_completion.os.path.join", ntpath.join),
+                patch("ctui.path_completion.os.sep", "\\"),
+                patch("ctui.path_completion.os.altsep", "/"),
+            ):
+                matches = PathCompleter()._matches(prefix + "a f")
+            self.assertEqual(matches, [prefix + "a file.json", prefix + "a folder/"])
 
     async def test_selected_paths_round_trip_through_parser(self):
         commands = Commands()

@@ -10,8 +10,10 @@ class PathCompleter:
     """Suggest existing paths without restricting values accepted by a command.
 
     Resolve relative paths against the process working directory and expand ~
-    for lookup, preserving the typed prefix in suggestions. Include directories
-    with a trailing separator for navigation, even when file_filter excludes
+    for lookup, preserving the typed prefix and its separators in suggestions.
+    On Windows, forward-slash input remains forward-slash output so shared
+    prefix filtering accepts it. Include directories with a trailing separator
+    for navigation, even when file_filter excludes
     files. file_filter receives an expanded Path and runs in the worker thread.
     Missing or inaccessible directories produce no suggestions. No filesystem
     work runs on the UI loop. New destination names can still be typed freely.
@@ -33,6 +35,12 @@ class PathCompleter:
     def _matches(self, word):
         """List one directory, preserving relative, absolute, and home prefixes."""
         parent, prefix = os.path.split(word)
+        typed_parent = word[: len(word) - len(prefix)]
+        separator = (
+            typed_parent[-1]
+            if typed_parent and typed_parent[-1] in (os.sep, os.altsep)
+            else os.sep
+        )
         try:
             matches = []
             for path in sorted(Path(parent or ".").expanduser().iterdir()):
@@ -45,7 +53,7 @@ class PathCompleter:
                 ):
                     continue
                 matches.append(
-                    os.path.join(parent, path.name) + (os.sep if directory else "")
+                    typed_parent + path.name + (separator if directory else "")
                 )
             return matches
         except (OSError, RuntimeError):
