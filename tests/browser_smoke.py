@@ -81,11 +81,24 @@ async def main():
                 )
                 await first_input.fill("ec")
                 await first.locator("#suggestions").wait_for(state="visible")
+                row = first.locator("#suggestions button").first
+                assert await row.locator(".completion-label").text_content() == "echo"
+                assert await row.locator(".completion-help").text_content()
+                assert await row.evaluate(
+                    "el => el.children[1].getBoundingClientRect().left > "
+                    "el.children[0].getBoundingClientRect().left"
+                )
                 await first_input.press("Tab")
                 assert await first_input.input_value() == "echo"
                 await first.set_viewport_size({"width": 390, "height": 844})
                 assert await first.locator(".output_field").evaluate(
                     "el => el.clientHeight > 400"
+                )
+                await first_input.fill("ec")
+                await first.locator("#suggestions").wait_for(state="visible")
+                assert await row.evaluate(
+                    "el => el.children[1].getBoundingClientRect().top >= "
+                    "el.children[0].getBoundingClientRect().bottom"
                 )
                 assert not errors, errors
                 print(

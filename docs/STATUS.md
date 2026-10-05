@@ -24,7 +24,15 @@ remote CI or publication checks are claimed.
   Approved web exit stops the shared session and asks only the submitting tab
   to close, with a manual-close message when browser policy blocks closure.
 
+- Web completion rows separate bright suggestion labels from muted help with
+  aligned columns and a subtle divider; narrow screens stack indented help.
+
 ## Validation evidence
+
+- October 5 completion layout: Chromium browser smoke check passed, including
+  separate label/help columns, stacked mobile help, Tab insertion, shared output,
+  local drafts, help popups, focus and controls. Black/isort and whitespace checks
+  passed. Firefox/Safari and remote CI remain unchecked for this layout change.
 
 - October 5 exit change: all 154 unittest tests passed on Python 3.11.16,
   Linux x86-64, including rejection/approval and per-tab shutdown notification.

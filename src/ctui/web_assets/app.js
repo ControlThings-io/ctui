@@ -46,11 +46,16 @@ function applyCompletion(item) {
   rememberDraft(); hideCompletions(); commandInput.focus(); requestCompletion();
 }
 function hideCompletions() { suggestions.hidden = true; completionItems = []; }
+// Shared columns separate insertion text from help; hints remain non-inserting.
 function showCompletions(items) {
   completionItems = items; completionIndex = 0; suggestions.replaceChildren();
   for (const [index,item] of items.entries()) {
     const element = document.createElement(item.text ? 'button' : 'div');
-    element.textContent = `${item.display || item.text}  ${item.help || ''}`;
+    const label = document.createElement('span');
+    label.className = 'completion-label';label.textContent = item.display || item.text || '';
+    const help = document.createElement('span');
+    help.className = 'completion-help';help.textContent = item.help || '';
+    element.append(label, help);
     element.className = item.text ? (index === 0 ? 'selected' : '') : 'hint';
     element.addEventListener('mousedown', event => event.preventDefault());
     if (item.text) element.addEventListener('click', () => applyCompletion(item));
