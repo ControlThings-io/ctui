@@ -236,15 +236,11 @@ name = "ctui"
 version = "1.0.0rc1"
 source = { editable = "." }
 dependencies = [
+    { name = "aiohttp" },
     { name = "aiosqlite" },
     { name = "platformdirs" },
     { name = "prompt-toolkit" },
     { name = "pygments" },
-]
-
-[package.optional-dependencies]
-web = [
-    { name = "aiohttp" },
 ]
 
 [package.dev-dependencies]
@@ -256,13 +252,12 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiohttp", marker = "extra == 'web'", specifier = ">=3.14.3,<4" },
+    { name = "aiohttp", specifier = ">=3.14.3,<4" },
     { name = "aiosqlite", specifier = ">=0.22,<0.23" },
     { name = "platformdirs", specifier = ">=4,<5" },
     { name = "prompt-toolkit", specifier = ">=3.0.36,<4" },
     { name = "pygments", specifier = ">=2.14.0,<3" },
 ]
-provides-extras = ["web"]
 
 [package.metadata.requires-dev]
 dev = [

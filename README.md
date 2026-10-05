@@ -90,13 +90,13 @@ Error: first must be float: 'wrong'
 In the full-screen UI, an invalid command is restored to the input field and the
 cursor moves to the beginning of the argument that needs correction.
 
-## Optional browser frontend
+## Browser frontend
 
-Install the web extra (aiohttp) to serve the same application's commands and
-supported custom widgets in a browser:
+Browser support is included in the standard installation. Serve the same
+application's commands and supported custom widgets in a browser:
 
 ```bash
-python -m pip install "ctui[web]"
+python -m pip install ctui
 python my_tool.py --web
 python my_tool.py --web --web-port 0
 ```
@@ -148,7 +148,7 @@ controls produce an explicit startup error rather than a partial interface.
 Try the complete example:
 
 ```bash
-uv run --extra web examples/15_web_frontend.py --web --web-port 0
+uv run examples/15_web_frontend.py --web --web-port 0
 ```
 
 ### Optional remote access and HTTPS
@@ -509,14 +509,13 @@ uv run examples/filesystem.py
 
 ## Browser verification for contributors
 
-The portable unittest suite includes real HTTP/WebSocket integration tests when
-the web extra is installed. Additional Playwright checks exercise browser behavior
+The portable unittest suite includes real HTTP/WebSocket integration tests. Additional Playwright checks exercise browser behavior
 and all 16 tutorial apps through their actual `--web` entry points:
 
 ```bash
-uv run --extra web --with playwright python -m playwright install firefox
-CTUI_BROWSER=firefox uv run --extra web --with playwright tests/browser_smoke.py
-CTUI_BROWSER=firefox uv run --extra web --with playwright tests/browser_tutorials.py
+uv run --with playwright python -m playwright install firefox
+CTUI_BROWSER=firefox uv run --with playwright tests/browser_smoke.py
+CTUI_BROWSER=firefox uv run --with playwright tests/browser_tutorials.py
 ```
 
 Use `CTUI_BROWSER=chromium` for Chromium; `CTUI_CHROMIUM_EXECUTABLE` can select

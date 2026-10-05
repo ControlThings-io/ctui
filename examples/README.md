@@ -43,10 +43,10 @@ uv run examples/08_automatic_cli.py -c "add 12 30"
 uv run examples/08_automatic_cli.py --file examples/commands.txt
 ```
 
-Install the optional web extra to try browser mode with any UI example:
+Try browser mode with any UI example:
 
 ```bash
-uv run --extra web examples/15_web_frontend.py --web --web-port 0
+uv run examples/15_web_frontend.py --web --web-port 0
 ```
 
 Open the printed URL. `help` opens a popup without replacing output; multiple

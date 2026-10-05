@@ -1,6 +1,6 @@
 """Run one application as terminal UI, CLI commands, or a browser session.
 
-Run: uv run --extra web examples/15_web_frontend.py --web --web-port 0
+Run: uv run examples/15_web_frontend.py --web --web-port 0
 Open the credential URL printed in the terminal. Open another tab at the same
 address to share output; draft input and scrolling remain local to each tab.
 Try: echo hello, help echo, and progress 50. Click Increment to update the footer.

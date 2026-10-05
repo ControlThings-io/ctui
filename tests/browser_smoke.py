@@ -1,6 +1,6 @@
 """Optional real-browser check (requires Playwright and Chromium or Firefox).
 
-Run: uv run --extra web --with playwright tests/browser_smoke.py
+Run: uv run --with playwright tests/browser_smoke.py
 Set CTUI_CHROMIUM_EXECUTABLE to use a system Chromium, or install Playwright's
 browser with: uv run --with playwright python -m playwright install chromium
 Set CTUI_BROWSER=firefox and install Firefox to run the same checks there.

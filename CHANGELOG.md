@@ -9,7 +9,7 @@ ISO 8601 format.
 
 ### Added
 
-- Optional asyncio browser frontend via `ctui[web]`, `--web`, and
+- Asyncio browser frontend included in standard installs via `--web` and
   `CtuiApp.run_web()`, with packaged HTML/CSS/JavaScript and WebSockets.
 - Shared browser views of one app session, existing custom-widget rendering,
   completion, per-view help/confirmation/input popups, and optional authenticated

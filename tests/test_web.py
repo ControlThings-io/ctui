@@ -1,8 +1,8 @@
 """Real HTTP/WebSocket regressions for shared sessions, security and lifecycle.
 
-The network tests require the optional web extra. Always bind ephemeral loopback
+Always bind ephemeral loopback
 ports, capture the credential URL, and close sockets/tasks. No external service
-or terminal is required. CI installs the extra so these tests cannot silently skip.
+or terminal is required. aiohttp is a required package dependency.
 """
 
 import asyncio
@@ -13,10 +13,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-try:
-    from aiohttp import ClientSession, CookieJar, WSServerHandshakeError
-except ImportError:
-    ClientSession = None
+from aiohttp import ClientSession, CookieJar, WSServerHandshakeError
 
 from ctui import CommandError, CommandResult, CtuiApp, command
 from ctui.dialogs import MessageDialog, TextInputDialog, show_dialog
@@ -132,7 +129,6 @@ class WebOptionsTests(unittest.TestCase):
         coroutine.close()
 
 
-@unittest.skipUnless(ClientSession, "Install ctui[web] for network integration tests")
 class WebTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.app = BrowserApp()

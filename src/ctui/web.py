@@ -1,4 +1,4 @@
-"""Optional asyncio HTTP/WebSocket frontend for one live CtuiApp session.
+"""Asyncio HTTP/WebSocket frontend for one live CtuiApp session.
 
 Every connection shares widgets, commands and services; draft input, completion,
 scrolling and dialogs are per-view. Concurrent commands preserve terminal mode's
@@ -455,13 +455,9 @@ class WebSession:
                 client.update(snapshot)
 
     async def start(self):
-        """Build the shared layout and start the authenticated optional server."""
-        try:
-            from aiohttp import WSMsgType, web
-        except ImportError as error:
-            raise CommandError(
-                'Web mode requires the optional dependency: pip install "ctui[web]"'
-            ) from error
+        """Build the shared layout and start the authenticated server."""
+        from aiohttp import WSMsgType, web
+
         if bool(self.cert) != bool(self.key):
             raise CommandError("Web TLS requires both certificate and key")
         if not is_loopback(self.host) and not self.cert:

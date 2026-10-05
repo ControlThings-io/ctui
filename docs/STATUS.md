@@ -1,6 +1,6 @@
 # Project status
 
-Last reconciled: 2026-10-01, web frontend work on `feat/web-frontend`, based on
+Last reconciled: 2026-10-05, web frontend work on `feat/web-frontend`, based on
 `main` at `fdda194`. Main was fetched from GitHub at workspace setup; no live
 remote CI or publication checks are claimed.
 
@@ -10,7 +10,7 @@ remote CI or publication checks are claimed.
   release checks in [RELEASE_CHECKLIST.md](../RELEASE_CHECKLIST.md).
 - Main includes reusable path completion (`fdda194`), dialog redraw, command
   error containment, and the post-RC1 help/type improvements.
-- Added optional `ctui[web]` support with aiohttp. `--web` runs a browser-only
+- Browser support uses required aiohttp; standard installs include it. `--web` runs a browser-only
   session; default full-screen UI and command/file CLI behavior remain intact.
 - Existing supported compose() widgets render in plain HTML/CSS/JavaScript.
   One app process/port owns a shared session; tabs keep local drafts/scrolling.
@@ -18,9 +18,16 @@ remote CI or publication checks are claimed.
   a popup and preserves output. See D15 and the README for the accepted design.
 - Remote binds require supplied TLS cert/key files. Session token authentication,
   origin/host checks, bounded update queues, and independent per-process cookies
-  are implemented. Web dependencies remain optional for terminal-only users.
+  are implemented. The web extra was removed at the owner's direction (D15).
 
 ## Validation evidence
+
+- October 5 dependency change: standard locked sync installed aiohttp without
+  extras; all 152 tests passed on Python 3.11.16, Linux x86-64. Black/isort,
+  lockfile and whitespace checks passed. Built wheel and source distribution
+  passed isolated base and web smoke checks without extra dependency flags.
+  Remote CI and other Python/platform checks remain pending for this change.
+- The following broader frontend evidence is from October 1, before this change.
 
 - All 152 unittest tests passed on Python 3.11.16 and 3.14.7 on Linux x86-64.
   The web tests exercise real HTTP/WebSocket connections, independent sessions,
@@ -37,10 +44,10 @@ remote CI or publication checks are claimed.
   [browser_tutorials.py](../tests/browser_tutorials.py) supports individual repeats.
   Tutorial 15's progress command was also checked in CLI mode after guarding UI
   invalidation when no frontend exists.
-- Wheel and source distribution built and passed isolated base and optional-web
+- Wheel and source distribution built and passed isolated base and web
   smoke tests, including bundled static assets and WebSocket dispatch.
 - Black/isort, lockfile, JavaScript syntax and whitespace checks passed. CI now
-  installs the web extra for platform tests and checks installed web artifacts.
+  now uses standard installs for platform tests and installed web artifacts.
   Remote CI has not been run from this workspace.
 
 ## Next steps

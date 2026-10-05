@@ -35,6 +35,8 @@ Remove or move any previous `dist/` directory, then run:
 uv build
 uv run --isolated --no-project --with dist/*.whl tests/smoke_test.py
 uv run --isolated --no-project --with dist/*.tar.gz tests/smoke_test.py
+uv run --isolated --no-project --with dist/*.whl tests/web_smoke.py
+uv run --isolated --no-project --with dist/*.tar.gz tests/web_smoke.py
 ```
 
 Inspect both archives. They should contain the license; the source archive

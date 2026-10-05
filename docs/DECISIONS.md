@@ -327,9 +327,12 @@ rationale and supersession history instead of compressing away API constraints.
 This refines D11's instruction placement and startup reading, not its requirement
 for durable project continuity.
 
-## D15 — Optional asyncio browser frontend
+## D15 — Asyncio browser frontend
 
-Accepted, October 1, during web frontend development on `feat/web-frontend`.
+Frontend design recorded October 1 during development on `feat/web-frontend`.
+The optional-dependency choice was made without owner approval and is superseded
+by the owner's October 5 direction: aiohttp is a required dependency so a standard
+installation supports browser mode without extra installation flags.
 
 One CtuiApp definition supplies three mutually exclusive startup modes: no
 arguments opens the existing terminal UI, -c/--command and -f/--file run CLI
@@ -341,7 +344,7 @@ Submitted commands continue after their tab disconnects; unanswered confirmation
 or input dialogs cancel on disconnect, preserving explicit approval.
 
 Use packaged HTML/CSS and small JavaScript modules/functions with no frontend
-framework or build step. aiohttp is an optional `web` extra for HTTP/1.1 and
+framework or build step. aiohttp is a required dependency for HTTP/1.1 and
 WebSockets on the existing asyncio loop. Loopback HTTP is the default; explicit
 remote binds require supplied TLS certificate/key files and authenticated access.
 HTTPS uses secure WebSockets. Automatic certificate issuance is deferred.

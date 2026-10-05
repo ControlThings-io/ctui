@@ -1,6 +1,6 @@
 """Exercise every runnable tutorial through its real --web entry point.
 
-Run: CTUI_BROWSER=firefox uv run --extra web --with playwright tests/browser_tutorials.py
+Run: CTUI_BROWSER=firefox uv run --with playwright tests/browser_tutorials.py
 For Chromium, set CTUI_BROWSER=chromium and optionally CTUI_CHROMIUM_EXECUTABLE.
 Install a bundled browser with Playwright's install command first. Application
 storage is redirected into a temporary test directory. Tutorial processes exit

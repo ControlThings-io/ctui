@@ -69,11 +69,11 @@ jobs:
           enable-cache: false
 
       - name: Install dependencies
-        run: uv sync --locked --extra web --python ${{ matrix.python-version }}
+        run: uv sync --locked --python ${{ matrix.python-version }}
 
       - name: Run tests
         run: >-
-          uv run --extra web --python ${{ matrix.python-version }}
+          uv run --python ${{ matrix.python-version }}
           python -m unittest discover -s tests -v
 
   build:
@@ -113,8 +113,8 @@ jobs:
 
       - name: Smoke-test installed web frontend
         run: |
-          uv run --isolated --no-project --with dist/*.whl --with aiohttp tests/web_smoke.py
-          uv run --isolated --no-project --with dist/*.tar.gz --with aiohttp tests/web_smoke.py
+          uv run --isolated --no-project --with dist/*.whl tests/web_smoke.py
+          uv run --isolated --no-project --with dist/*.tar.gz tests/web_smoke.py
 
       - name: Upload distributions as artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

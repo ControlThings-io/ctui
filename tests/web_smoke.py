@@ -1,6 +1,6 @@
-"""Verify optional web mode from an installed wheel/sdist with its web extra.
+"""Verify web mode from a standard installed wheel/sdist.
 
-Use uv --isolated --no-project --with 'dist/ARTIFACT[web]' tests/web_smoke.py.
+Use uv --isolated --no-project --with 'dist/ARTIFACT' tests/web_smoke.py.
 This binds one ephemeral loopback port and tests assets plus command dispatch.
 """
 

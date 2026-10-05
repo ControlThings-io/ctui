@@ -294,7 +294,7 @@ class CtuiApp:
             self.cli_help_intro,
             "",
             "Interface options:",
-            "  --web                 Start browser-only mode (requires ctui[web]).",
+            "  --web                 Start browser-only mode.",
             "  --web-host HOST       Bind address (default: 127.0.0.1).",
             "  --web-port PORT       Listen port (default: 8080; 0 selects a free port).",
             "  --web-cert FILE       TLS certificate; required for remote access.",
