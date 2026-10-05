@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CTUI</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <section id="login" aria-label="Connect to CTUI">
+    <h1>CTUI</h1>
+    <p>Enter the session token printed in your terminal.</p>
+    <form id="login-form"><label>Session token <input id="token" type="password" autocomplete="off" required></label><button>Connect</button></form>
+  </section>
+  <div id="connection" role="status" aria-live="polite">Connecting…</div>
+  <main id="workspace" hidden aria-label="Application windows"></main>
+  <section id="suggestions" hidden aria-label="Command suggestions"></section>
+  <div id="dialogs"></div>
+</body>
+</html>

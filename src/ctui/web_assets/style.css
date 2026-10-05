@@ -1,0 +1,51 @@
+:root { color-scheme: dark; font: 15px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; background: #202020; color: #ddd; }
+* { box-sizing: border-box; }
+body { margin: 0; height: 100dvh; display: flex; flex-direction: column; }
+[hidden] { display: none !important; }
+button, input, textarea { font: inherit; color: inherit; background: #101010; border: 1px solid #555; }
+button { cursor: pointer; padding: .25rem .65rem; }
+button:hover, button:focus-visible { border-color: #4dd; }
+input:focus, textarea:focus { outline: 1px solid #4dd; }
+#login { margin: auto; padding: 2rem; max-width: 40rem; }
+#login label { display: flex; gap: 1rem; align-items: center; }
+#login input { flex: 1; min-width: 0; }
+#connection { background: #333; padding: .1rem .5rem; font-size: .8rem; flex: 0 0 auto; }
+#connection.connected { display: none; }
+#workspace { flex: 1; min-height: 0; display: flex; }
+.node { min-width: 0; min-height: 0; flex: 1 1 0; overflow: hidden; }
+.vertical, .horizontal { display: flex; gap: 0; }
+.vertical { flex-direction: column; }
+.horizontal { flex-direction: row; }
+.frame { display: flex; flex-direction: column; border: 1px solid #777; margin: 0; padding: 0 .35rem .35rem; }
+.frame legend { padding: 0 .5rem; }
+.frame > .node { width: 100%; }
+.input { display: flex; gap: .3rem; align-items: center; background: #101010; flex: 0 0 auto; padding: .25rem .5rem; }
+.input { min-height: calc(1lh + .5rem); }
+.input input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; }
+.text, .label { white-space: pre; margin: 0; padding: 0 .4rem; overflow: auto; }
+.text { color: #4cc; }
+.wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
+.label { flex: 0 0 auto; }
+.statusbar { background: #aaa; color: #111; }
+.separator { border-top: 1px solid #4dd; height: 1px; flex: 0 0 1px; }
+.editor { width: 100%; height: 100%; resize: none; }
+.progress { display: flex; align-items: center; gap: .5rem; }
+progress { width: 100%; accent-color: #4dd; }
+#suggestions { display: grid; grid-template-columns: fit-content(40%) minmax(0, 1fr); width: max-content; position: fixed; z-index: 5; top: 2.2rem; left: .5rem; max-height: 40vh; max-width: calc(100vw - 1rem); overflow: auto; border: 1px solid #888; background: #181818; box-shadow: 0 .4rem 1rem #0008; }
+#suggestions > button, #suggestions > .hint { display: grid; grid-template-columns: subgrid; grid-column: 1 / -1; padding: 0; text-align: left; border: 0; }
+#suggestions .completion-label { padding: .3rem .6rem; color: #eee; overflow-wrap: anywhere; }
+#suggestions .completion-help { padding: .3rem .6rem; border-left: 1px solid #666; color: #bbb; white-space: normal; overflow-wrap: anywhere; }
+#suggestions .completion-help:empty { border-left: 0; }
+@media (max-width: 600px) {
+  #suggestions { grid-template-columns: minmax(0, 1fr); }
+  #suggestions .completion-help { border-left: 0; padding: 0 .6rem .3rem 1.2rem; }
+  #suggestions .completion-help:empty { display: none; }
+}
+#suggestions .selected { background: #37545a; }
+.hint { padding: .3rem .6rem; color: #aaa; }
+dialog { color: #eee; background: #181818; border: 1px solid #4dd; width: min(90vw, 70rem); max-height: 85dvh; }
+dialog::backdrop { background: #0009; }
+dialog h2 { margin: 0 0 .6rem; font-size: 1rem; }
+dialog pre { white-space: pre-wrap; overflow: auto; max-height: 60dvh; }
+dialog .actions { display: flex; justify-content: end; gap: .5rem; }
+dialog input { width: 100%; margin-bottom: .8rem; }

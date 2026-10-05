@@ -969,7 +969,7 @@ def register_default_commands(app):
             await app.history.clear()
             return CommandResult.success("Cleared command history.")
 
-    @app.commands.register
+    @app.commands.register(confirmation="Exit the application?")
     async def exit():
-        """Exit the application."""
+        """Exit after approval; noninteractive callers must supply confirmation."""
         return CommandResult(exit_requested=True)

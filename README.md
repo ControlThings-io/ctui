@@ -1,7 +1,8 @@
 # ControlThings User Interface
 
 `ctui` is an event-driven Python framework for command tools that work both as
-full-screen terminal interfaces and traditional command-line programs. Write
+full-screen terminal interfaces, traditional command-line programs, and optional
+browser interfaces. Write
 ordinary typed functions; ctui supplies parsing, validation, async execution,
 completion, history, layout, and automatic CLI routing.
 
@@ -46,7 +47,7 @@ an event loop can use `await app.run_async()`. Test without a terminal using
 
 ## Automatic command-line mode
 
-Every `CtuiApp` supports both interfaces without application-specific argument
+Every `CtuiApp` supports these terminal interfaces without application-specific argument
 parsing. Calling the program without arguments opens the full-screen UI:
 
 ```bash
@@ -88,6 +89,93 @@ Error: first must be float: 'wrong'
 
 In the full-screen UI, an invalid command is restored to the input field and the
 cursor moves to the beginning of the argument that needs correction.
+
+## Browser frontend
+
+Browser support is included in the standard installation. Serve the same
+application's commands and supported custom widgets in a browser:
+
+```bash
+python -m pip install ctui
+python my_tool.py --web
+python my_tool.py --web --web-port 0
+```
+
+No flags still opens the full-screen terminal interface. `-c`/`--command` and
+`-f`/`--file` still select CLI execution. `--web` selects browser-only mode and
+cannot be combined with CLI batches. The terminal prints the browser address
+and waits; Ctrl-C stops the server. Port 8080 is the default; port 0 chooses an
+available port. Use different ports to start independent application sessions.
+
+The startup URL includes a random session token in its fragment. Open that URL
+to authenticate; the browser removes the fragment after exchanging it for an
+HttpOnly session cookie. Treat the startup URL as a credential. Additional tabs
+at the same address share app state and output. Draft commands, completion,
+scrolling, focus, and confirmation/help dialogs belong to each tab. `help` opens
+a scrollable popup and preserves the output window. `exit` or Ctrl-Q stops the
+whole session. Closing all tabs leaves the server and submitted commands running;
+other views receive completed results. Unanswered dialogs are cancelled when their
+requesting tab disconnects.
+
+The browser uses packaged HTML, CSS, and JavaScript with no frontend build step,
+external assets, or JavaScript framework. WebSocket updates and commands run on
+the same asyncio loop as app lifecycle hooks. Existing async commands can overlap;
+append results use current output when each command finishes. Each view has a
+bounded, coalescing update queue so a slow browser does not hold up other views.
+Reconnecting views receive the current layout and output.
+
+Typing `exit` asks for confirmation in both terminal and browser UIs. An approved
+exit stops the shared application session. In browser mode, the submitting tab
+attempts to close; if browser policy blocks it, a message tells you to close it
+manually. Other tabs disconnect. Noninteractive CLI use requires `exit confirm`.
+
+### Custom layouts and lifecycle
+
+Reuse `compose()` and `ctui.widgets`: Vertical, Horizontal, Frame, Label, TextArea,
+Window, Button, and ProgressBar. Shared buffer text, frame titles, callable
+labels/footer text, visibility, and dimensions are translated into browser
+widgets. Buttons invoke the same handlers; editable custom text areas update
+shared state. Call `self.app.invalidate()` after changing application-owned
+labels or progress. Text-buffer changes trigger web redraws automatically.
+
+Web mode runs `on_start`, builds widgets and the runtime, then calls `on_ready`.
+`self.app` supports `invalidate()`, `exit()`, and `create_background_task()`;
+terminal renderer internals are unavailable. Shutdown cancels pending work
+before `on_stop` and service cleanup. In an existing event loop, use
+`await app.run_web(port=8080)` instead of `run()`.
+
+CTUI's message, confirmation, and text-input dialogs work from browser-triggered
+commands and callbacks. Native browser keyboard reservations and text selection
+still apply. Arbitrary third-party prompt-toolkit controls, custom floating
+containers, and renderer-specific extensions need a browser adapter; unsupported
+controls produce an explicit startup error rather than a partial interface.
+
+Try the complete example:
+
+```bash
+uv run examples/15_web_frontend.py --web --web-port 0
+```
+
+### Optional remote access and HTTPS
+
+Loopback HTTP is the default. To listen on other interfaces, explicitly specify
+a bind address and supply a certificate and private key:
+
+```bash
+python my_tool.py --web --web-host 0.0.0.0 --web-port 8443 \
+  --web-cert server-cert.pem --web-key server-key.pem
+```
+
+Open the printed address using the server's reachable hostname/IP in place of
+localhost when binding all interfaces. Use a certificate trusted by the browser
+and valid for that hostname/IP. HTTPS automatically uses secure WebSockets;
+remote plaintext binds and incomplete certificate/key pairs are rejected.
+Automatic certificate issuance and reverse-proxy configuration are not included.
+
+To reuse a supplied token, set an environment variable containing at least 24
+characters and pass `--web-token-env VARIABLE_NAME`. All connections still
+require authentication. Browser origins are checked and loopback hosts are
+validated. TLS encrypts traffic; the session token authorizes app access.
 
 ## Help and interface guidance
 
@@ -423,3 +511,19 @@ uv sync
 uv run python -m unittest discover -s tests -v
 uv run examples/filesystem.py
 ```
+
+## Browser verification for contributors
+
+The portable unittest suite includes real HTTP/WebSocket integration tests. Additional Playwright checks exercise browser behavior
+and all 16 tutorial apps through their actual `--web` entry points:
+
+```bash
+uv run --with playwright python -m playwright install firefox
+CTUI_BROWSER=firefox uv run --with playwright tests/browser_smoke.py
+CTUI_BROWSER=firefox uv run --with playwright tests/browser_tutorials.py
+```
+
+Use `CTUI_BROWSER=chromium` for Chromium; `CTUI_CHROMIUM_EXECUTABLE` can select
+a system installation. To repeat one tutorial, append its filename, such as
+`15_web_frontend.py`, to `browser_tutorials.py`. These checks use temporary
+application storage and close their servers; they do not require real devices.

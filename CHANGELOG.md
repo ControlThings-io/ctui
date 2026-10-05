@@ -5,6 +5,18 @@ All notable changes to ctui are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/). Dates use the
 ISO 8601 format.
 
+## [Unreleased]
+
+### Added
+
+- Asyncio browser frontend included in standard installs via `--web` and
+  `CtuiApp.run_web()`, with packaged HTML/CSS/JavaScript and WebSockets.
+- Shared browser views of one app session, existing custom-widget rendering,
+  completion, per-view help/confirmation/input popups, and optional authenticated
+  HTTPS access using supplied certificates.
+- Browser-session integration tests, installed web artifact checks, and a
+  runnable custom-layout web tutorial.
+
 ## [1.0.0] - 2026-09-13
 
 ctui 1.0 establishes the first stable public API for building typed command
