@@ -108,6 +108,27 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(suggestions, listed_names)
         self.assertIn(self.app.backend.current.name, suggestions)
 
+    async def test_project_delete_suggests_inactive_projects_and_refreshes(self):
+        await self.app.dispatch("project create lab")
+        await self.app.dispatch("project create staging")
+        completer = CommandCompleter(self.app.commands, self.app)
+
+        async def suggestions(text):
+            return [
+                item.text
+                async for item in completer.get_completions_async(
+                    Document(text), CompleteEvent()
+                )
+                if item.text
+            ]
+
+        self.assertEqual(await suggestions("project delete "), ["default", "lab"])
+        self.assertEqual(await suggestions("project delete l"), ["lab"])
+        await self.app.dispatch("project load default")
+        self.assertEqual(await suggestions("project delete "), ["lab", "staging"])
+        await self.app.dispatch("project delete lab confirm")
+        self.assertEqual(await suggestions("project delete "), ["staging"])
+
     async def test_history_search_clear_and_project_load_are_not_recorded(self):
         """Check implemented history suppression, including legacy history clear.
 

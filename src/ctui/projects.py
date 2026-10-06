@@ -1226,11 +1226,24 @@ def register_project_commands(app: Any) -> None:
         await backend.rename(name)
         return f"Renamed project {old!r} to {name!r}."
 
+    async def inactive_project_names(context):
+        """Suggest stored projects except the active project, which cannot be deleted."""
+        return [
+            name
+            for name in await project_names(context)
+            if name != backend.current.name
+        ]
+
     @register(
         name="project delete",
         record_history=False,
         confirmation="Permanently delete project {name} and all of its data?",
-        arguments={"name": Argument(help="Inactive project to permanently delete")},
+        arguments={
+            "name": Argument(
+                help="Inactive project to permanently delete",
+                completer=inactive_project_names,
+            )
+        },
     )
     async def project_delete(name: str):
         """Permanently delete an inactive project."""

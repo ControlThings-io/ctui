@@ -1,6 +1,6 @@
 # Project status
 
-Last reconciled: 2026-10-06 on `main` at `4833e58`, after PR #7 merged the
+Last reconciled: 2026-10-06 on `main` at `813f9aa`, after PR #7 merged the
 web frontend. Owner-supplied Windows CI output reports seven test errors across
 Python 3.11–3.14; no successful remote rerun or publication is claimed.
 
@@ -31,7 +31,15 @@ Python 3.11–3.14; no successful remote rerun or publication is claimed.
   manual loading; default data persists. Current selection remains informational
   in state.json. See D07 for the superseded startup behavior.
 
+- `project delete` completion lists inactive catalog projects, filters prefixes,
+  and refreshes after switching or deleting projects in both frontends.
+
 ## Validation evidence
+
+- October 6 deletion completion: all 158 tests passed locally on Python
+  3.11.16/Linux x86-64, including catalog order, active-project exclusion,
+  prefix filtering and refresh after load/delete. Black/isort and whitespace
+  checks passed. Remote CI remains pending.
 
 - October 6 startup change: all 157 tests passed on Python 3.11.16/Linux x86-64.
   Regressions verify restart after saveas/load, preserved data, manual loading,
@@ -101,5 +109,6 @@ Python 3.11–3.14; no successful remote rerun or publication is claimed.
 ## Handoff
 
 Web frontend changes are merged into `main` via PR #7; Windows CI fixes are
-committed at `4833e58`. Default-project startup changes are local and uncommitted;
+committed at `4833e58`; default-project startup is committed at `813f9aa`.
+Project deletion completion changes are local and uncommitted;
 commit/push only with explicit authorization.
