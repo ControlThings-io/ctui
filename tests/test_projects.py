@@ -49,6 +49,32 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await self.app.configs.get("local"), {"host": "127.0.0.1"})
         self.assertTrue((Path(self.temporary.name) / "state.json").exists())
 
+    async def test_restart_uses_default_and_saved_copy_requires_loading(self):
+        await self.app.configs.save("device", {"port": 502})
+        await self.app.dispatch("project saveas lab")
+        await self.app.configs.save("device", {"port": 503})
+        await self.app.backend.close()
+        await self.app.backend.open()
+        self.assertEqual(self.app.backend.current.name, "default")
+        self.assertEqual(await self.app.configs.get("device"), {"port": 502})
+        await self.app.dispatch("project load lab")
+        self.assertEqual(await self.app.configs.get("device"), {"port": 503})
+        await self.app.backend.close()
+        await self.app.backend.open()
+        self.assertEqual(self.app.backend.current.name, "default")
+
+    async def test_restart_creates_default_when_only_saved_projects_exist(self):
+        await self.app.dispatch("project rename archive")
+        await self.app.configs.save("device", {"port": 503})
+        await self.app.backend.close()
+        await self.app.backend.open()
+        self.assertEqual(self.app.backend.current.name, "default")
+        with self.assertRaisesRegex(CommandError, "Unknown config"):
+            await self.app.configs.get("device")
+        self.assertEqual(await self.app.configs.get("local"), {"host": "127.0.0.1"})
+        await self.app.dispatch("project load archive")
+        self.assertEqual(await self.app.configs.get("device"), {"port": 503})
+
     async def test_project_create_saveas_load_rename_and_delete(self):
         await self.app.dispatch("project create lab")
         await self.app.configs.save("device", {"port": 502})

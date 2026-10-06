@@ -380,7 +380,12 @@ directly with `await self.events.emit("download_progress", percent=50)`.
 History and storage remain injectable. An application with a stable `app_id`
 also receives a default SQLite project backend in the platform-appropriate user
 data directory. Each project has its own database containing named configs,
-command history, record sessions, and raw or decoded protocol records:
+command history, record sessions, and raw or decoded protocol records. Every
+startup opens `default`, creating it if needed. Existing data in `default`
+persists across runs and can be reset like any project with `project reset`.
+Load saved projects explicitly with `project load NAME`.  Create a new project
+with `project create NAME` or fork an current proeject with `project saveas NAME`.
+
 
 ```python
 class ModbusTool(CtuiApp):

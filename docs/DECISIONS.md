@@ -126,6 +126,12 @@ a catalog, and a separate active-selection file. Export profiles as versioned
 JSON; TOML was discussed for display, not chosen for exchange. Allow application
 config templates. Python 3.11 became the minimum.
 
+Accepted follow-up, October 6: startup always opens the project named `default`,
+creating it when absent even if other projects exist. Saved projects require an
+explicit load; restoring the last active selection is superseded. Default data
+persists, and saveas still activates its copy for the current run. state.json
+records the current selection but does not determine startup.
+
 Deletion is permanent by explicit preference. Destructive commands require a
 formatted confirmation message so approval names the affected data. Command
 history can be suppressed, especially for project switching and resets. Export

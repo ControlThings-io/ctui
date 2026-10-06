@@ -2,7 +2,8 @@
 
 A catalog maps human names to UUID identities; each project has its own database
 so snapshots can travel between installations of the same application. state.json
-records the last selected UUID. aiosqlite moves SQL work off the event loop;
+records the current UUID for information; startup always opens default.
+aiosqlite moves SQL work off the event loop;
 filesystem and JSON operations here are still synchronous. Individual SQL calls
 are queued by the connection, not a blanket guarantee of isolation across
 multi-call operations. Applications should coordinate project switches and
@@ -480,7 +481,9 @@ class SqliteProjectBackend:
     Use a stable app_id to isolate application data and validate imports. The
     default root comes from platformdirs; data_dir overrides it. Store the
     catalog at projects/catalog.sqlite3, UUID databases at projects/databases,
-    and active selection in state.json. history, configs, and records facades
+    and the current selection in state.json (informational, never restored).
+    Startup always activates default, creating it if absent. Other projects
+    require explicit loading. history, configs, and records facades
     always follow the current connection.
 
     Await open() before using services and close() after use; CtuiApp's runtime
@@ -566,12 +569,12 @@ class SqliteProjectBackend:
         self.records = ProjectRecords(self)
 
     async def open(self) -> None:
-        """Open the catalog and activate the saved, first, or default project.
+        """Open the catalog and activate default, creating it if absent.
 
-        Read the selected UUID from state.json. Missing or malformed state falls
-        back to the first catalog project in name order; an empty catalog creates
-        default. Activation validates/migrates the database and adds missing config
-        templates. Call close() even if opening fails partway through.
+        Never restore the previous selection from state.json or choose another
+        catalog project. Saved projects require an explicit load. Default's
+        existing contents persist; activation validates/migrates its database
+        and adds missing config templates. Call close() even if opening fails.
         """
         self.databases_dir.mkdir(parents=True, exist_ok=True)
         self.catalog = await _connect(self.catalog_path)
@@ -582,14 +585,9 @@ class SqliteProjectBackend:
                 created_at TEXT NOT NULL, modified_at TEXT NOT NULL)""")
         await self.catalog.commit()
         projects = await self.list_projects()
-        wanted = self._read_state()
-        selected = next((p for p in projects if p.id == wanted), None)
+        selected = next((p for p in projects if p.name == "default"), None)
         if selected is None:
-            selected = (
-                projects[0]
-                if projects
-                else await self.create("default", activate=False)
-            )
+            selected = await self.create("default", activate=False)
         await self.load(selected.name)
 
     async def close(self) -> None:
@@ -604,15 +602,6 @@ class SqliteProjectBackend:
     def _database_path(self, project_id: str) -> Path:
         """Derive the database filename from UUID identity, never the display name."""
         return self.databases_dir / f"{project_id}.sqlite3"
-
-    def _read_state(self) -> str | None:
-        """Read the saved project UUID; ignore missing or malformed selection files."""
-        try:
-            return json.loads(self.state_path.read_text(encoding="utf-8")).get(
-                "active_project"
-            )
-        except (OSError, json.JSONDecodeError, AttributeError):
-            return None
 
     def _write_state(self) -> None:
         """Replace state.json atomically with the currently selected project UUID."""

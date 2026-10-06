@@ -1,6 +1,6 @@
 # Project status
 
-Last reconciled: 2026-10-05 on `main` at `0c9a25f`, after PR #7 merged the
+Last reconciled: 2026-10-06 on `main` at `4833e58`, after PR #7 merged the
 web frontend. Owner-supplied Windows CI output reports seven test errors across
 Python 3.11–3.14; no successful remote rerun or publication is claimed.
 
@@ -27,7 +27,16 @@ Python 3.11–3.14; no successful remote rerun or publication is claimed.
 - Web completion rows separate bright suggestion labels from muted help with
   aligned columns and a subtle divider; narrow screens stack indented help.
 
+- Startup always opens `default`, creating it if absent. Saved projects require
+  manual loading; default data persists. Current selection remains informational
+  in state.json. See D07 for the superseded startup behavior.
+
 ## Validation evidence
+
+- October 6 startup change: all 157 tests passed on Python 3.11.16/Linux x86-64.
+  Regressions verify restart after saveas/load, preserved data, manual loading,
+  and creation of default when only a renamed saved project exists. Black/isort
+  and whitespace checks passed. Remote matrix validation remains pending.
 
 - October 5 Windows CI fix: help fixtures use explicit pipe input/dummy output,
   avoiding Windows console discovery. Path suggestions preserve typed separators
@@ -91,5 +100,6 @@ Python 3.11–3.14; no successful remote rerun or publication is claimed.
 
 ## Handoff
 
-Web frontend changes are merged into `main` via PR #7. Current Windows CI fixes
-are local and uncommitted; commit/push only with explicit authorization.
+Web frontend changes are merged into `main` via PR #7; Windows CI fixes are
+committed at `4833e58`. Default-project startup changes are local and uncommitted;
+commit/push only with explicit authorization.
