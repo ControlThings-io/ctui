@@ -6,8 +6,11 @@ tests inspect completer results; real Buffer behavior is covered separately in
 test_named_completion.py.
 """
 
+import shlex
 import unittest
+from typing import Literal
 
+from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.completion import CompleteEvent
 from prompt_toolkit.document import Document
 
@@ -26,6 +29,66 @@ class CompletionTests(unittest.IsolatedAsyncioTestCase):
                 Document(text, cursor_position=len(text)), CompleteEvent()
             )
         ]
+
+    async def test_list_completion_filters_exact_elements_and_preserves_prefix(self):
+        commands, words = Commands(), []
+
+        def available(context):
+            words.append(context.word)
+            return ["alpha", "beta", "gamma"]
+
+        @commands.register(arguments={"names": Argument(completer=available)})
+        def read(names: list[str] | None = None):
+            return names
+
+        @commands.register(
+            arguments={"names": Argument(flags=("--names",), completer=available)}
+        )
+        def named(names: list[str] | None = None):
+            return names
+
+        completer = CommandCompleter(commands)
+        for text in ("read alpha,be", "named --names=alpha,be", 'read "alpha,be'):
+            with self.subTest(text=text):
+                matches = await self.collect(completer, text)
+                self.assertEqual([c.display_text for c in matches], ["beta", "gamma"])
+                buffer = Buffer(document=Document(text))
+                buffer.apply_completion(matches[0])
+                item, arguments = commands.resolve(buffer.text)
+                self.assertEqual(item.parse_args(arguments)["names"], ["alpha", "beta"])
+        matches = await self.collect(completer, "read alpha,beta,")
+        self.assertEqual([c.display_text for c in matches], ["gamma"])
+        matches = await self.collect(completer, "read alpha,beta")
+        self.assertEqual([c.display_text for c in matches], ["gamma"])
+        self.assertTrue(words)
+        self.assertEqual(set(words), {""})
+        item, arguments = commands.resolve("read alpha,beta")
+        self.assertEqual(
+            await item.expand_unique_arguments(arguments), shlex.join(["alpha,beta"])
+        )
+
+    async def test_list_hints_and_element_choices_after_comma(self):
+        commands = Commands()
+
+        @commands.register(arguments={"names": Argument(help="Names to read")})
+        def read(names: list[str] | None = None):
+            pass
+
+        @commands.register
+        def numbers(numbers: list[Literal[1, 2, 3]]):
+            pass
+
+        completer = CommandCompleter(commands)
+        hint = (await self.collect(completer, "read first,"))[0]
+        self.assertEqual(hint.text, "")
+        self.assertEqual(hint.start_position, 0)
+        self.assertIn("Names to read", str(hint.display_meta))
+        matches = await self.collect(completer, "numbers 1,")
+        self.assertEqual([c.display_text for c in matches], ["2", "3"])
+        buffer = Buffer(document=Document("numbers 1,"))
+        buffer.apply_completion(matches[0])
+        item, arguments = commands.resolve(buffer.text)
+        self.assertEqual(item.parse_args(arguments)["numbers"], [1, 2])
 
     async def test_command_and_argument_dropdowns(self):
         commands = Commands()

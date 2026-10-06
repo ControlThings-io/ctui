@@ -138,7 +138,8 @@ class CompletionContext:
     """Snapshot supplied to a sync or async completion provider.
 
     command is the resolved metadata, parameter is the argument being entered,
-    word is its partial text, and arguments contains earlier parsed values.
+    word is its partial text (empty for lists, whose element filtering ctui
+    handles), and arguments contains earlier parsed values.
     Omitted defaults need not be present. app is the application when supplied
     by the caller; providers can inspect application state without adding a
     hidden context parameter to command signatures.
@@ -233,6 +234,15 @@ def _token_starts(text: str) -> list[int]:
             starts.append(index)
             in_token = True
     return starts
+
+
+def _list_annotation(annotation):
+    """Return a list annotation, unwrapping Optional, or None for other types."""
+    if get_origin(annotation) in (Union, UnionType) and type(None) in get_args(
+        annotation
+    ):
+        annotation = next(a for a in get_args(annotation) if a is not type(None))
+    return annotation if get_origin(annotation) is list else None
 
 
 def _convert(value: str, annotation: Any, name: str) -> Any:
@@ -589,7 +599,11 @@ class Command:
         values are prefix-filtered, converted, and checked by the validator. If no
         candidates exist, return a display-only type aid rather than invented input.
         Completion providers can run during dispatch for unique-prefix expansion,
-        so they should avoid side effects.
+        so they should avoid side effects. For list arguments, providers receive
+        an empty word and return individual elements. ctui excludes exact typed
+        elements without prefix filtering partial entries, preserves earlier
+        comma-separated elements on insertion, and validates the resulting list.
+        List values are never expanded automatically during dispatch.
         """
         values, parameter = self.parse_args(text, partial=True)
         option_names = {
@@ -631,18 +645,30 @@ class Command:
         config, annotation = self.arguments.get(
             parameter.name, Argument()
         ), self.hints.get(parameter.name, parameter.annotation)
+        list_type = _list_annotation(annotation)
+        list_prefix = word.rpartition(",")[0] + "," if "," in word else ""
+        selected = set(word.split(",")) if list_type is not None else set()
+        candidate_annotation = (
+            (get_args(list_type) or (str,))[0] if list_type is not None else annotation
+        )
         items: list[Any] = []
         if isinstance(config.choices, Mapping):
             items += [CompletionItem(str(k), v) for k, v in config.choices.items()]
         elif config.choices is not None:
             items += list(config.choices)
-        elif get_origin(annotation) is Literal:
-            items += list(get_args(annotation))
-        elif inspect.isclass(annotation) and issubclass(annotation, Enum):
-            items += [CompletionItem(x.name, str(x.value)) for x in annotation]
+        elif get_origin(candidate_annotation) is Literal:
+            items += list(get_args(candidate_annotation))
+        elif inspect.isclass(candidate_annotation) and issubclass(
+            candidate_annotation, Enum
+        ):
+            items += [
+                CompletionItem(x.name, str(x.value)) for x in candidate_annotation
+            ]
         if config.completer:
             generated = config.completer(
-                CompletionContext(self, parameter, word, values, app)
+                CompletionContext(
+                    self, parameter, "" if list_type is not None else word, values, app
+                )
             )
             items += list(
                 await generated if inspect.isawaitable(generated) else generated
@@ -660,17 +686,30 @@ class Command:
             return [CompletionItem("", detail, f"<{label}: {type_name}>")]
         valid = []
         for item in normalized:
-            if not item.value.startswith(word):
+            if list_type is not None:
+                if item.value in selected:
+                    continue
+            elif not item.value.startswith(word):
                 continue
             try:
-                converted = _convert(item.value, annotation, parameter.name)
+                converted = _convert(
+                    list_prefix + item.value if list_type is not None else item.value,
+                    annotation,
+                    parameter.name,
+                )
             except CommandValidationError:
                 continue
             if config.validator:
                 verdict = config.validator(converted)
                 if verdict is False or isinstance(verdict, str):
                     continue
-            valid.append(item)
+            valid.append(
+                CompletionItem(
+                    list_prefix + item.value, item.help, item.display or item.value
+                )
+                if list_type is not None
+                else item
+            )
         return valid
 
     async def expand_unique_arguments(self, text: str, app=None) -> str:
@@ -698,6 +737,16 @@ class Command:
             prefix = shlex.join(expanded + ([option] if inline else []))
             if prefix:
                 prefix += " "
+            _, parameter = self.parse_args(prefix, partial=True)
+            if (
+                parameter
+                and _list_annotation(
+                    self.hints.get(parameter.name, parameter.annotation)
+                )
+                is not None
+            ):
+                expanded.append(token)
+                continue
             matches = [
                 item.value
                 for item in await self.complete(prefix, value if inline else token, app)

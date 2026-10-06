@@ -239,6 +239,14 @@ partial word, parsed arguments, and app. It may return strings or
 `CompletionItem` values with dropdown help. Results pass through type conversion
 and validation, so the menu does not recommend invalid input. Arguments remain
 positional even when they have `Argument` completion or validation metadata.
+For `list[T]` arguments, including optional lists, completion continues after
+commas without requiring spaces. Providers return individual elements and receive
+an empty `context.word`; ctui excludes exact values already typed anywhere in the
+list. Partial entries do not filter candidates. Selecting an item preserves earlier
+comma-separated values and replaces the current entry. Without a provider, the
+argument help or type hint remains visible. List values are parsed as typed rather
+than automatically expanded from a single remaining suggestion.
+
 For filesystem arguments, opt into the reusable `PathCompleter`:
 
 ```python

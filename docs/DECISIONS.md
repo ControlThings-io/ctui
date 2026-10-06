@@ -68,6 +68,13 @@ Allow unique command/choice abbreviations while rejecting ambiguity. Put error
 locations back in the original input so UI users can correct it and CLI users
 can identify the bad argument.
 
+Accepted follow-up, October 6: comma-separated list arguments keep element
+completion active after commas. ctui excludes exact matches already typed across
+the list, without prefix-filtering partial entries. Providers return individual
+candidates with an empty context word; ctui owns filtering and preserves earlier
+elements when inserting. Lists do not participate in dispatch-time unique-prefix
+expansion, preventing suggestions from rewriting supplied list values.
+
 Detailed contracts belong in [completion.py](../src/ctui/completion.py),
 [commands.py](../src/ctui/commands.py), and
 [application.py](../src/ctui/application.py). Sep 18 completion fixes retain

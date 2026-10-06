@@ -1,6 +1,6 @@
 # Project status
 
-Last reconciled: 2026-10-06 on `main` at `813f9aa`, after PR #7 merged the
+Last reconciled: 2026-10-06 on `main` at `d4dd614`, after PR #7 merged the
 web frontend. Owner-supplied Windows CI output reports seven test errors across
 Python 3.11–3.14; no successful remote rerun or publication is claimed.
 
@@ -34,7 +34,17 @@ Python 3.11–3.14; no successful remote rerun or publication is claimed.
 - `project delete` completion lists inactive catalog projects, filters prefixes,
   and refreshes after switching or deleting projects in both frontends.
 
+- List argument completion continues after commas in both frontends. ctui
+  excludes exact typed elements, leaves partial matches available, and preserves
+  earlier elements on insertion; providers receive an empty word (D04).
+
 ## Validation evidence
+
+- October 6 list completion: all 160 tests passed on Python 3.11.16/Linux
+  x86-64, including optional lists, inline options, unfinished quotes, insertion,
+  exact filtering, help hints, Literal element choices, and unchanged dispatch
+  list values. Black/isort and whitespace checks passed. Remote matrix and manual
+  frontend acceptance remain pending.
 
 - October 6 deletion completion: all 158 tests passed locally on Python
   3.11.16/Linux x86-64, including catalog order, active-project exclusion,
@@ -110,5 +120,6 @@ Python 3.11–3.14; no successful remote rerun or publication is claimed.
 
 Web frontend changes are merged into `main` via PR #7; Windows CI fixes are
 committed at `4833e58`; default-project startup is committed at `813f9aa`.
-Project deletion completion changes are local and uncommitted;
+Project deletion completion is committed at `d4dd614`. List argument completion
+changes are local and uncommitted;
 commit/push only with explicit authorization.
