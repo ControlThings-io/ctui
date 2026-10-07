@@ -107,6 +107,13 @@ Accepted follow-up, October 6: keep new terminal output at the first column
 of its final line, preserving long unwrapped lines. Alt-Left/Right scroll output
 horizontally in terminal and browser modes while command input retains focus.
 
+Accepted follow-up, October 6: scoped terminal output protection queues Python
+stdout/stderr through prompt-toolkit run_in_terminal, preserving diagnostics
+without overwriting the full-screen renderer. Redirect existing handlers bound
+to the original standard streams; preserve logging configuration and other
+destinations. Restore streams/handlers and drain pending output on exit. CLI and
+web lifecycle behavior stays unchanged; direct OS writes are outside the contract.
+
 Apply output appends when commands finish to avoid overwriting concurrent
 results with stale snapshots. See [CommandResult](../src/ctui/commands.py).
 Progress tracking stays application-owned; the

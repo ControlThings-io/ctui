@@ -30,6 +30,7 @@ from ctui.keybindings import get_key_bindings
 from ctui.layout import CtuiLayout
 from ctui.services import MemoryHistory, NullStorage
 from ctui.style import CtuiStyle
+from ctui.terminal_output import protect_terminal_output
 
 
 class CtuiApp:
@@ -437,25 +438,29 @@ class CtuiApp:
 
         Open the backend, call on_start, build the UI, call on_ready, and await the
         terminal application. On exit or failure, call on_stop if startup completed,
-        then close storage and the opened backend. Return prompt-toolkit's result.
+        then close storage and the opened backend. Scope Python stdout/stderr and
+        standard-stream logging protection across startup, rendering and cleanup;
+        diagnostics are delivered safely and original streams restored on exit.
+        Return prompt-toolkit's result.
         """
-        backend_opened = False
-        started = False
-        try:
-            if self.backend is not None:
-                backend_opened = True
-                await self.backend.open()
-            await self._hook(self.on_start)
-            started = True
-            self._build_application()
-            await self._hook(self.on_ready)
-            return await self.app.run_async()
-        finally:
+        async with protect_terminal_output():
+            backend_opened = False
+            started = False
             try:
-                if started:
-                    await self._hook(self.on_stop)
+                if self.backend is not None:
+                    backend_opened = True
+                    await self.backend.open()
+                await self._hook(self.on_start)
+                started = True
+                self._build_application()
+                await self._hook(self.on_ready)
+                return await self.app.run_async()
             finally:
-                await self._close_runtime(backend_opened)
+                try:
+                    if started:
+                        await self._hook(self.on_stop)
+                finally:
+                    await self._close_runtime(backend_opened)
 
     async def run_web(
         self,

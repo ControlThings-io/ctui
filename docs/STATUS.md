@@ -1,6 +1,6 @@
 # Project status
 
-Last reconciled: 2026-10-06 on `main` at `216ef28`, after PR #7 merged the
+Last reconciled: 2026-10-06 on `main` at `47a454a`, after PR #7 merged the
 web frontend. Owner-supplied Windows CI output reports seven test errors across
 Python 3.11–3.14; no successful remote rerun or publication is claimed.
 
@@ -44,7 +44,18 @@ Python 3.11–3.14; no successful remote rerun or publication is claimed.
   in terminal and browser modes. Generated UI help lists the Alt-arrow shortcuts
   beside the existing output navigation keys.
 
+- Full-screen lifecycle queues stdout/stderr and pre-existing standard-stream
+  logging through prompt-toolkit, preserves diagnostics, and restores streams
+  and handler references on exit. CLI/web behavior stays unchanged (D05).
+
 ## Validation evidence
+
+- October 6 terminal-output protection: all 165 tests passed on Python
+  3.11.16/Linux x86-64. Real terminal application tests cover existing handlers,
+  background writes, CommandError popup and input preservation; scope tests cover
+  failure/cancellation, partial output and retained handlers after shutdown.
+  Black/isort and whitespace checks passed. Real console and remote platform
+  matrix acceptance remain pending.
 
 - October 6 output alignment/scrolling: all 162 tests passed on Python
   3.11.16/Linux x86-64. Regressions cover wide output, empty/trailing lines,
@@ -133,5 +144,6 @@ Python 3.11–3.14; no successful remote rerun or publication is claimed.
 Web frontend changes are merged into `main` via PR #7; Windows CI fixes are
 committed at `4833e58`; default-project startup is committed at `813f9aa`.
 Project deletion completion is committed at `d4dd614`; list completion is
-committed at `216ef28`. Output alignment changes are local and uncommitted;
+committed at `216ef28`. Output alignment is committed at `47a454a`. Terminal output protection is local
+and uncommitted;
 commit/push only with explicit authorization.

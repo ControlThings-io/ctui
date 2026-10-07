@@ -90,6 +90,12 @@ Error: first must be float: 'wrong'
 In the full-screen UI, an invalid command is restored to the input field and the
 cursor moves to the beginning of the argument that needs correction.
 
+Full-screen terminal mode protects Python stdout/stderr and existing logging
+handlers targeting those streams. Diagnostics are printed safely outside the UI,
+then the interface redraws. Logging levels, formatting, filters, and file handlers
+are preserved; stream changes are scoped to the terminal lifecycle. Direct OS
+file-descriptor writes and subprocess output require application-side routing.
+
 ## Browser frontend
 
 Browser support is included in the standard installation. Serve the same
