@@ -1,6 +1,6 @@
 # Project status
 
-Last reconciled: 2026-10-06 on `main` at `47a454a`, after PR #7 merged the
+Last reconciled: 2026-10-06 on `main` at `ec16fb1`, after PR #7 merged the
 web frontend. Owner-supplied Windows CI output reports seven test errors across
 Python 3.11–3.14; no successful remote rerun or publication is claimed.
 
@@ -48,7 +48,18 @@ Python 3.11–3.14; no successful remote rerun or publication is claimed.
   logging through prompt-toolkit, preserves diagnostics, and restores streams
   and handler references on exit. CLI/web behavior stays unchanged (D05).
 
+- Config commands now live under `project configs` with list/show/export/import/
+  reset subcommands, without old-name aliases. `self.configs`, persistence, JSON
+  format and reset confirmation are unchanged (D07).
+
 ## Validation evidence
+
+- October 6 config command move: all 166 tests passed on Python 3.11.16/Linux
+  x86-64, covering nested help/completion, old-name removal, unchanged reset
+  prompt, config exchange and project statistics. Storage tutorial 14 passed in
+  Chromium; automatic CLI showed its local config through the new command.
+  Black/isort and whitespace checks passed. Remote matrix/manual terminal
+  acceptance remain pending.
 
 - October 6 terminal-output protection: all 165 tests passed on Python
   3.11.16/Linux x86-64. Real terminal application tests cover existing handlers,
@@ -144,6 +155,6 @@ Python 3.11–3.14; no successful remote rerun or publication is claimed.
 Web frontend changes are merged into `main` via PR #7; Windows CI fixes are
 committed at `4833e58`; default-project startup is committed at `813f9aa`.
 Project deletion completion is committed at `d4dd614`; list completion is
-committed at `216ef28`. Output alignment is committed at `47a454a`. Terminal output protection is local
-and uncommitted;
+committed at `216ef28`. Output alignment is committed at `47a454a`. Terminal output protection is committed at `ec16fb1`. Config command nesting
+is local and uncommitted;
 commit/push only with explicit authorization.

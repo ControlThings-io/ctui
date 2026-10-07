@@ -1,8 +1,8 @@
 """Use persistent projects, configuration templates, and protocol records.
 
 Run: uv run examples/14_lifecycle_and_storage.py
-Try: configs list
-Try: configs show local
+Try: project configs list
+Try: project configs show local
 Try: profile save lab 10.0.0.20 502
 Try: traffic record sent 010300000001
 Try: project

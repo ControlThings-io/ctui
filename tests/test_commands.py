@@ -45,11 +45,11 @@ class CommandTests(unittest.IsolatedAsyncioTestCase):
     def test_partial_subcommand_prefers_longest_command_depth(self):
         commands = Commands()
 
-        @commands.register(name="configs")
+        @commands.register(name="project configs")
         def configs():
             pass
 
-        @commands.register(name="configs list")
+        @commands.register(name="project configs list")
         def configs_list():
             pass
 
@@ -65,8 +65,8 @@ class CommandTests(unittest.IsolatedAsyncioTestCase):
         def project_load():
             pass
 
-        item, arguments = commands.resolve("conf l")
-        self.assertIs(item, commands["configs list"])
+        item, arguments = commands.resolve("proj conf l")
+        self.assertIs(item, commands["project configs list"])
         self.assertEqual(arguments, "")
 
         item, arguments = commands.resolve("proj li")

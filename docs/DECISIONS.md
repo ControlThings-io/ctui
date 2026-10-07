@@ -150,6 +150,12 @@ explicit load; restoring the last active selection is superseded. Default data
 persists, and saveas still activates its copy for the current run. state.json
 records the current selection but does not determine startup.
 
+Accepted follow-up, October 6: expose configuration commands under
+`project configs`, including list/show/export/import/reset. Remove unreleased
+top-level configs command names without compatibility aliases. Retain
+`self.configs` and its API, project persistence, JSON exchange format and reset
+confirmation; the user command hierarchy reflects project ownership.
+
 Deletion is permanent by explicit preference. Destructive commands require a
 formatted confirmation message so approval names the affected data. Command
 history can be suppressed, especially for project switching and resets. Export

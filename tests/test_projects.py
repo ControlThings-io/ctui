@@ -26,6 +26,7 @@ from prompt_toolkit.document import Document
 
 import ctui.projects as projects_module
 from ctui import CommandError, ConfirmationRequired, CtuiApp, SqliteProjectBackend
+from ctui.commands import CommandNotFound
 from ctui.completion import CommandCompleter
 
 
@@ -145,13 +146,58 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
         await self.app.dispatch("history clear confirm")
         self.assertEqual(await self.app.history.all(), [])
 
+    async def test_nested_config_commands_help_completion_and_reset(self):
+        names = ["list", "show", "export", "import", "reset"]
+        self.assertIn("Project:", (await self.app.dispatch("project")).output)
+        self.assertEqual((await self.app.dispatch("project configs")).output, "local")
+        self.assertEqual(
+            (await self.app.dispatch("project configs list")).output, "local"
+        )
+        self.assertEqual(
+            json.loads((await self.app.dispatch("project configs show local")).output),
+            {"host": "127.0.0.1"},
+        )
+        completer = CommandCompleter(self.app.commands, self.app)
+        for prefix in ("project configs ", "help project configs "):
+            matches = [
+                c.text
+                async for c in completer.get_completions_async(
+                    Document(prefix), CompleteEvent()
+                )
+            ]
+            for name in names:
+                self.assertIn(name, matches)
+        group_help = self.app.format_ui_help("project configs")
+        for name in names:
+            command = "project configs " + name
+            self.assertIn(name, group_help)
+            self.assertIn(command, self.app.format_cli_help(target=command))
+            with self.assertRaises(CommandNotFound):
+                self.app.commands.resolve("configs " + name)
+        with self.assertRaises(CommandNotFound):
+            self.app.commands.resolve("configs")
+        await self.app.configs.save("local", {"host": "changed"})
+        with self.assertRaises(ConfirmationRequired) as required:
+            await self.app.dispatch("project configs reset")
+        self.assertIn(
+            "Reset all configurations to application templates?",
+            str(required.exception),
+        )
+        await self.app.dispatch("project configs reset confirm")
+        self.assertEqual(await self.app.configs.get("local"), {"host": "127.0.0.1"})
+
     async def test_config_json_and_project_snapshot_round_trip(self):
         await self.app.configs.save("remote", {"host": "10.0.0.2", "port": 502})
         root = Path(self.temporary.name)
         configs_path = root / "configs.json"
-        await self.app.dispatch(f'configs export "{configs_path}"')
+        await self.app.dispatch(f'project configs export "{configs_path}"')
         document = json.loads(configs_path.read_text(encoding="utf-8"))
         self.assertEqual(document["format"], "ctui-configs")
+        self.assertEqual(document["version"], 1)
+        self.assertEqual(document["app_id"], self.app.app_id)
+        await self.app.configs.save("remote", {"host": "changed"})
+        await self.app.dispatch(f'project configs import "{configs_path}"')
+        self.assertEqual((await self.app.configs.get("remote"))["port"], 502)
 
         project_path = root / "shared.ctui-project"
         await self.app.dispatch(f'project export "{project_path}"')

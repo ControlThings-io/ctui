@@ -57,7 +57,7 @@ CASES = {
     "12_keyboard_shortcuts.py": [],
     "13_custom_layout.py": [("system status", "Controller: online")],
     "14_lifecycle_and_storage.py": [
-        ("configs show local", "127.0.0.1"),
+        ("project configs show local", "127.0.0.1"),
         ("profile save lab 10.0.0.20 502", "Saved profile 'lab'."),
         ("traffic record sent 010300000001", "Recorded 6 bytes."),
     ],

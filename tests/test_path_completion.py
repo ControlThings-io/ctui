@@ -123,8 +123,8 @@ class PathCompletionTests(unittest.IsolatedAsyncioTestCase):
             for name in (
                 "project import",
                 "project export",
-                "config import",
-                "config export",
+                "project configs import",
+                "project configs export",
                 "history export",
             ):
                 item, _ = app.commands.resolve(name)

@@ -1297,15 +1297,15 @@ def register_project_commands(app: Any) -> None:
         await backend.reset(section)
         return f"Reset project {section}."
 
-    @register(name="configs", record_history=False)
-    @register(name="configs list", record_history=False)
+    @register(name="project configs", record_history=False)
+    @register(name="project configs list", record_history=False)
     async def configs_list():
         """List named configurations."""
         configs = await app.configs.list()
         return "\n".join(configs) if configs else "No configs."
 
     @register(
-        name="configs show",
+        name="project configs show",
         record_history=False,
         arguments={"name": Argument(help="Configuration to display")},
     )
@@ -1314,7 +1314,7 @@ def register_project_commands(app: Any) -> None:
         return json.dumps(await app.configs.get(name), indent=2)
 
     @register(
-        name="configs export",
+        name="project configs export",
         record_history=False,
         arguments={
             "path": Argument(help="Destination JSON file", completer=PathCompleter())
@@ -1326,7 +1326,7 @@ def register_project_commands(app: Any) -> None:
         return f"Exported configs to {path}."
 
     @register(
-        name="configs import",
+        name="project configs import",
         record_history=False,
         arguments={
             "path": Argument(
@@ -1340,7 +1340,7 @@ def register_project_commands(app: Any) -> None:
         return f"Imported {count} configs."
 
     @register(
-        name="configs reset",
+        name="project configs reset",
         record_history=False,
         confirmation="Reset all configurations to application templates?",
     )

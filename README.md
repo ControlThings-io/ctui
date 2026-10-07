@@ -441,7 +441,12 @@ in the project catalog.
 
 Built-in project commands create, clone, list, load, rename, permanently delete,
 import, export, and selectively reset projects. `project` shows active-project
-statistics. Configs export as versioned JSON, while whole projects export as
+statistics. Named configurations are managed through `project configs` (or
+`project configs list`), `project configs show NAME`, `project configs export PATH`,
+`project configs import PATH`, and `project configs reset`. These replace the
+unreleased top-level `configs` commands without aliases. Application code continues
+using `self.configs`; its service API and persistence remain unchanged.
+Configs export as versioned JSON, while whole projects export as
 consistent `.ctui-project` SQLite snapshots. Destructive commands show a UI
 confirmation dialog; noninteractive execution requires a trailing `confirm`.
 
