@@ -10,6 +10,7 @@ from __future__ import annotations
 import inspect
 import shlex
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import TextIO
 
@@ -340,7 +341,7 @@ class CtuiApp:
         failures occur before that stage. Listener errors also propagate.
 
         Return the normalized result. Presentation, including output updates and
-        exit requests, belongs to the caller; this method does not serialize
+        exit requests and result dialogs, belongs to the caller; this method does not serialize
         concurrent calls or render widgets.
         """
         await self.events.emit("command_submitted", text=text)
@@ -398,6 +399,13 @@ class CtuiApp:
                     f"not {type(raw).__name__}"
                 )
             if result.accepted:
+                if (
+                    item.result_title
+                    and result.output is not None
+                    and not result.clear_output
+                    and not result.exit_requested
+                ):
+                    result = replace(result, dialog_title=item.result_title)
                 if item.record_history:
                     appended = self.history.append(text)
                     if inspect.isawaitable(appended):

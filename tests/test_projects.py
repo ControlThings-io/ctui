@@ -12,6 +12,7 @@ of failed imports.
 """
 
 import asyncio
+import io
 import json
 import sqlite3
 import tempfile
@@ -185,6 +186,30 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
         )
         await self.app.dispatch("project configs reset confirm")
         self.assertEqual(await self.app.configs.get("local"), {"host": "127.0.0.1"})
+
+    async def test_cli_prints_builtin_dialog_results_normally(self):
+        output = io.StringIO()
+        app = CtuiApp(
+            app_id="io.example.cli-popups", data_dir=Path(self.temporary.name) / "cli"
+        )
+        status = await app.run_cli(["-c", "project configs"], stdout=output)
+        self.assertEqual(status, 0)
+        self.assertEqual(output.getvalue(), "No configs.\n")
+
+    async def test_builtin_result_metadata_follows_completed_actions(self):
+        for name, item in self.app.commands.commands.items():
+            if name.startswith("project") or name.startswith("history"):
+                self.assertTrue(item.result_title, name)
+        result = await self.app.dispatch("project create laboratory")
+        self.assertEqual(self.app.backend.current.name, "laboratory")
+        self.assertEqual(result.dialog_title, "Project created")
+        self.assertIn("laboratory", result.output)
+        result = await self.app.dispatch("project configs")
+        self.assertEqual(result.dialog_title, "Configurations")
+        self.assertEqual(result.output, "local")
+        result = await self.app.dispatch("clear")
+        self.assertTrue(result.clear_output)
+        self.assertIsNone(result.dialog_title)
 
     async def test_config_json_and_project_snapshot_round_trip(self):
         await self.app.configs.save("remote", {"host": "10.0.0.2", "port": 502})

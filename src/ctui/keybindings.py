@@ -23,6 +23,7 @@ clipboard operations remain the terminal's responsibility.
 # details at <http://www.gnu.org/licenses/>.
 """
 
+import asyncio
 import inspect
 import traceback
 
@@ -119,13 +120,25 @@ def get_key_bindings(ctui):
             if not result.accepted:
                 restore_if_latest()
                 return
-            if isinstance(result, _HelpResult):
-                dialog = MessageDialog(
-                    title="Help",
-                    text=ctui.format_ui_help(result.target),
-                    scrollbar=True,
-                )
-                await show_dialog(dialog)
+            if isinstance(result, _HelpResult) or result.dialog_title:
+                lock = getattr(ctui, "_result_dialog_lock", None)
+                if lock is None:
+                    ctui._result_dialog_lock = lock = asyncio.Lock()
+                async with lock:
+                    dialog = MessageDialog(
+                        title=(
+                            "Help"
+                            if isinstance(result, _HelpResult)
+                            else result.dialog_title
+                        ),
+                        text=(
+                            ctui.format_ui_help(result.target)
+                            if isinstance(result, _HelpResult)
+                            else result.output
+                        ),
+                        scrollbar=True,
+                    )
+                    await show_dialog(dialog)
                 return
             if result.clear_output:
                 ctui.layout.set_output("")

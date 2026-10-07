@@ -265,6 +265,40 @@ class WebTests(unittest.IsolatedAsyncioTestCase):
             if message.type.name == "TEXT":
                 self.assertNotEqual(message.json()["type"], "session-ended")
 
+    async def test_disconnect_after_result_dialog_keeps_completed_action(self):
+        completed = []
+
+        @self.app.commands.register(result_title="Completed")
+        async def action():
+            completed.append("done")
+            return "Action finished"
+
+        await self.login()
+        socket, _ = await self.connect()
+        await socket.send_json({"type": "command", "text": "action", "id": 1})
+        dialog = await self.receive(socket, "dialog")
+        self.assertEqual(dialog["text"], "Action finished")
+        self.assertEqual(completed, ["done"])
+        await socket.close()
+        self.assertEqual(completed, ["done"])
+        self.assertFalse(self.session.stopped.is_set())
+
+    async def test_history_result_dialog_is_local_and_preserves_output_updates(self):
+        await self.login()
+        socket, _ = await self.connect()
+        other, _ = await self.connect()
+        self.app.layout.set_output("application output")
+        await socket.send_json({"type": "command", "text": "history", "id": 1})
+        dialog = await self.receive(socket, "dialog")
+        self.assertEqual(dialog["title"], "Command history")
+        self.assertEqual(dialog["text"], "No command history.")
+        self.assertEqual(self.app.layout.output_field.text, "application output")
+        self.app.layout.set_output("background update")
+        await self.output(other, "background update")
+        await socket.send_json({"type": "answer", "id": dialog["id"], "button": 0})
+        await self.receive(socket, "finished")
+        self.assertEqual(self.app.layout.output_field.text, "background update")
+
     async def test_confirmation_and_existing_dialogs(self):
         await self.login()
         socket, _ = await self.connect()

@@ -119,6 +119,10 @@ Output window — these keys work while input keeps focus:
   Select and copy output using your terminal's mouse and clipboard shortcuts.
   Use your terminal's paste shortcut to paste into input.
 
+Result dialogs:
+  History and project commands preserve output and show results in popups.
+  Actions finish first; background output continues updating.
+
 Help dialog:
   Help preserves the main output. Use Up/Down or Page Up/Page Down to scroll.
   Ok stays focused while scrolling; press Enter to close.

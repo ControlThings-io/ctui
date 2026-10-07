@@ -6,10 +6,12 @@ create widgets without running a real terminal; these checks do not replace
 manual terminal acceptance. Export paths are quoted to preserve Windows paths.
 """
 
+import asyncio
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from ctui import CommandError, CommandResult, ConfirmationRequired, CtuiApp, command
 from ctui.commands import Argument, CommandNotFound, CommandValidationError
@@ -58,6 +60,49 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(rejected.exit_requested)
         accepted = await app.dispatch("exit", confirm_callback=lambda _: True)
         self.assertTrue(accepted.exit_requested)
+
+    async def test_opt_in_result_dialog_queues_and_preserves_background_output(self):
+        app = Demo()
+        app.layout = CtuiLayout(app)
+        done, seen, tasks = [], [], []
+        gate = asyncio.Event()
+
+        @app.commands.register(result_title="Action complete")
+        async def action():
+            done.append(1)
+            return "action finished"
+
+        async def display(dialog):
+            self.assertTrue(done)
+            seen.append(dialog.text)
+            app.layout.set_output("background update")
+            await gate.wait()
+
+        binding = next(
+            b
+            for b in get_key_bindings(app).bindings
+            if str(b.keys[0]) == "Keys.ControlM"
+        )
+        event = SimpleNamespace(
+            app=SimpleNamespace(
+                create_background_task=lambda coro: tasks.append(
+                    asyncio.create_task(coro)
+                )
+            )
+        )
+        with patch("ctui.keybindings.show_dialog", side_effect=display):
+            app.layout.input_field.text = "action"
+            binding.handler(event)
+            await asyncio.sleep(0)
+            app.layout.input_field.text = "action"
+            binding.handler(event)
+            await asyncio.sleep(0)
+            self.assertEqual(len(done), 2)
+            self.assertEqual(len(seen), 1)
+            gate.set()
+            await asyncio.gather(*tasks)
+        self.assertEqual(seen, ["action finished", "action finished"])
+        self.assertEqual(app.layout.output_field.text, "background update")
 
     async def test_class_commands_dispatch_history_and_events(self):
         history, seen = MemoryHistory(), []

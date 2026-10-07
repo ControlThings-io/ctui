@@ -1,6 +1,6 @@
 # Project status
 
-Last reconciled: 2026-10-06 on `main` at `ec16fb1`, after PR #7 merged the
+Last reconciled: 2026-10-06 on `main` at `0c8cc91`, after PR #7 merged the
 web frontend. Owner-supplied Windows CI output reports seven test errors across
 Python 3.11–3.14; no successful remote rerun or publication is claimed.
 
@@ -52,7 +52,19 @@ Python 3.11–3.14; no successful remote rerun or publication is claimed.
   reset subcommands, without old-name aliases. `self.configs`, persistence, JSON
   format and reset confirmation are unchanged (D07).
 
+- Built-in history/project results, including project configs, use queued UI
+  dialogs and preserve application output. Actions finish before presentation;
+  browser results belong to the submitting tab. CLI printing and clear/help/exit
+  behavior stay unchanged. Application commands can opt in with result_title.
+
 ## Validation evidence
+
+- Result popup change: all 171 tests passed on Python 3.11.16/Linux x86-64,
+  covering action completion, metadata, terminal queuing, output updates while
+  dialogs are open, web tab isolation/disconnect, and normal CLI printing.
+  Chromium storage tutorial 14 passed with the result popup flow. Black/isort
+  and whitespace checks passed. Manual terminal and remote matrix acceptance
+  remain pending.
 
 - October 6 config command move: all 166 tests passed on Python 3.11.16/Linux
   x86-64, covering nested help/completion, old-name removal, unchanged reset
@@ -156,5 +168,5 @@ Web frontend changes are merged into `main` via PR #7; Windows CI fixes are
 committed at `4833e58`; default-project startup is committed at `813f9aa`.
 Project deletion completion is committed at `d4dd614`; list completion is
 committed at `216ef28`. Output alignment is committed at `47a454a`. Terminal output protection is committed at `ec16fb1`. Config command nesting
-is local and uncommitted;
+is committed at `0c8cc91`. Built-in result dialog changes are local and uncommitted;
 commit/push only with explicit authorization.

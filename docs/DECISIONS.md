@@ -114,6 +114,14 @@ to the original standard streams; preserve logging configuration and other
 destinations. Restore streams/handlers and drain pending output on exit. CLI and
 web lifecycle behavior stays unchanged; direct OS writes are outside the contract.
 
+Accepted follow-up: built-in history and project commands, including project
+configs, present successful output in titled scrollable MessageDialogs in TUI
+and WUI. Finish actions, persistence, history and events before presentation.
+Preserve output updates and queue results in completion order; WUI dialogs belong
+to the submitting tab. Dismissal/disconnection never rolls back completed work.
+CLI prints results normally. clear/help/exit keep their established behavior.
+Application commands may opt in with result_title; ordinary output is unchanged.
+
 Apply output appends when commands finish to avoid overwriting concurrent
 results with stale snapshots. See [CommandResult](../src/ctui/commands.py).
 Progress tracking stays application-owned; the

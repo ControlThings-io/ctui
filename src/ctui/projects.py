@@ -1120,7 +1120,8 @@ def register_project_commands(app: Any) -> None:
     resetting history. Create, saveas, load, and import emit project_changed
     with previous/current metadata; create uses previous=None. Delete and reset
     commands require formatted confirmation. Config exchange uses JSON; project
-    exchange uses SQLite. Record-specific commands remain application-owned.
+    exchange uses SQLite. Successful text results request titled UI dialogs;
+    CLI prints them normally. Record-specific commands remain application-owned.
     """
 
     backend = app.backend
@@ -1140,6 +1141,25 @@ def register_project_commands(app: Any) -> None:
                         f"{func.__name__.replace('_', ' ')}: {error}"
                     ) from error
 
+            titles = {
+                "project": "Project statistics",
+                "project list": "Projects",
+                "project create": "Project created",
+                "project saveas": "Project saved",
+                "project load": "Project loaded",
+                "project rename": "Project renamed",
+                "project delete": "Project deleted",
+                "project export": "Project exported",
+                "project import": "Project imported",
+                "project reset": "Project reset",
+                "project configs": "Configurations",
+                "project configs list": "Configurations",
+                "project configs show": "Configuration",
+                "project configs export": "Configurations exported",
+                "project configs import": "Configurations imported",
+                "project configs reset": "Configurations reset",
+            }
+            kwargs.setdefault("result_title", titles[kwargs["name"]])
             return app.commands.register(*args, **kwargs)(guarded)
 
         return decorate
@@ -1192,9 +1212,12 @@ def register_project_commands(app: Any) -> None:
     async def project_list():
         """List stored projects."""
         projects = await backend.list_projects()
-        return "\n".join(
-            ("* " if item.id == backend.current.id else "  ") + item.name
-            for item in projects
+        return (
+            "\n".join(
+                ("* " if item.id == backend.current.id else "  ") + item.name
+                for item in projects
+            )
+            or "No projects."
         )
 
     async def project_names(_context):

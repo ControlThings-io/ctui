@@ -384,6 +384,18 @@ Typed aids appear immediately, including after named options such as
 Unique choice prefixes also work in `--option=value` form and when continuing
 to later arguments.
 
+History and project commands (including `project configs`) show successful
+results in scrollable dialogs in terminal and browser modes, preserving
+application output. Actions finish before results appear; output can continue
+updating while a dialog is open. Result dialogs queue, and browser results appear
+only in the submitting tab. CLI mode prints the same messages normally. `clear`
+still clears output; help and exit retain their existing behavior.
+
+Application commands can opt into this presentation with
+`@command(result_title="Operation complete")`. Return a string or a
+`CommandResult` containing output as usual. Closing a result dialog does not
+undo the completed action.
+
 ## Events, lifecycle, and services
 
 `on_start`, `on_ready`, and `on_stop` may be sync or async. The event bus emits

@@ -221,6 +221,8 @@ class WebClient:
                 await self.dialog(
                     "Help", self.session.ctui.format_ui_help(result.target), ["OK"]
                 )
+            elif result.dialog_title:
+                await self.dialog(result.dialog_title, result.output, ["OK"])
             else:
                 if result.exit_requested:
                     await self.send({"type": "session-ended", "close_tab": True})

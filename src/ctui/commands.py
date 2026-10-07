@@ -163,6 +163,7 @@ class CommandResult:
     accepted=False suppresses history and command_finished and lets the UI
     restore the submission when it is still current. Use success() for commands
     with no output; returning Python None is not accepted by dispatch().
+    dialog_title requests a UI result popup while CLI prints output normally.
     The result is immutable and carries intent rather than a stale widget state.
     """
 
@@ -171,6 +172,7 @@ class CommandResult:
     append_output: bool = False
     exit_requested: bool = False
     accepted: bool = True
+    dialog_title: str | None = None
 
     @classmethod
     def success(cls, output: str | None = None):
@@ -326,6 +328,7 @@ class Command:
     description: str = ""
     record_history: bool = True
     confirmation: str | None = None
+    result_title: str | None = None
 
     def __post_init__(self):
         """Derive command metadata and validate argument configuration."""
@@ -775,6 +778,7 @@ class Commands:
         description="",
         record_history=True,
         confirmation=None,
+        result_title=None,
     ):
         """Register a callable, directly or as a configurable decorator.
 
@@ -789,6 +793,7 @@ class Commands:
             The original callable, allowing normal decorator behavior.
 
         record_history controls accepted-command recording by dispatch();
+        result_title presents output in a queued UI dialog; CLI still prints it.
         confirmation supplies its formatted approval prompt. Reject name/alias
         collisions rather than silently replacing registered commands.
         """
@@ -804,6 +809,7 @@ class Commands:
                 description or meta.get("description", ""),
                 meta.get("record_history", record_history),
                 meta.get("confirmation", confirmation),
+                meta.get("result_title", result_title),
             )
             if item.name in self.commands or item.name in self.aliases:
                 raise ValueError(f"Command already registered: {item.name}")
@@ -885,6 +891,7 @@ def command(
     description="",
     record_history=True,
     confirmation=None,
+    result_title=None,
 ):
     """Mark a class method for automatic registration by CtuiApp.
 
@@ -901,6 +908,9 @@ def command(
     record_history=False suppresses accepted-command history, useful when
     switching projects or exporting/resetting state. confirmation is a format
     string interpolated with parsed arguments, such as "Delete {name}?".
+    result_title opts output into a queued UI MessageDialog without modifying
+    the output window. CLI prints the same text. Actions and events finish before
+    presentation; closing a dialog does not roll back an action.
     Dispatch requires a callback, confirmed=True, or a trailing confirm token
     before executing such a command. A boolean is not a confirmation template.
     """
@@ -914,6 +924,7 @@ def command(
             "description": description,
             "record_history": record_history,
             "confirmation": confirmation,
+            "result_title": result_title,
         }
         return target
 
@@ -950,21 +961,25 @@ def register_default_commands(app):
     help.__ctui_help__ = True
 
     @app.commands.register(
+        result_title="Command history",
         arguments={
             "count": Argument(
                 help="Maximum number of recent commands to show; 0 shows all"
             )
-        }
+        },
     )
     async def history(count: int = 0):
         """Show recent command history."""
         entries = app.history.all()
         entries = await entries if inspect.isawaitable(entries) else entries
         entries = entries[-count:] if count else entries
-        return CommandResult.success("\n".join(x.command for x in entries))
+        return CommandResult.success(
+            "\n".join(x.command for x in entries) or "No command history."
+        )
 
     @app.commands.register(
         name="history export",
+        result_title="History exported",
         arguments={
             "path": Argument(
                 help="Destination text file for exported commands",
@@ -994,6 +1009,7 @@ def register_default_commands(app):
 
         @app.commands.register(
             name="history search",
+            result_title="History search",
             record_history=False,
             arguments={
                 "keyword": Argument(help="Text to match in recorded commands"),
@@ -1006,10 +1022,13 @@ def register_default_commands(app):
         ):
             """Search command history by keyword, limit, and relative age."""
             entries = await app.history.search(keyword, limit=limit, since=since)
-            return CommandResult.success("\n".join(x.command for x in entries))
+            return CommandResult.success(
+                "\n".join(x.command for x in entries) or "No command history."
+            )
 
         @app.commands.register(
             name="history clear",
+            result_title="History cleared",
             record_history=False,
             confirmation="Clear all command history in the active project?",
         )
