@@ -165,16 +165,53 @@ function inputKey(event) {
 function openDialog(message) {
   dialogs.push(message);if (dialogs.length===1) displayDialog();
 }
+function closeDialog(id) {
+  const index=dialogs.findIndex(message=>message.id===id);
+  if(index<0)return;
+  const message=dialogs[index];message.element?.close();message.element?.remove();dialogs.splice(index,1);
+  if(index===0){displayDialog();if(!dialogs.length){const previous=message.previousFocus;(previous?.isConnected?previous:commandInput)?.focus();}}
+}
+function dialogError(message) {
+  const pending=dialogs.find(item=>item.id===message.id);if(!pending)return;
+  pending.error.textContent=message.text;pending.busy=false;
+  pending.element.querySelectorAll('button').forEach(button=>button.disabled=false);
+  const field=pending.fields.get(message.field);(field||pending.element.querySelector('input')||pending.element.querySelector('button'))?.focus();
+}
 function displayDialog() {
   const message=dialogs[0];if (!message) return;
   const dialog=document.createElement('dialog'),title=document.createElement('h2'),text=document.createElement('pre'),actions=document.createElement('div');
+  const error=document.createElement('p');error.className='dialog-error';error.setAttribute('role','alert');
+  message.element=dialog;message.error=error;message.fields=new Map();message.previousFocus=document.activeElement;
   title.textContent=message.title;text.textContent=message.text;actions.className='actions';dialog.append(title,text);
-  let input;
-  if (message.input) {input=document.createElement('input');input.type=message.input.password?'password':'text';input.setAttribute('aria-label',message.title);dialog.append(input);}
-  function answer(button) {send({type:'answer',id:message.id,button,text:input?.value||''});dialog.close();dialog.remove();dialogs.shift();displayDialog();if(!dialogs.length)commandInput?.focus();}
+  let input;const choices=[],options=message.options||{};
+  if (message.input) {input=document.createElement('input');input.type=message.input.password?'password':'text';input.value=message.input.default||'';input.setAttribute('aria-label',message.text||message.title);dialog.append(input);}
+  if(options.choices){
+    const group=document.createElement('fieldset'),legend=document.createElement('legend');legend.textContent=message.text||'Choices';group.append(legend);
+    options.choices.forEach((caption,index)=>{const label=document.createElement('label'),control=document.createElement('input');control.type=options.multiple?'checkbox':'radio';control.name='dialog-choice';control.checked=options.selected.includes(index);label.append(control,document.createTextNode(caption));group.append(label);choices.push(control);});dialog.append(group);
+  }
+  if(options.fields){
+    const form=document.createElement('div');form.className='dialog-fields';
+    const heading=document.createElement('div');heading.className='dict-heading';
+    const fieldHeading=document.createElement('span'),valueHeading=document.createElement('span');fieldHeading.textContent='Field';valueHeading.textContent='Value (editable)';heading.append(fieldHeading,valueHeading);form.append(heading);
+    options.fields.forEach((field,index)=>{
+      const row=document.createElement('div'),label=document.createElement('label'),editor=document.createElement('div'),control=document.createElement('input');
+      row.className='dict-row';label.className='dict-label';editor.className='dict-value';label.textContent=field.label;
+      control.id=`dict-${message.id}-${index}`;label.htmlFor=control.id;control.type=field.boolean?'checkbox':'text';
+      if(field.boolean)control.checked=field.value;else control.value=field.value;
+      editor.append(control);row.append(label,editor);form.append(row);message.fields.set(field.key,control);
+      if(field.help){const help=document.createElement('small');help.className='dict-help';help.id=`${control.id}-help`;help.textContent=field.help;control.setAttribute('aria-describedby',help.id);row.append(help);}
+    });dialog.append(form);
+  }
+  function answer(button) {
+    if(message.busy)return;
+    if(!message.id){dialog.close();dialog.remove();dialogs.shift();displayDialog();if(!dialogs.length)commandInput?.focus();return;}
+    const values=Object.fromEntries([...message.fields].map(([key,control])=>[key,control.type==='checkbox'?control.checked:control.value]));
+    send({type:'answer',id:message.id,button,text:input?.value||'',selected:choices.flatMap((control,index)=>control.checked?[index]:[]),values});
+    message.busy=true;actions.querySelectorAll('button').forEach(button=>button.disabled=true);
+  }
   message.buttons.forEach((label,index)=>{const button=document.createElement('button');button.textContent=label;button.addEventListener('click',()=>answer(index));actions.append(button);});
   dialog.addEventListener('keydown',event=>{
-    if(event.target===input){if(event.key==='Enter'){event.preventDefault();actions.firstChild.focus();}return;}
+    if(event.target.tagName==='INPUT'){if(event.key==='Enter'&&event.target.type!=='checkbox'&&event.target.type!=='radio'){event.preventDefault();actions.firstChild.focus();}return;}
     const scroll={ArrowUp:-1,ArrowDown:1,PageUp:-text.clientHeight/21,PageDown:text.clientHeight/21};
     if(event.key in scroll){event.preventDefault();text.scrollTop+=scroll[event.key]*21;}
     else if(event.key==='ArrowLeft'||event.key==='ArrowRight'){
@@ -182,7 +219,7 @@ function displayDialog() {
       buttons[(index+(event.key==='ArrowLeft'?-1:1)+buttons.length)%buttons.length].focus();
     }
   });
-  dialog.append(actions);document.querySelector('#dialogs').append(dialog);dialog.addEventListener('cancel',event=>{event.preventDefault();answer(message.buttons.length-1);});dialog.showModal();(input||actions.firstChild).focus();
+  dialog.append(error,actions);document.querySelector('#dialogs').append(dialog);dialog.addEventListener('cancel',event=>{event.preventDefault();answer(message.cancel??message.buttons.length-1);});dialog.showModal();(dialog.querySelector('input')||actions.firstChild).focus();
 }
 function connect() {
   clearTimeout(retry);socket=new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws`);
@@ -198,6 +235,8 @@ function connect() {
       for(const [id,element] of elements)if(!workspace.contains(element))elements.delete(id);
     } else if(message.type==='completion'&&message.id===completeSequence) showCompletions(message.items);
     else if(message.type==='dialog')openDialog(message);
+    else if(message.type==='dialog-close')closeDialog(message.id);
+    else if(message.type==='dialog-error')dialogError(message);
     else if(message.type==='error'||message.type==='rejected') {
       if(message.id===latestCommand&&commandInput&&!commandInput.value){commandInput.value=message.text;const pos=message.position??message.text.length;commandInput.setSelectionRange(pos,pos);rememberDraft();}
       if(message.message)openDialog({title:'Error',text:message.message,buttons:['OK']});

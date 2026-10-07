@@ -1,6 +1,6 @@
 # Project status
 
-Last reconciled: 2026-10-06 on `main` at `0c8cc91`, after PR #7 merged the
+Last reconciled: 2026-10-07 on `main` at `79579d0`, after PR #7 merged the
 web frontend. Owner-supplied Windows CI output reports seven test errors across
 Python 3.11–3.14; no successful remote rerun or publication is claimed.
 
@@ -57,7 +57,43 @@ Python 3.11–3.14; no successful remote rerun or publication is claimed.
   browser results belong to the submitting tab. CLI printing and clear/help/exit
   behavior stay unchanged. Application commands can opt in with result_title.
 
+- Dialog support now includes button choices, radio/checkbox lists and a typed
+  fixed-key dictionary editor in both interactive UIs. Shared synchronous
+  validators retain invalid edits, focus inputs and propagate unexpected errors.
+  Dictionary fields now use aligned label/value rows, a divider, distinct input
+  backgrounds and focus highlights; help sits below its value. Other dialog
+  layouts remain as before. All dialogs share a per-application/view queue;
+  Escape follows the documented
+  cancellation conventions. Convenience tasks participate in runtime shutdown.
+  See D13 and [the dialog tutorial](../examples/16_dialogs.py).
+- Dialog buttons now subclass upstream prompt-toolkit instead of copying its
+  implementation. Cleanup removes floats before focus restoration, including
+  cancellation and focus failures. The browser adapter supports older permitted
+  ConditionalContainers without alternative_content. Locked prompt-toolkit is
+  still 3.0.53; no dependency/version change is needed.
+
 ## Validation evidence
+
+- October 7 dialog expansion and inline dictionary layout: all 187 tests passed
+  on Python 3.11.16/Linux x86-64 with locked prompt-toolkit 3.0.53. All 15 dialog
+  regressions also passed with the permitted minimum 3.0.36; the earlier full
+  185-test suite passed with that minimum before the layout follow-up.
+  Coverage includes terminal alignment at 56/140 columns, wide characters,
+  long labels in a 40-column dialog, focus styling, keyboard navigation,
+  conversion/validation, queue cleanup, cancellation and real WebSocket flows.
+  Chromium smoke and tutorial 16 passed, including aligned rows at desktop and
+  390px mobile widths, accessible field help, retained edits and background
+  output updates. Black/isort, lockfile and whitespace checks passed. Real
+  terminal visual acceptance, Firefox/Safari and remote platform checks remain
+  pending.
+
+- October 7 prompt-toolkit audit: installed/locked 3.0.53 matches current PyPI
+  release. All 146 installed package files with recorded hashes matched their
+  installation metadata; no source overwrite or runtime monkey-patching found.
+  Compared local dialog/button code with installed upstream implementations.
+  Isolated 3.0.36 check confirms ConditionalContainer lacks alternative_content;
+  current browser adapter reads it although metadata permits that version.
+  Audit recommendations are now implemented in the dialog expansion below.
 
 - Result popup change: all 171 tests passed on Python 3.11.16/Linux x86-64,
   covering action completion, metadata, terminal queuing, output updates while
@@ -149,6 +185,10 @@ Python 3.11–3.14; no successful remote rerun or publication is claimed.
 
 ## Next steps
 
+- Owner dialog acceptance: try the new tutorial in a real terminal, particularly
+  large dictionaries, Tab/Shift-Tab, list selection, validation and Escape.
+  Verify downstream application validators and apply/persist results explicitly.
+
 - Owner acceptance: try actual downstream tools in terminal, CLI and --web modes,
   including custom layouts, background progress and remote trusted certificates.
 - Rerun Windows CI on Python 3.11–3.14 for the console/path fixes.
@@ -167,6 +207,8 @@ Python 3.11–3.14; no successful remote rerun or publication is claimed.
 Web frontend changes are merged into `main` via PR #7; Windows CI fixes are
 committed at `4833e58`; default-project startup is committed at `813f9aa`.
 Project deletion completion is committed at `d4dd614`; list completion is
-committed at `216ef28`. Output alignment is committed at `47a454a`. Terminal output protection is committed at `ec16fb1`. Config command nesting
-is committed at `0c8cc91`. Built-in result dialog changes are local and uncommitted;
-commit/push only with explicit authorization.
+committed at `216ef28`. Output alignment is committed at `47a454a`. Terminal
+output protection is committed at `ec16fb1`. Config command nesting is committed
+at `0c8cc91`; built-in result dialogs at `79579d0`. Dialog expansion and audit
+follow-up changes are local and uncommitted. Commit/push only with explicit
+authorization.

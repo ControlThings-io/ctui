@@ -114,9 +114,72 @@ async def main():
                 assert await first.locator(".output_field").evaluate(
                     "el => el.scrollLeft === 0"
                 )
+                # Server validation preserves the same DOM and all edited fields.
+                await first_input.fill("form")
+                await first_input.press("Enter")
+                form = first.get_by_role("dialog")
+                await form.wait_for(state="visible")
+                await form.get_by_role("textbox", name="host", exact=True).fill(
+                    "edited"
+                )
+                port = form.get_by_role("textbox", name="port", exact=True)
+                await port.fill("bad")
+                await form.get_by_role("checkbox", name="enabled", exact=True).uncheck()
+                await form.get_by_role("button", name="Ok", exact=True).click()
+                await form.get_by_role("alert").filter(has_text="int").wait_for()
+                assert (
+                    await form.get_by_role(
+                        "textbox", name="host", exact=True
+                    ).input_value()
+                    == "edited"
+                )
+                assert await port.input_value() == "bad"
+                assert await port.evaluate("el => document.activeElement === el")
+                assert not await form.get_by_role(
+                    "checkbox", name="enabled", exact=True
+                ).is_checked()
+                session.ctui.layout.set_output("updated while editing")
+                await second.wait_for_function(
+                    "() => document.querySelector('.output_field').textContent === 'updated while editing'"
+                )
+                await port.fill("1234")
+                await form.get_by_role("button", name="Ok", exact=True).click()
+                await form.wait_for(state="detached")
+                await first.wait_for_function(
+                    "value => document.querySelector('.output_field').textContent.includes(value)",
+                    arg="'port': 1234",
+                )
+                assert await first_input.evaluate("el => document.activeElement === el")
+                await first_input.fill("choices")
+                await first_input.press("Enter")
+                choice = first.get_by_role("dialog")
+                await choice.get_by_role("button", name="Third", exact=True).wait_for()
+                await choice.get_by_role("button", name="Third", exact=True).click()
+                await choice.get_by_role("radio", name="Alpha", exact=True).wait_for()
+                assert await choice.get_by_role(
+                    "radio", name="Beta", exact=True
+                ).is_checked()
+                await choice.get_by_role("radio", name="Alpha", exact=True).check()
+                await choice.get_by_role("button", name="Ok", exact=True).click()
+                await choice.get_by_role("checkbox", name="Beta", exact=True).wait_for()
+                await choice.get_by_role("checkbox", name="Beta", exact=True).uncheck()
+                await choice.get_by_role("button", name="Ok", exact=True).click()
+                await choice.wait_for(state="detached")
+                await first.wait_for_function(
+                    "value => document.querySelector('.output_field').textContent === value",
+                    arg="(3, 'a', [])",
+                )
+                await first_input.fill("form")
+                await first_input.press("Enter")
+                await first.get_by_role("dialog").wait_for(state="visible")
+                await first.get_by_role("dialog").press("Escape")
+                await first.get_by_role("dialog").wait_for(state="detached")
+                await first.wait_for_function(
+                    "() => document.querySelector('.output_field').textContent === 'None'"
+                )
                 assert not errors, errors
                 print(
-                    f"{browser_name}: multi-tab output, local drafts, help popup, focus, buttons, completion and mobile layout passed"
+                    f"{browser_name}: multi-tab output, local drafts, help popup, focus, buttons, completion, mobile layout and validated dialogs passed"
                 )
             finally:
                 await browser.close()

@@ -112,6 +112,8 @@ class WebClient:
         self.session, self.socket = session, socket
         self.updates = asyncio.Queue(maxsize=1)
         self.dialogs = {}
+        self.dialog_buttons = {}
+        self.dialog_lock = asyncio.Lock()
         self.tasks = set()
         self.send_lock = asyncio.Lock()
         self.completion_task = None
@@ -137,45 +139,94 @@ class WebClient:
         finally:
             await self.socket.close()
 
-    async def dialog(self, title, text, buttons, *, input_field=None):
-        """Await an answer only from the requesting authenticated browser view."""
-        if self.socket.closed:
-            raise asyncio.CancelledError
-        identifier = secrets.token_hex(12)
-        future = asyncio.get_running_loop().create_future()
-        self.dialogs[identifier] = future
-        try:
-            await self.send(
-                {
-                    "type": "dialog",
-                    "id": identifier,
-                    "title": title,
-                    "text": text,
-                    "buttons": buttons,
-                    "input": input_field,
-                }
-            )
-            return await future
-        finally:
-            self.dialogs.pop(identifier, None)
+    async def dialog(
+        self,
+        title,
+        text,
+        buttons,
+        *,
+        input_field=None,
+        options=None,
+        validate=None,
+        cancel=None,
+    ):
+        """Queue a modal for this view and retain edits on validation rejection.
+
+        Validation is synchronous and server-side. Only DialogValidationError
+        keeps the dialog open; other exceptions propagate. Cancellation, failure
+        and disconnect remove pending answers and release the per-view queue.
+        """
+        from ctui.dialogs import DialogValidationError
+
+        async with self.dialog_lock:
+            if self.socket.closed:
+                raise asyncio.CancelledError
+            identifier = secrets.token_hex(12)
+            self.dialog_buttons[identifier] = (len(buttons), cancel)
+            try:
+                future = asyncio.get_running_loop().create_future()
+                self.dialogs[identifier] = future
+                await self.send(
+                    {
+                        "type": "dialog",
+                        "id": identifier,
+                        "title": title,
+                        "text": text,
+                        "buttons": buttons,
+                        "input": input_field,
+                        "options": options or {},
+                        "cancel": len(buttons) - 1 if cancel is None else cancel,
+                    }
+                )
+                while True:
+                    answer = await future
+                    try:
+                        return validate(answer) if validate else answer
+                    except DialogValidationError as exc:
+                        future = asyncio.get_running_loop().create_future()
+                        self.dialogs[identifier] = future
+                        await self.send(
+                            {
+                                "type": "dialog-error",
+                                "id": identifier,
+                                "text": str(exc),
+                                "field": exc.field,
+                            }
+                        )
+            finally:
+                pending = self.dialogs.pop(identifier, None)
+                if pending is not None and not pending.done():
+                    pending.cancel()
+                self.dialog_buttons.pop(identifier, None)
+                await self.send({"type": "dialog-close", "id": identifier})
 
     async def show_dialog(self, dialog):
-        """Adapt CTUI's existing reusable message, confirmation and input dialogs."""
-        from ctui.dialogs import TextInputDialog, YesNoDialog
+        """Display embedded ctui dialogs using their shared typed validation."""
+        from ctui.dialogs import YesNoDialog
 
         title, text, buttons, input_field = dialog._web_dialog
-        value = await self.dialog(
-            plain(title), plain(text), buttons, input_field=input_field
-        )
-        if isinstance(dialog, TextInputDialog):
-            result = value.get("text", "") if value.get("button") == 0 else None
-        elif isinstance(dialog, YesNoDialog):
-            result = value.get("button") == 0
-        else:
-            result = None
+
+        def result(answer):
+            if hasattr(dialog, "_web_result"):
+                return dialog._web_result(answer)
+            return answer["button"] == 0 if isinstance(dialog, YesNoDialog) else None
+
+        try:
+            value = await self.dialog(
+                plain(title),
+                plain(text),
+                buttons,
+                input_field=input_field,
+                options=getattr(dialog, "_web_options", None),
+                validate=result,
+                cancel=getattr(dialog, "_web_cancel", None),
+            )
+        except BaseException:
+            dialog.future.cancel()
+            raise
         if not dialog.future.done():
-            dialog.future.set_result(result)
-        return result
+            dialog.future.set_result(value)
+        return value
 
     def spawn(self, coroutine, *, persistent=False):
         """Track work and contain background transport/application failures."""
@@ -295,16 +346,17 @@ class WebClient:
         elif kind == "answer":
             future = self.dialogs.get(message.get("id"))
             button = message.get("button")
+            count, cancel = self.dialog_buttons.get(message.get("id"), (0, None))
             if (
                 future
                 and not future.done()
-                and isinstance(button, int)
-                and 0 <= button < 2
+                and type(button) is int
+                and (0 <= button < count or button == cancel)
             ):
                 text = message.get("text", "")
                 if not isinstance(text, str) or len(text) > 16384:
                     raise ValueError("Invalid dialog input")
-                future.set_result({"button": button, "text": text})
+                future.set_result({**message, "text": text})
         elif kind == "clear":
             self.session.ctui.layout.set_output("")
             self.session.invalidate()

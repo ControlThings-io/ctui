@@ -24,8 +24,10 @@ this order:
 13. `13_custom_layout.py` — compose a layout from reusable widgets.
 14. `14_lifecycle_and_storage.py` — persist projects, configs, and records.
 15. `15_web_frontend.py` — serve the same custom layout in a browser with
-    optional asyncio HTTP/WebSocket support.
-16. `filesystem.py` — browse with `ls [PATH] [-l|--long]` and `cd DIRECTORY`,
+    asyncio HTTP/WebSocket support.
+16. `16_dialogs.py` — choose buttons, radio/checkbox entries and edit validated
+    dictionary values in either interactive UI.
+17. `filesystem.py` — browse with `ls [PATH] [-l|--long]` and `cd DIRECTORY`,
     with file/directory completion and detailed listings.
 
 Run an example from the repository root:

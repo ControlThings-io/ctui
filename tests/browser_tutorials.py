@@ -62,6 +62,7 @@ CASES = {
         ("traffic record sent 010300000001", "Recorded 6 bytes."),
     ],
     "15_web_frontend.py": [("echo hello", "hello")],
+    "16_dialogs.py": [],
     "filesystem.py": [
         ("ls examples --long", "01_first_command.py"),
         ("cd examples", "Changed to"),
@@ -154,6 +155,57 @@ async def check_tutorial(browser, name, commands, directory):
             await page.wait_for_function(
                 "() => document.querySelector('.statusbar').textContent === 'F2 presses: 1'"
             )
+        elif name == "16_dialogs.py":
+            await submit("edit")
+            dialog = page.get_by_role("dialog")
+            await dialog.wait_for(state="visible")
+            port = dialog.get_by_role("textbox", name="TCP port", exact=True)
+            assert await port.get_attribute("aria-describedby")
+            assert (
+                await dialog.locator(".dict-heading").text_content()
+                == "FieldValue (editable)"
+            )
+            for viewport in (
+                {"width": 1100, "height": 800},
+                {"width": 390, "height": 844},
+            ):
+                await page.set_viewport_size(viewport)
+                rows = dialog.locator(".dict-row")
+                value_positions = []
+                for index in range(await rows.count()):
+                    row = rows.nth(index)
+                    label_box = await row.locator(".dict-label").bounding_box()
+                    value_box = await row.locator("input").bounding_box()
+                    assert value_box["x"] > label_box["x"] + label_box["width"]
+                    assert abs(value_box["y"] - label_box["y"]) < 12
+                    value_positions.append(value_box["x"])
+                assert max(value_positions) - min(value_positions) < 1
+                assert await dialog.locator(".dialog-fields").evaluate(
+                    "el => el.scrollWidth <= el.clientWidth + 1"
+                )
+            await port.fill("70000")
+            await dialog.get_by_role("button", name="Ok", exact=True).click()
+            await dialog.get_by_role("alert").filter(has_text="between").wait_for()
+            await port.fill("1234")
+            await dialog.get_by_role("button", name="Ok", exact=True).click()
+            await dialog.wait_for(state="detached")
+            await page.wait_for_function(
+                "value => document.querySelector('.output_field').textContent.includes(value)",
+                arg="'port': 1234",
+            )
+            await submit("choose")
+            await dialog.get_by_role("button", name="Read", exact=True).wait_for()
+            await dialog.get_by_role("button", name="Read", exact=True).click()
+            await dialog.get_by_role("radio", name="TCP", exact=True).wait_for()
+            await dialog.get_by_role("button", name="Ok", exact=True).click()
+            await dialog.get_by_role(
+                "checkbox", name="Retry requests", exact=True
+            ).wait_for()
+            await dialog.get_by_role("button", name="Ok", exact=True).click()
+            await dialog.wait_for(state="detached")
+            await page.wait_for_function(
+                "() => document.querySelector('.output_field').textContent.includes('Selected read, tcp')"
+            )
         elif name == "15_web_frontend.py":
             await submit("progress 50")
             await page.wait_for_function(
@@ -178,6 +230,7 @@ async def check_tutorial(browser, name, commands, directory):
         assert await dialog.locator("h2").text_content() == "Help"
         assert await output.text_content() == previous
         await dialog.get_by_role("button", name="OK", exact=True).click()
+        await dialog.wait_for(state="detached")
         await submit("exit")
         await dialog.wait_for(state="visible")
         await dialog.get_by_role("button", name="Yes", exact=True).click()

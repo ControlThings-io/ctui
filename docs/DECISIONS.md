@@ -281,6 +281,37 @@ redundant `Command.string`, `string_parts`, and `func_name`. Keep active command
 descriptions (`desc`/`description`) used by generated help and completion.
 The obsolete helper was the only tabulate consumer, so remove that dependency.
 
+Accepted follow-up, October 7: expand embedded dialogs with button choices,
+radio/checkbox selection and a fixed-key dictionary value editor. Keep ctui's
+composition of public upstream widgets within the existing application, rather
+than shortcut functions that construct a separate Application. Replace the
+copied dialog Button with a small upstream subclass; preserve caption sizing and
+scroll bindings. Retain the declared prompt-toolkit minimum with a browser
+fallback for ConditionalContainer versions without alternative_content.
+
+Use one modal queue per terminal application or browser view, including existing
+help, confirmations and results. Remove floats before restoring focus and track
+convenience tasks for shutdown. Escape acknowledges messages, declines Yes/No,
+and returns None for cancellable value dialogs. Reserve None from button/list
+values; an accepted empty checkbox selection is []. Selection tuple ordering
+follows upstream: buttons (label, value), lists (value, label).
+
+Dictionary dialogs edit existing string keys only, preserve order and return a
+new dictionary. Limit values to str/int/finite float/bool; DictField metadata
+supports labels, help, type overrides for initial None and validators. Boolean
+fields are checkboxes. Validate converted values synchronously in both UIs:
+True/None accepts, False/error text rejects inline while retaining edits and
+focusing the input. Field validators run before whole-form validation; unexpected
+exceptions propagate to the calling application. Dialogs collect values only;
+application code owns persistence and subsequent actions. Usage is documented
+in [README.md](../README.md#application-dialogs).
+
+Accepted presentation follow-up: dictionary labels and values share aligned rows
+in both UIs, with a divider, muted labels, distinct editable fields and visible
+focus. Put help below the corresponding value; keep booleans in the value column
+and labels outside Tab navigation. Keep the other dialogs' existing layouts and
+the dictionary API, conversion, validation and cancellation behavior.
+
 ## D14 — Keep implementation contracts beside the code
 
 Accepted, September 18, extending the type-docstring work in D09.

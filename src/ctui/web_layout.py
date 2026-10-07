@@ -92,7 +92,7 @@ class WebLayout:
             selected = (
                 container.content
                 if container.filter()
-                else container.alternative_content
+                else getattr(container, "alternative_content", None)
             )
             return self._node(selected) if selected else dict(node, kind="empty")
         elif isinstance(container, DynamicContainer):

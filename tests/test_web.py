@@ -16,7 +16,16 @@ from unittest.mock import patch
 from aiohttp import ClientSession, CookieJar, WSServerHandshakeError
 
 from ctui import CommandError, CommandResult, CtuiApp, command
-from ctui.dialogs import MessageDialog, TextInputDialog, show_dialog
+from ctui.dialogs import (
+    ButtonDialog,
+    CheckboxListDialog,
+    DictField,
+    DictInputDialog,
+    MessageDialog,
+    RadioListDialog,
+    TextInputDialog,
+    show_dialog,
+)
 from ctui.web import WebClient, WebSession, parse_web_options
 from ctui.widgets import Button, Frame, Horizontal, Label, ProgressBar, Vertical
 
@@ -89,6 +98,48 @@ class BrowserApp(CtuiApp):
         """Exercise an existing message dialog."""
         await show_dialog(MessageDialog(title="Notice", text="Hello"))
         return "acknowledged"
+
+    @command
+    async def form(self) -> str:
+        """Edit typed dictionary values with field and form validation."""
+        values = {"host": "localhost", "port": 502, "enabled": True}
+        result = await show_dialog(
+            DictInputDialog(
+                title="Connection",
+                values=values,
+                fields={
+                    "port": DictField(
+                        help="TCP port",
+                        validator=lambda value: 0 < value < 65536
+                        or "Port out of range",
+                    )
+                },
+                validator=lambda data: data["host"] != "forbidden" or "Host forbidden",
+            )
+        )
+        return repr(result)
+
+    @command
+    async def choices(self) -> str:
+        """Choose a button value, a radio entry and checkbox entries."""
+        button = await show_dialog(
+            ButtonDialog(
+                title="Action", buttons=[("First", 1), ("Second", 2), ("Third", 3)]
+            )
+        )
+        radio = await show_dialog(
+            RadioListDialog(
+                title="Radio", values=[("a", "Alpha"), ("b", "Beta")], default="b"
+            )
+        )
+        check = await show_dialog(
+            CheckboxListDialog(
+                title="Checkboxes",
+                values=[("a", "Alpha"), ("b", "Beta")],
+                default_values=["b"],
+            )
+        )
+        return repr((button, radio, check))
 
     @command
     async def wait(self) -> str:
@@ -373,6 +424,92 @@ class WebTests(unittest.IsolatedAsyncioTestCase):
         await first.close()
         release.set()
         await self.output(second, "completed after disconnect")
+
+    async def test_dictionary_validation_keeps_dialog_pending(self):
+        await self.login()
+        socket, _ = await self.connect()
+        await socket.send_json({"type": "command", "text": "form"})
+        dialog = await self.receive(socket, "dialog")
+        self.assertEqual(
+            [field["key"] for field in dialog["options"]["fields"]],
+            ["host", "port", "enabled"],
+        )
+        for values, error_text, field in (
+            ({"host": "edited", "port": "bad", "enabled": False}, "int", "port"),
+            ({"host": "edited", "port": "70000", "enabled": False}, "range", "port"),
+            (
+                {"host": "forbidden", "port": "1234", "enabled": False},
+                "forbidden",
+                None,
+            ),
+        ):
+            await socket.send_json(
+                {"type": "answer", "id": dialog["id"], "button": 0, "values": values}
+            )
+            error = await self.receive(socket, "dialog-error")
+            self.assertEqual(error["id"], dialog["id"])
+            self.assertIn(error_text, error["text"])
+            self.assertEqual(error["field"], field)
+        await socket.send_json(
+            {
+                "type": "answer",
+                "id": dialog["id"],
+                "button": 0,
+                "values": {"host": "edited", "port": "1234", "enabled": False},
+            }
+        )
+        await self.receive(socket, "dialog-close")
+        await self.output(socket, "{'host': 'edited', 'port': 1234, 'enabled': False}")
+        client = next(iter(self.session.clients))
+        self.assertFalse(client.dialogs)
+        self.assertFalse(client.dialog_buttons)
+
+    async def test_selection_dialogs_and_third_button(self):
+        await self.login()
+        socket, _ = await self.connect()
+        await socket.send_json({"type": "command", "text": "choices"})
+        button = await self.receive(socket, "dialog")
+        self.assertEqual(button["cancel"], -1)
+        await socket.send_json({"type": "answer", "id": button["id"], "button": 2})
+        radio = await self.receive(socket, "dialog")
+        self.assertEqual(radio["options"]["selected"], [1])
+        await socket.send_json(
+            {"type": "answer", "id": radio["id"], "button": 0, "selected": [True]}
+        )
+        await self.receive(socket, "dialog-error")
+        await socket.send_json(
+            {"type": "answer", "id": radio["id"], "button": 0, "selected": [0]}
+        )
+        check = await self.receive(socket, "dialog")
+        self.assertTrue(check["options"]["multiple"])
+        await socket.send_json(
+            {"type": "answer", "id": check["id"], "button": 0, "selected": []}
+        )
+        await self.output(socket, "(3, 'a', [])")
+
+    async def test_common_dialog_queue_and_cancellation_cleanup(self):
+        await self.login()
+        socket, _ = await self.connect()
+        await socket.send_json({"type": "command", "text": "form"})
+        form = await self.receive(socket, "dialog")
+        await socket.send_json({"type": "command", "text": "help"})
+        # A completion request orders processing after help submission without sleeps.
+        await socket.send_json(
+            {"type": "complete", "text": "ec", "cursor": 2, "id": 99}
+        )
+        await self.receive(socket, "completion")
+        client = next(iter(self.session.clients))
+        self.assertEqual(len(client.dialogs), 1)
+        await socket.send_json({"type": "answer", "id": form["id"], "button": 1})
+        help_dialog = await self.receive(socket, "dialog")
+        self.assertEqual(help_dialog["title"], "Help")
+        await socket.close()
+        async with asyncio.timeout(3):
+            while self.session.clients:
+                await asyncio.sleep(0.01)
+        self.assertFalse(client.dialogs)
+        self.assertFalse(client.dialog_buttons)
+        self.assertFalse(client.dialog_lock.locked())
 
     async def test_disconnection_cancels_unanswered_confirmation(self):
         await self.login()

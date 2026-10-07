@@ -150,8 +150,8 @@ terminal renderer internals are unavailable. Shutdown cancels pending work
 before `on_stop` and service cleanup. In an existing event loop, use
 `await app.run_web(port=8080)` instead of `run()`.
 
-CTUI's message, confirmation, and text-input dialogs work from browser-triggered
-commands and callbacks. Native browser keyboard reservations and text selection
+CTUI's message, confirmation, text-input, button-choice, radio-list, checkbox-list
+and dictionary-input dialogs work from browser-triggered commands and callbacks. Native browser keyboard reservations and text selection
 still apply. Arbitrary third-party prompt-toolkit controls, custom floating
 containers, and renderer-specific extensions need a browser adapter; unsupported
 controls produce an explicit startup error rather than a partial interface.
@@ -182,6 +182,66 @@ To reuse a supplied token, set an environment variable containing at least 24
 characters and pass `--web-token-env VARIABLE_NAME`. All connections still
 require authentication. Browser origins are checked and loopback hosts are
 validated. TLS encrypts traffic; the session token authorizes app access.
+
+## Application dialogs
+
+Import dialogs from `ctui.dialogs`. Constructors build embedded popups; await
+`show_dialog(dialog)` to display them in the active terminal application or the
+requesting browser tab. Dialogs queue, preserve application output, and restore
+focus when dismissed. Use each instance once. Convenience functions
+`button_dialog`, `radiolist_dialog`, `checkboxlist_dialog`, `dict_input_dialog`,
+`input_dialog`, and `message_dialog` return scheduled tasks that can be awaited.
+The existing `yes_no_dialog` convenience function invokes Yes/No callbacks.
+Dialogs require an interactive UI; automatic CLI commands should collect values
+through command arguments instead.
+
+| Dialog | Inputs | Accepted result | Cancel / Escape |
+| --- | --- | --- | --- |
+| `MessageDialog` | Message text | `None` | Acknowledge (`None`) |
+| `YesNoDialog` | Confirmation text | `True` / `False` | `False` |
+| `TextInputDialog` | Text, optional `default`, completer/password | `str` | `None` |
+| `ButtonDialog` | `buttons=[(label, value), ...]` | Button value | `None` |
+| `RadioListDialog` | `values=[(value, label), ...]`, optional `default` | Selected value | `None` |
+| `CheckboxListDialog` | `values=[(value, label), ...]`, optional `default_values` | List in entry order (possibly `[]`) | `None` |
+| `DictInputDialog` | `values={key: value, ...}`, optional `fields` | New dictionary | `None` |
+
+Button/selection values cannot be `None`; selection values must be unique.
+Tab/Shift-Tab move between fields and buttons. Radio/checkbox lists use arrows
+to move and Space to select. Enter on Ok accepts; Escape cancels. Dictionary
+keys are fixed strings; values are limited to `str`, `int`, finite `float`, and
+`bool`. Boolean fields use checkboxes. Empty strings are accepted; numeric fields
+require values. Initial `None` needs a `DictField(value_type=...)` override.
+The original dictionary is never modified and key order is preserved. Dictionary
+fields use aligned label/value columns with a divider. Labels are read-only;
+editable values have a contrasting background and focus highlight. Optional help
+appears beneath its value, and booleans stay in the same value column.
+
+Text/selection/dictionary dialogs accept an optional synchronous `validator`.
+It receives the converted result; return `True` or `None` to accept, `False` or
+an error string to reject. Rejections leave the dialog open and retain edits.
+Unexpected validator exceptions propagate. `DictField` adds per-field labels,
+help text, type overrides and validators; field checks run before the whole-form
+validator. Both UIs use the same server-side validation. The caller applies or
+persists an accepted result; the editor only collects values.
+
+```python
+from ctui.dialogs import DictField, DictInputDialog, show_dialog
+
+edited = await show_dialog(DictInputDialog(
+    title="Connection",
+    values={"host": "localhost", "port": 502, "enabled": True},
+    fields={"port": DictField(
+        help="TCP port, 1–65535",
+        validator=lambda value: 1 <= value <= 65535 or "Invalid port",
+    )},
+))
+if edited is not None:
+    self.profile = edited
+```
+
+See [the dialog tutorial](examples/16_dialogs.py) for button, radio, checkbox and
+form examples. ctui composes upstream prompt-toolkit widgets inside its running
+application; it does not start a separate application for each popup.
 
 ## Help and interface guidance
 
