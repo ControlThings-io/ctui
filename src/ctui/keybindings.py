@@ -7,7 +7,8 @@ use message dialogs; unexpected failures display a traceback.
 
 Input editing and output navigation have distinct bindings. Ctrl-C clears input
 without cancelling running tasks; Ctrl-L clears output. Home/End, Page Up/Down,
-and Ctrl-Up/Down scroll output while input retains focus. Mouse selection and
+and Ctrl-Up/Down scroll output vertically; Alt-Left/Right scroll horizontally
+while input retains focus. Mouse selection and
 clipboard operations remain the terminal's responsibility.
 
 # Copyright (C) 2019  Justin Searle
@@ -33,10 +34,12 @@ from .dialogs import MessageDialog, YesNoDialog, message_dialog, show_dialog
 from .functions import (
     scroll_end,
     scroll_home,
+    scroll_left,
     scroll_line_down,
     scroll_line_up,
     scroll_page_down,
     scroll_page_up,
+    scroll_right,
 )
 
 
@@ -245,5 +248,15 @@ def get_key_bindings(ctui):
     def _(event):
         """Scroll output up one line while input keeps focus."""
         scroll_line_up(event, output_field)
+
+    @kb.add("escape", "left", filter=has_focus(input_field))
+    def _(event):
+        """Scroll output left while input keeps focus."""
+        scroll_left(event, output_field)
+
+    @kb.add("escape", "right", filter=has_focus(input_field))
+    def _(event):
+        """Scroll output right while input keeps focus."""
+        scroll_right(event, output_field)
 
     return kb

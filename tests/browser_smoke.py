@@ -100,6 +100,20 @@ async def main():
                     "el => el.children[1].getBoundingClientRect().top >= "
                     "el.children[0].getBoundingClientRect().bottom"
                 )
+                session.ctui.layout.set_output("x" * 300)
+                await first.wait_for_function(
+                    "() => document.querySelector('.output_field').textContent.includes('x'.repeat(300))"
+                )
+                await first_input.press("Escape")
+                await first_input.press("Alt+ArrowRight")
+                assert await first.locator(".output_field").evaluate(
+                    "el => el.scrollLeft > 0"
+                )
+                assert await first_input.evaluate("el => document.activeElement === el")
+                await first_input.press("Alt+ArrowLeft")
+                assert await first.locator(".output_field").evaluate(
+                    "el => el.scrollLeft === 0"
+                )
                 assert not errors, errors
                 print(
                     f"{browser_name}: multi-tab output, local drafts, help popup, focus, buttons, completion and mobile layout passed"

@@ -132,7 +132,10 @@ function render(node, parentAxis = 'height') {
   return element;
 }
 function inputKey(event) {
-  if (event.key==='Enter') {event.preventDefault();submitCommand();}
+  if (event.altKey&&['ArrowLeft','ArrowRight'].includes(event.key)) {
+    event.preventDefault();const output=workspace.querySelector('.output_field');
+    if(output)output.scrollLeft+=(event.key==='ArrowLeft'?-1:1)*8*parseFloat(getComputedStyle(output).fontSize)*0.6;
+  } else if (event.key==='Enter') {event.preventDefault();submitCommand();}
   else if (event.key==='Tab') {event.preventDefault();if (!suggestions.hidden) applyCompletion(completionItems[completionIndex]);else requestCompletion();}
   else if (event.key==='Escape') hideCompletions();
   else if ((event.key==='ArrowUp'||event.key==='ArrowDown')&&!event.ctrlKey) {

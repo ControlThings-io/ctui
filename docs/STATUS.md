@@ -1,6 +1,6 @@
 # Project status
 
-Last reconciled: 2026-10-06 on `main` at `d4dd614`, after PR #7 merged the
+Last reconciled: 2026-10-06 on `main` at `216ef28`, after PR #7 merged the
 web frontend. Owner-supplied Windows CI output reports seven test errors across
 Python 3.11–3.14; no successful remote rerun or publication is claimed.
 
@@ -38,7 +38,19 @@ Python 3.11–3.14; no successful remote rerun or publication is claimed.
   excludes exact typed elements, leaves partial matches available, and preserves
   earlier elements on insertion; providers receive an empty word (D04).
 
+- New terminal output follows the final line at column zero and resets horizontal
+  scrolling, preserving long lines without shifting right to their ends.
+  Alt-Left/Right scroll unwrapped output horizontally with input retaining focus
+  in terminal and browser modes. Generated UI help lists the Alt-arrow shortcuts
+  beside the existing output navigation keys.
+
 ## Validation evidence
+
+- October 6 output alignment/scrolling: all 162 tests passed on Python
+  3.11.16/Linux x86-64. Regressions cover wide output, empty/trailing lines,
+  horizontal bounds, bindings and unchanged input. Chromium smoke passed with
+  both Alt-arrow shortcuts and focus preservation. Black/isort and whitespace
+  checks passed. Manual terminal and remote matrix validation remain pending.
 
 - October 6 list completion: all 160 tests passed on Python 3.11.16/Linux
   x86-64, including optional lists, inline options, unfinished quotes, insertion,
@@ -120,6 +132,6 @@ Python 3.11–3.14; no successful remote rerun or publication is claimed.
 
 Web frontend changes are merged into `main` via PR #7; Windows CI fixes are
 committed at `4833e58`; default-project startup is committed at `813f9aa`.
-Project deletion completion is committed at `d4dd614`. List argument completion
-changes are local and uncommitted;
+Project deletion completion is committed at `d4dd614`; list completion is
+committed at `216ef28`. Output alignment changes are local and uncommitted;
 commit/push only with explicit authorization.

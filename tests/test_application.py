@@ -13,6 +13,7 @@ from types import SimpleNamespace
 
 from ctui import CommandError, CommandResult, ConfirmationRequired, CtuiApp, command
 from ctui.commands import Argument, CommandNotFound, CommandValidationError
+from ctui.functions import scroll_left, scroll_right
 from ctui.keybindings import get_key_bindings
 from ctui.layout import CtuiLayout
 from ctui.services import MemoryHistory, MemoryStorage, NullHistory
@@ -320,6 +321,53 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
         binding.handler(SimpleNamespace())
 
         self.assertEqual(app.layout.input_field.text, "")
+
+    def test_horizontal_output_scroll_clamps_and_preserves_input(self):
+        app = Demo()
+        app.layout = CtuiLayout(app)
+        app.layout.set_output("short\n" + "x" * 100)
+        output = app.layout.output_field
+        output.window.render_info = SimpleNamespace(
+            first_visible_line=lambda: 0, window_height=2, window_width=40
+        )
+        app.layout.input_field.text = "unfinished"
+        invalidations = []
+        event = SimpleNamespace(
+            app=SimpleNamespace(invalidate=lambda: invalidations.append(1))
+        )
+        scroll_right(event, output)
+        self.assertEqual(output.window.horizontal_scroll, 8)
+        self.assertEqual(output.buffer.document.cursor_position_row, 1)
+        for _ in range(20):
+            scroll_right(event, output)
+        self.assertEqual(output.window.horizontal_scroll, 60)
+        for _ in range(20):
+            scroll_left(event, output)
+        self.assertEqual(output.window.horizontal_scroll, 0)
+        self.assertEqual(app.layout.input_field.text, "unfinished")
+        self.assertEqual(output.text, "short\n" + "x" * 100)
+        self.assertTrue(invalidations)
+        sequences = {
+            tuple(str(key) for key in binding.keys)
+            for binding in get_key_bindings(app).bindings
+        }
+        self.assertIn(("Keys.Escape", "Keys.Left"), sequences)
+        self.assertIn(("Keys.Escape", "Keys.Right"), sequences)
+
+    def test_wide_output_stays_at_first_column_on_final_line(self):
+        app = Demo()
+        app.layout = CtuiLayout(app)
+        output = app.layout.output_field
+        for text in ("x" * 300, "first\n" + "x" * 300, "trailing\n", ""):
+            with self.subTest(text=text):
+                output.window.horizontal_scroll = 80
+                app.layout.set_output(text)
+                self.assertEqual(output.text, text)
+                self.assertEqual(output.buffer.document.cursor_position_col, 0)
+                self.assertEqual(
+                    output.buffer.document.cursor_position_row, text.count("\n")
+                )
+                self.assertEqual(output.window.horizontal_scroll, 0)
 
     def test_control_l_clears_output(self):
         app = Demo()

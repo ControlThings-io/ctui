@@ -481,7 +481,9 @@ The input line includes familiar terminal editing shortcuts:
 - Ctrl-D: delete the next character, or exit on an empty line.
 - Ctrl-L: clear the output pane.
 - Home / End: jump to the beginning / end of the output.
-- Page Up / Page Down and Ctrl-Up / Ctrl-Down: scroll output.
+- Page Up / Page Down and Ctrl-Up / Ctrl-Down: scroll output vertically.
+- Alt+Left / Alt+Right: scroll long, unwrapped output horizontally while input
+  keeps focus. New terminal output returns to the first column and final line.
 
 Return `CommandResult.append("Finished")` when output should be added below
 previous command output instead of replacing it. This is safe for overlapping

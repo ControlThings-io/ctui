@@ -86,3 +86,47 @@ def scroll_end(event, output_field):
     render_info = output_field.window.render_info
     if render_info is not None:
         _scroll_output(event, output_field, render_info.ui_content.line_count)
+
+
+def _scroll_horizontal(event, output_field, amount):
+    """Scroll unwrapped output by display columns without moving input focus.
+
+    Use the widest visible line to keep the hidden cursor in the requested
+    viewport, preventing prompt-toolkit from undoing the scroll. Clamp to its
+    width. Wrapped output and windows without render information are no-ops.
+    """
+    from prompt_toolkit.utils import get_cwidth
+
+    window = output_field.window
+    info = window.render_info
+    if info is None or window.wrap_lines():
+        return
+    lines = output_field.buffer.document.lines
+    start = info.first_visible_line()
+    rows = range(start, min(len(lines), start + info.window_height))
+    row = max(rows, key=lambda index: get_cwidth(lines[index]), default=start)
+    width = get_cwidth(lines[row])
+    maximum = max(0, width - info.window_width)
+    target = min(maximum, max(0, window.horizontal_scroll + amount))
+    cursor_column = target + max(0, info.window_width - 1) if amount > 0 else target
+    column, cells = 0, 0
+    for character in lines[row]:
+        if cells >= cursor_column:
+            break
+        cells += get_cwidth(character)
+        column += 1
+    output_field.buffer.cursor_position = (
+        output_field.buffer.document.translate_row_col_to_index(row, column)
+    )
+    window.horizontal_scroll = target
+    event.app.invalidate()
+
+
+def scroll_left(event, output_field):
+    """Scroll unwrapped output left eight display columns while preserving focus."""
+    _scroll_horizontal(event, output_field, -8)
+
+
+def scroll_right(event, output_field):
+    """Scroll unwrapped output right eight display columns while preserving focus."""
+    _scroll_horizontal(event, output_field, 8)

@@ -103,6 +103,10 @@ Ctrl-L clears output. Binding details live in
 [keybindings.py](../src/ctui/keybindings.py); focus-preserving scroll mechanics
 live in [functions.py](../src/ctui/functions.py).
 
+Accepted follow-up, October 6: keep new terminal output at the first column
+of its final line, preserving long unwrapped lines. Alt-Left/Right scroll output
+horizontally in terminal and browser modes while command input retains focus.
+
 Apply output appends when commands finish to avoid overwriting concurrent
 results with stale snapshots. See [CommandResult](../src/ctui/commands.py).
 Progress tracking stays application-owned; the

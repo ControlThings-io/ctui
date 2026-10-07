@@ -140,14 +140,17 @@ class CtuiLayout:
     def set_output(self, text: str) -> None:
         """Replace output using the buffer's explicit read-only bypass.
 
-        Place its invisible cursor at the end so newly supplied output is visible.
+        Place its invisible cursor at the start of the final line to follow new
+        output vertically without scrolling past the first column. Reset horizontal
+        scrolling on replacement; long lines remain intact.
         This does not append, update CtuiApp.output_text, or explicitly invalidate
         the application; callers choose presentation and redraw behavior.
         """
         self._output_field.buffer.set_document(
-            Document(text=text, cursor_position=len(text)),
+            Document(text=text, cursor_position=text.rfind("\n") + 1),
             bypass_readonly=True,
         )
+        self._output_field.window.horizontal_scroll = 0
 
     @property
     def statusbar_text(self):
