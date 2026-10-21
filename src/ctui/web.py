@@ -28,6 +28,7 @@ from prompt_toolkit.completion import CompleteEvent
 from prompt_toolkit.document import Document
 
 from ctui.commands import CommandError, _HelpResult
+from ctui.completion import completion_edit
 from ctui.layout import CtuiLayout
 from ctui.web_layout import WebLayout, plain
 
@@ -302,9 +303,10 @@ class WebClient:
         cursor = message.get("cursor", len(text))
         if not isinstance(cursor, int) or not 0 <= cursor <= len(text):
             return
+        document = Document(text, cursor)
         items = []
         async for item in self.session.ctui.layout.completer.get_completions_async(
-            Document(text, cursor), CompleteEvent(completion_requested=True)
+            document, CompleteEvent(completion_requested=True)
         ):
             items.append(
                 {
@@ -312,11 +314,20 @@ class WebClient:
                     "start": item.start_position,
                     "display": plain(item.display),
                     "help": plain(item.display_meta),
+                    "edit": completion_edit(document, item),
                 }
             )
             if len(items) >= 100:
                 break
-        await self.send({"type": "completion", "id": message.get("id"), "items": items})
+        await self.send(
+            {
+                "type": "completion",
+                "id": message.get("id"),
+                "text": text,
+                "cursor": cursor,
+                "items": items,
+            }
+        )
 
     async def handle(self, message):
         """Validate incoming actions before touching shared state."""

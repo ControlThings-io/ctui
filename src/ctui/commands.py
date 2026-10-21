@@ -718,8 +718,11 @@ class Command:
     async def expand_unique_arguments(self, text: str, app=None) -> str:
         """Expand unique prefixes for constrained argument values.
 
-        Free-form strings and numbers remain unchanged. Choices supplied by
-        annotations, configuration, or completion providers participate.
+        Free-form strings, numbers, lists and PathCompleter values remain
+        unchanged. Filesystem suggestions require explicit acceptance so a
+        submitted directory cannot turn into its only child, and new destination
+        names cannot turn into similarly named existing files. Other choices
+        supplied by annotations, configuration or providers participate.
         """
         try:
             tokens = shlex.split(text)
@@ -741,12 +744,13 @@ class Command:
             if prefix:
                 prefix += " "
             _, parameter = self.parse_args(prefix, partial=True)
-            if (
-                parameter
-                and _list_annotation(
-                    self.hints.get(parameter.name, parameter.annotation)
-                )
+            if parameter and (
+                _list_annotation(self.hints.get(parameter.name, parameter.annotation))
                 is not None
+                or isinstance(
+                    self.arguments.get(parameter.name, Argument()).completer,
+                    PathCompleter,
+                )
             ):
                 expanded.append(token)
                 continue

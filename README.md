@@ -282,6 +282,12 @@ in the UI guidance, using prompt-toolkit key names.
 
 ## Completion and validation
 
+Tab accepts the highlighted suggestion, or the first candidate when none is
+selected; Up/Down choose another candidate. Completed command words and ordinary
+arguments gain a separating space and show the next word's suggestions. Existing
+whitespace is reused, and completing in the middle retains later arguments.
+Browser clicks use the same acceptance rules. Type hints never insert text.
+
 `Literal` and `Enum` annotations automatically produce completion choices. Use
 `Argument` for tool-specific choices, validation, and sync or async providers:
 
@@ -334,6 +340,19 @@ for directory arguments, or `PathCompleter(file_filter=lambda p: p.suffix ==
 not validation; new export filenames can still be typed. No completer is inferred
 from a `Path` annotation. Built-in project/config import and export, and history
 export, use this provider without restricting file extensions.
+
+Accepting a directory keeps path completion active inside that directory,
+including with `directories_only=True`. For quoted paths, the cursor stays
+before the closing quote so you can keep typing or completing children. Space
+finishes the directory argument, stepping past a completion-inserted closing
+quote; typing that matching quote reuses it. Completed files move past any closing
+quote and add a space. Quoting is added only when needed, and accepting a
+suggestion preserves an explicitly started quote style. Manually entered quotes
+retain normal editing behavior until a completion is accepted. Comma-separated
+lists stay editable without an automatic space; Space finishes the list.
+Filesystem arguments are now used exactly as submitted: unique-prefix expansion
+requires explicit completion acceptance rather than happening during dispatch.
+This prevents selecting a directory's sole child or rewriting a new filename.
 
 To make a parameter a named option, declare its short and/or long flags
 explicitly:

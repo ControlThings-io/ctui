@@ -17,6 +17,7 @@ through set_output(); assigning to the buffer document directly would fail.
 """
 
 from prompt_toolkit.buffer import CompletionState
+from prompt_toolkit.completion import Completion
 from prompt_toolkit.document import Document
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.layout.containers import Float, FloatContainer, HSplit, Window
@@ -24,7 +25,7 @@ from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.layout.menus import CompletionsMenu
 from prompt_toolkit.widgets import TextArea
 
-from ctui.completion import CommandCompleter
+from ctui.completion import CommandCompleter, completion_edit, move_completion_quote
 
 
 class CtuiLayout:
@@ -63,9 +64,12 @@ class CtuiLayout:
             completer=self.completer,
             history=self.history,
         )
+        self._completion_quote = None
+        self._completion_text = self._input_field.text
 
         if input_field is None:
             self._input_field.buffer.on_completions_changed += self._restore_type_hint
+            self._input_field.buffer.on_text_changed += self._track_completion_quote
 
         self._header_field = Window(height=1, char="-", style="class:line")
 
@@ -98,6 +102,57 @@ class CtuiLayout:
         )
 
         self._root_container = root_container or self._body
+
+    def _track_completion_quote(self, buffer):
+        """Keep ownership of an inserted closing quote while its contents change."""
+        self._completion_quote = move_completion_quote(
+            self._completion_text, buffer.text, self._completion_quote
+        )
+        self._completion_text = buffer.text
+
+    def accept_completion(self, completion: Completion, document: Document) -> None:
+        """Apply one highlighted suggestion and request the next context's menu.
+
+        document is the menu's original input, before arrow-key previews. Type
+        aids do not insert anything. Only the default command completer uses
+        this acceptance policy; injected input widgets retain their own setup.
+        """
+        if not completion.text:
+            return
+        edit = completion_edit(document, completion)
+        buffer = self.input_field.buffer
+        # A directory/list preview can already equal the accepted edit. Explicitly
+        # dismiss its menu even when assigning the Document changes nothing.
+        buffer.complete_state = None
+        buffer.document = Document(edit["text"], edit["cursor"])
+        self._completion_text = buffer.text
+        self._completion_quote = edit["quote"]
+        buffer.start_completion()
+
+    def completion_quote_at_cursor(self, character: str | None = None) -> bool:
+        """Whether input is immediately before a completion-owned closing quote."""
+        buffer = self.input_field.buffer
+        position = self._completion_quote
+        return (
+            position is not None
+            and buffer.cursor_position == position
+            and not buffer.selection_state
+            and buffer.text[position : position + 1] in ("'", '"')
+            and (character is None or buffer.text[position] == character)
+        )
+
+    def finish_completion_quote(self, space: bool = False) -> None:
+        """Step over the owned quote, optionally inserting/reusing a separator."""
+        buffer = self.input_field.buffer
+        position = buffer.cursor_position + 1
+        self._completion_quote = None
+        buffer.cursor_position = position
+        if space:
+            if buffer.text[position : position + 1].isspace():
+                buffer.cursor_position += 1
+            else:
+                buffer.insert_text(" ")
+            buffer.start_completion()
 
     def _restore_type_hint(self, buffer):
         """Restore a discarded no-op completion only for its original Document.

@@ -27,7 +27,8 @@ import asyncio
 import inspect
 import traceback
 
-from prompt_toolkit.filters import has_focus
+from prompt_toolkit.completion import CompleteEvent
+from prompt_toolkit.filters import Condition, has_focus
 from prompt_toolkit.key_binding import KeyBindings
 
 from .commands import CommandError, _HelpResult
@@ -69,6 +70,58 @@ def get_key_bindings(ctui):
     #################################
     # Input Field ONLY key bindings #
     #################################
+
+    command_completion = has_focus(input_field) & Condition(
+        lambda: input_field.completer is ctui.layout.completer
+    )
+
+    @kb.add("tab", filter=command_completion)
+    def _(event):
+        """Accept the highlighted candidate, or fetch and accept the first match."""
+        buffer = input_field.buffer
+        state = buffer.complete_state
+        if state:
+            selected = state.current_completion or state.completions[0]
+            ctui.layout.accept_completion(selected, state.original_document)
+            return
+        document = buffer.document
+
+        async def complete():
+            candidates = [
+                item
+                async for item in ctui.layout.completer.get_completions_async(
+                    document, CompleteEvent(completion_requested=True)
+                )
+            ]
+            if buffer.document == document:
+                selected = next((item for item in candidates if item.text), None)
+                if selected:
+                    ctui.layout.accept_completion(selected, document)
+
+        event.app.create_background_task(complete())
+
+    @kb.add(
+        " ",
+        filter=command_completion
+        & Condition(lambda: ctui.layout.completion_quote_at_cursor()),
+    )
+    def _(event):
+        """Finish a completed quoted directory/list and advance one argument."""
+        ctui.layout.finish_completion_quote(space=True)
+
+    @kb.add(
+        "'",
+        filter=command_completion
+        & Condition(lambda: ctui.layout.completion_quote_at_cursor("'")),
+    )
+    @kb.add(
+        '"',
+        filter=command_completion
+        & Condition(lambda: ctui.layout.completion_quote_at_cursor('"')),
+    )
+    def _(event):
+        """Reuse an inserted closing quote instead of duplicating it."""
+        ctui.layout.finish_completion_quote()
 
     @kb.add("enter", filter=has_focus(input_field))
     def _(event):

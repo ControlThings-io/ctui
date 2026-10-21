@@ -100,7 +100,7 @@ def ui_guidance(app):
     """
     text = """Input window — type and edit commands here:
   Enter                 Run the command; you can enter another while it runs.
-  Tab                   Complete a command or argument.
+  Tab                   Accept the highlighted suggestion (first if none selected).
   Up / Down             Navigate completion choices or input history.
   Left / Right          Move the input cursor.
   Ctrl-A / Ctrl-E       Move to the beginning / end of input.
@@ -108,7 +108,10 @@ def ui_guidance(app):
   Ctrl-W                Delete the preceding word.
   Ctrl-C                Clear input (does not cancel running commands).
   Ctrl-D                Delete the next character; exit if input is empty.
-  Quote values containing spaces. Type a space to advance completion.
+  Completed commands, files and scalar values advance to the next argument.
+  Directories and lists remain editable; continue paths or comma-separated items.
+  Space finishes a completed directory/list, stepping past its inserted quote.
+  Quote values containing spaces; completion preserves your quote style.
 
 Output window — these keys work while input keeps focus:
   Home / End            Scroll to the beginning / end of output.

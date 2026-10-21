@@ -17,6 +17,15 @@ ISO 8601 format.
 - Browser-session integration tests, installed web artifact checks, and a
   runnable custom-layout web tutorial.
 
+### Changed
+
+- Tab accepts the highlighted completion (or first candidate) in terminal and
+  browser modes. Commands and scalar/file arguments advance with a separator;
+  directories and lists stay editable, including inside generated quotes.
+- PathCompleter arguments remain exactly as submitted during dispatch; use Tab
+  to explicitly expand filesystem suggestions. This avoids automatic descent
+  into a sole child and rewriting of new output filenames.
+
 ## [1.0.0] - 2026-09-13
 
 ctui 1.0 establishes the first stable public API for building typed command

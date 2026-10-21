@@ -282,6 +282,12 @@ class WebTests(unittest.IsolatedAsyncioTestCase):
         await socket.send_json({"type": "complete", "text": "ec", "id": 3})
         completion = await self.receive(socket, "completion")
         self.assertEqual(completion["items"][0]["text"], "echo")
+        self.assertEqual(completion["text"], "ec")
+        self.assertEqual(completion["cursor"], 2)
+        self.assertEqual(
+            completion["items"][0]["edit"],
+            {"text": "echo ", "cursor": 5, "quote": None},
+        )
         await socket.send_json({"type": "command", "text": "echo preserved", "id": 4})
         await self.output(socket, "preserved")
         await socket.send_json({"type": "command", "text": "unknown", "id": 5})

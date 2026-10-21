@@ -1,10 +1,22 @@
 # Project status
 
-Last reconciled: 2026-10-20 on `main` at `72ad45d`, with local output-scroll
-shortcut changes. Prior owner-supplied Windows CI output reported seven test
+Last reconciled: 2026-10-20 on `main` at `d060d28`, with local completion
+acceptance changes. Prior owner-supplied Windows CI output reported seven test
 errors across Python 3.11–3.14; no successful remote rerun or publication is claimed.
 
 ## Current state
+
+- Tab now accepts the highlighted suggestion (or first candidate). Commands and
+  scalar/file values add/reuse a separator and request the next suggestions;
+  directories and comma-separated lists stay editable. Quoted continuing values
+  keep the cursor inside the closing quote; Space finishes the argument and a
+  matching typed quote reuses it. Shared terminal/browser edits preserve quote
+  style, later arguments and browser Unicode cursor positions. Browser clicks
+  use the same policy and stale completion responses are ignored. PathCompleter
+  directory-only/filter configuration and advisory validation remain unchanged.
+  Dispatch now keeps filesystem arguments literal instead of expanding them
+  into a sole child or a similarly named existing file.
+  See [completion usage](../README.md#completion-and-validation) and D04.
 
 - Metadata remains `1.0.0rc1`; RC2 is next, pending owner acceptance and the
   release checks in [RELEASE_CHECKLIST.md](../RELEASE_CHECKLIST.md).
@@ -74,6 +86,20 @@ errors across Python 3.11–3.14; no successful remote rerun or publication is c
   still 3.0.53; no dependency/version change is needed.
 
 ## Validation evidence
+
+- October 20 completion acceptance on `d060d28` plus the working tree: all 197
+  ctui tests passed on Python 3.11.16/Linux, including the real terminal input
+  processor, highlighted previews, directory-child refresh, quoted paths,
+  lists, inline options, existing separators and literal dispatch paths.
+  Headless Chromium passed [browser_completion.py](../tests/browser_completion.py),
+  covering immediate Tab, selected candidates, clicks, nested directory-only
+  completion, Space acceptance, filenames with spaces/apostrophes/double quotes
+  and Unicode, later arguments, list continuation and literal directory dispatch.
+  All 127 downstream ctmodbus tests passed with the editable ctui override before
+  the final terminal-menu refresh; its real terminal test passed again afterward.
+  Black/isort, JavaScript syntax, both project lockfiles and whitespace passed.
+  Dependency metadata is unchanged. Manual terminal acceptance, Firefox/Safari
+  and remote platform checks remain pending; no release/artifact checks were run.
 
 - October 20 output-scroll shortcut change on `72ad45d` plus the working tree:
   all 40 focused application/footer/help tests passed on Python 3.11.16 using
@@ -195,6 +221,11 @@ errors across Python 3.11–3.14; no successful remote rerun or publication is c
 
 ## Next steps
 
+- Owner completion acceptance: try Tab/Up/Down, nested quoted paths, directory
+  acceptance with Space, matching quote reuse, new output names and list entries
+  in a real terminal and browser. Repeat the browser completion smoke in Firefox
+  and Safari, and include Windows path behavior in the remote platform checks.
+
 - Owner dialog acceptance: try the new tutorial in a real terminal, particularly
   large dictionaries, Tab/Shift-Tab, list selection, validation and Escape.
   Verify downstream application validators and apply/persist results explicitly.
@@ -220,5 +251,6 @@ Project deletion completion is committed at `d4dd614`; list completion is
 committed at `216ef28`. Output alignment is committed at `47a454a`. Terminal
 output protection is committed at `ec16fb1`. Config command nesting is committed
 at `0c8cc91`; built-in result dialogs at `79579d0`. Dialog expansion and audit
-follow-up changes are local and uncommitted. Commit/push only with explicit
-authorization.
+follow-up changes are committed at `72ad45d`; Alt-arrow output shortcuts at
+`d060d28`. Completion acceptance changes are local and uncommitted. Commit/push
+only with explicit authorization.

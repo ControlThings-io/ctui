@@ -6,6 +6,7 @@ const login = document.querySelector('#login');
 const suggestions = document.querySelector('#suggestions');
 let socket, retry, stopped = false, sequence = 0, latestCommand = 0;
 let completeSequence = 0, completeTimer, completionItems = [], completionIndex = 0;
+let completionSource = null, completionQuote = null, acceptNextCompletion = false;
 let commandInput, shortcuts = [], draft = '', draftCursor = 0;
 const elements = new Map(), history = [];
 let historyIndex = 0;
@@ -32,22 +33,45 @@ function styleText(element, style) {
   }
 }
 function rememberDraft() {
+  if (completionQuote && commandInput) {
+    const before=completionQuote.text, after=commandInput.value;
+    if(before!==after) {
+      let first=0, oldEnd=before.length, newEnd=after.length;
+      while(first<Math.min(oldEnd,newEnd)&&before[first]===after[first])first++;
+      while(oldEnd>first&&newEnd>first&&before[oldEnd-1]===after[newEnd-1]){oldEnd--;newEnd--;}
+      if(first<=completionQuote.position&&oldEnd<=completionQuote.position) {
+        completionQuote.position+=after.length-before.length;completionQuote.text=after;
+      } else completionQuote=null;
+    }
+  }
   if (commandInput) { draft = commandInput.value; draftCursor = commandInput.selectionStart; }
 }
-function requestCompletion() {
+// The Python protocol counts Unicode code points; DOM selections count UTF-16 units.
+function completionCursor() {return [...commandInput.value.slice(0,commandInput.selectionStart)].length;}
+function inputOffset(text, position) {return [...text].slice(0,position).join('').length;}
+function completionMatchesInput() {
+  return commandInput&&completionSource&&commandInput.value===completionSource.text&&completionCursor()===completionSource.cursor;
+}
+function requestCompletion(accept = false) {
   clearTimeout(completeTimer);
+  acceptNextCompletion=accept;hideCompletions();
   const id = ++completeSequence;
-  completeTimer = setTimeout(() => send({type:'complete', id, text:commandInput.value, cursor:commandInput.selectionStart}), 90);
+  completeTimer = setTimeout(() => send({type:'complete', id, text:commandInput.value, cursor:completionCursor()}), 90);
 }
 function applyCompletion(item) {
-  if (!item?.text || !commandInput) return;
-  const cursor = commandInput.selectionStart;
-  commandInput.setRangeText(item.text, Math.max(0, cursor + item.start), cursor, 'end');
+  if (!item?.text || !commandInput || !completionSource) return;
+  if(!completionMatchesInput()){requestCompletion();return;}
+  const edit=item.edit;if(!edit)return;
+  commandInput.value=edit.text;
+  const cursor=inputOffset(edit.text,edit.cursor);
+  commandInput.setSelectionRange(cursor,cursor);
+  completionQuote=edit.quote===null?null:{text:edit.text,position:inputOffset(edit.text,edit.quote)};
   rememberDraft(); hideCompletions(); commandInput.focus(); requestCompletion();
 }
-function hideCompletions() { suggestions.hidden = true; completionItems = []; }
+function hideCompletions() { suggestions.hidden = true; completionItems = []; completionSource=null; }
 // Shared columns separate insertion text from help; hints remain non-inserting.
-function showCompletions(items) {
+function showCompletions(items, source) {
+  completionSource=source;
   completionItems = items; completionIndex = 0; suggestions.replaceChildren();
   for (const [index,item] of items.entries()) {
     const element = document.createElement(item.text ? 'button' : 'div');
@@ -132,6 +156,17 @@ function render(node, parentAxis = 'height') {
   return element;
 }
 function inputKey(event) {
+  if(completionQuote&&commandInput.value===completionQuote.text&&commandInput.selectionStart===commandInput.selectionEnd&&commandInput.selectionStart===completionQuote.position&&
+      (event.key===' '||event.key===commandInput.value[completionQuote.position])) {
+    event.preventDefault();
+    const position=completionQuote.position+1;completionQuote=null;
+    commandInput.setSelectionRange(position,position);
+    if(event.key===' ') {
+      if(/\s/.test(commandInput.value[position]||''))commandInput.setSelectionRange(position+1,position+1);
+      else commandInput.setRangeText(' ',position,position,'end');
+    }
+    rememberDraft();hideCompletions();requestCompletion();return;
+  }
   if (event.altKey&&['ArrowLeft','ArrowRight'].includes(event.key)) {
     event.preventDefault();const output=workspace.querySelector('.output_field');
     if(output)output.scrollLeft+=(event.key==='ArrowLeft'?-1:1)*8*parseFloat(getComputedStyle(output).fontSize)*0.6;
@@ -139,7 +174,7 @@ function inputKey(event) {
     event.preventDefault();const output=workspace.querySelector('.output_field');
     if(output)output.scrollTop+=(event.key==='ArrowUp'?-1:1)*parseFloat(getComputedStyle(output).lineHeight);
   } else if (event.key==='Enter') {event.preventDefault();submitCommand();}
-  else if (event.key==='Tab') {event.preventDefault();if (!suggestions.hidden) applyCompletion(completionItems[completionIndex]);else requestCompletion();}
+  else if (event.key==='Tab') {event.preventDefault();if (!suggestions.hidden&&completionMatchesInput()) applyCompletion(completionItems[completionIndex]);else requestCompletion(true);}
   else if (event.key==='Escape') hideCompletions();
   else if ((event.key==='ArrowUp'||event.key==='ArrowDown')&&!event.ctrlKey) {
     event.preventDefault(); const direction=event.key==='ArrowUp'?-1:1;
@@ -236,7 +271,11 @@ function connect() {
       if(!focused||focused===document.body)commandInput?.focus();
       // Prune detached widgets when dynamic layouts change.
       for(const [id,element] of elements)if(!workspace.contains(element))elements.delete(id);
-    } else if(message.type==='completion'&&message.id===completeSequence) showCompletions(message.items);
+    } else if(message.type==='completion'&&message.id===completeSequence&&commandInput&&message.text===commandInput.value&&message.cursor===completionCursor()) {
+      const accept=acceptNextCompletion;acceptNextCompletion=false;
+      showCompletions(message.items,{text:message.text,cursor:message.cursor});
+      if(accept)applyCompletion(message.items.find(item=>item.text));
+    }
     else if(message.type==='dialog')openDialog(message);
     else if(message.type==='dialog-close')closeDialog(message.id);
     else if(message.type==='dialog-error')dialogError(message);

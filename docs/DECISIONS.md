@@ -91,6 +91,22 @@ Use it for built-in file arguments and the filesystem example. Keep directory
 navigation available with file filters; suggestions do not restrict execution.
 Project import does not filter by extension because snapshot suffixes are optional.
 
+Accepted follow-up, October 20: Tab accepts the highlighted candidate (the first
+when none is selected), rather than cycling or expanding a common prefix.
+Acceptance inserts/reuses a separator for commands and scalar/file arguments,
+then requests the next context's suggestions. Directories continue browsing,
+including directory-only arguments; comma-separated lists remain editable.
+Quoted continuing values keep the cursor before a completion-owned closing
+quote. Space finishes that argument; a matching typed quote reuses the inserted
+quote. Manual quoted editing remains normal until completion is accepted.
+Preserve quote style and subsequent arguments. Browser clicks and terminal Tab
+use shared accepted edits; previews and non-inserting hints remain separate.
+Keep PathCompleter and its existing directory/filter configuration rather than
+introducing separate file/folder completers. Filters remain advisory. Supersede
+implicit dispatch-time prefix expansion for PathCompleter arguments: paths stay
+literal unless explicitly completed, preventing automatic descent into a sole
+child and replacement of new output filenames.
+
 ## D05 — Terminal-native selection and concurrent output
 
 Accepted, Aug 23; `84679d3`, `1b53da9`.
