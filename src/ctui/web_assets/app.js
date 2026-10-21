@@ -135,6 +135,9 @@ function inputKey(event) {
   if (event.altKey&&['ArrowLeft','ArrowRight'].includes(event.key)) {
     event.preventDefault();const output=workspace.querySelector('.output_field');
     if(output)output.scrollLeft+=(event.key==='ArrowLeft'?-1:1)*8*parseFloat(getComputedStyle(output).fontSize)*0.6;
+  } else if (event.altKey&&['ArrowUp','ArrowDown'].includes(event.key)) {
+    event.preventDefault();const output=workspace.querySelector('.output_field');
+    if(output)output.scrollTop+=(event.key==='ArrowUp'?-1:1)*parseFloat(getComputedStyle(output).lineHeight);
   } else if (event.key==='Enter') {event.preventDefault();submitCommand();}
   else if (event.key==='Tab') {event.preventDefault();if (!suggestions.hidden) applyCompletion(completionItems[completionIndex]);else requestCompletion();}
   else if (event.key==='Escape') hideCompletions();
@@ -156,9 +159,9 @@ function inputKey(event) {
       case 'd':if (!commandInput.value) send({type:'exit'});else commandInput.setRangeText('',start,Math.min(commandInput.value.length,start+1),'start');break;
     }
     rememberDraft();
-  } else if (['PageUp','PageDown','Home','End'].includes(event.key) || (event.ctrlKey&&['ArrowUp','ArrowDown'].includes(event.key))) {
+  } else if (['PageUp','PageDown','Home','End'].includes(event.key)) {
     event.preventDefault();const output=workspace.querySelector('.output_field');if (!output) return;
-    const amount=event.key==='Home'?-output.scrollHeight:event.key==='End'?output.scrollHeight:(event.key==='PageUp'?-1:event.key==='PageDown'?1:event.key==='ArrowUp'?-0.05:0.05)*output.clientHeight;
+    const amount=event.key==='Home'?-output.scrollHeight:event.key==='End'?output.scrollHeight:(event.key==='PageUp'?-1:1)*output.clientHeight;
     output.scrollTop+=amount;
   }
 }

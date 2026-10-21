@@ -1,8 +1,8 @@
 # Project status
 
-Last reconciled: 2026-10-07 on `main` at `79579d0`, after PR #7 merged the
-web frontend. Owner-supplied Windows CI output reports seven test errors across
-Python 3.11–3.14; no successful remote rerun or publication is claimed.
+Last reconciled: 2026-10-20 on `main` at `72ad45d`, with local output-scroll
+shortcut changes. Prior owner-supplied Windows CI output reported seven test
+errors across Python 3.11–3.14; no successful remote rerun or publication is claimed.
 
 ## Current state
 
@@ -40,9 +40,10 @@ Python 3.11–3.14; no successful remote rerun or publication is claimed.
 
 - New terminal output follows the final line at column zero and resets horizontal
   scrolling, preserving long lines without shifting right to their ends.
-  Alt-Left/Right scroll unwrapped output horizontally with input retaining focus
-  in terminal and browser modes. Generated UI help lists the Alt-arrow shortcuts
-  beside the existing output navigation keys.
+  Alt-Up/Down now replace Ctrl-Up/Down for one-line vertical output scrolling;
+  Alt-Left/Right scroll unwrapped output horizontally. All four retain input
+  focus in terminal and browser modes. Browser vertical steps use the rendered
+  line height. README and generated UI help list the updated shortcuts (D05).
 
 - Full-screen lifecycle queues stdout/stderr and pre-existing standard-stream
   logging through prompt-toolkit, preserves diagnostics, and restores streams
@@ -73,6 +74,15 @@ Python 3.11–3.14; no successful remote rerun or publication is claimed.
   still 3.0.53; no dependency/version change is needed.
 
 ## Validation evidence
+
+- October 20 output-scroll shortcut change on `72ad45d` plus the working tree:
+  all 40 focused application/footer/help tests passed on Python 3.11.16 using
+  ctmodbus with the adjacent editable ctui checkout. Direct terminal-binding
+  checks verified exact one-line steps, retained input/cursor/focus, removal of
+  Ctrl-Up/Down, and updated help. Node handler checks verified Alt arrows,
+  rendered-line vertical steps, Ctrl removal, paging and plain-arrow history.
+  JavaScript syntax, changed-file Black/isort and whitespace checks passed.
+  Manual terminal/browser acceptance and remote platform checks remain pending.
 
 - October 7 dialog expansion and inline dictionary layout: all 187 tests passed
   on Python 3.11.16/Linux x86-64 with locked prompt-toolkit 3.0.53. All 15 dialog

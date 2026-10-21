@@ -107,6 +107,11 @@ Accepted follow-up, October 6: keep new terminal output at the first column
 of its final line, preserving long unwrapped lines. Alt-Left/Right scroll output
 horizontally in terminal and browser modes while command input retains focus.
 
+Accepted follow-up, October 20: Alt-Up/Down replace Ctrl-Up/Down for one-line
+output scrolling in terminal and browser modes, aligning vertical navigation
+with Alt-Left/Right. Command input retains focus; unmodified Up/Down retain
+history/completion navigation.
+
 Accepted follow-up, October 6: scoped terminal output protection queues Python
 stdout/stderr through prompt-toolkit run_in_terminal, preserving diagnostics
 without overwriting the full-screen renderer. Redirect existing handlers bound

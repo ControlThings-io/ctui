@@ -113,7 +113,7 @@ def ui_guidance(app):
 Output window — these keys work while input keeps focus:
   Home / End            Scroll to the beginning / end of output.
   Page Up / Page Down   Scroll output one page.
-  Ctrl-Up / Ctrl-Down   Scroll output one line.
+  Alt-Up / Alt-Down     Scroll output one line.
   Alt-Left / Alt-Right  Scroll unwrapped output horizontally.
   Ctrl-L                Clear output, preserving input.
   Select and copy output using your terminal's mouse and clipboard shortcuts.

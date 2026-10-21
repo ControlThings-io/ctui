@@ -564,7 +564,8 @@ The input line includes familiar terminal editing shortcuts:
 - Ctrl-D: delete the next character, or exit on an empty line.
 - Ctrl-L: clear the output pane.
 - Home / End: jump to the beginning / end of the output.
-- Page Up / Page Down and Ctrl-Up / Ctrl-Down: scroll output vertically.
+- Page Up / Page Down: scroll output one page.
+- Alt+Up / Alt+Down: scroll output one line while input keeps focus.
 - Alt+Left / Alt+Right: scroll long, unwrapped output horizontally while input
   keeps focus. New terminal output returns to the first column and final line.
 
