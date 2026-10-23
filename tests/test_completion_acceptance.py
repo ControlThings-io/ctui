@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from prompt_toolkit.application import Application
 from prompt_toolkit.buffer import CompletionState
@@ -113,9 +114,14 @@ class CompletionAcceptanceTests(unittest.IsolatedAsyncioTestCase):
             self.assertIsNone(edit["quote"])
 
     async def test_quotes_and_inline_options_preserve_suffix_and_round_trip(self):
+        """Exercise quote escaping without creating names forbidden on Windows."""
         with tempfile.TemporaryDirectory() as root:
             target = Path(root) / 'a file\'s "name".json'
-            target.touch()
+            self.enterContext(
+                patch.object(
+                    PathCompleter, "_matches", return_value=[target.as_posix()]
+                )
+            )
             partial = (Path(root) / "a f").as_posix()
             for prefix in ("read ", "named --path="):
                 for quote in ("'", '"'):
@@ -213,7 +219,10 @@ class CompletionAcceptanceTests(unittest.IsolatedAsyncioTestCase):
             self.app.layout.accept_completion(items[0], document)
             self.assertIsNone(self.buffer.complete_state)
             async with asyncio.timeout(3):
-                while self.buffer.complete_state is None:
+                while not (
+                    self.buffer.complete_state
+                    and self.buffer.complete_state.completions
+                ):
                     await asyncio.sleep(0.01)
             self.assertEqual(
                 [c.display_text for c in self.buffer.complete_state.completions],
@@ -294,7 +303,10 @@ class CompletionAcceptanceTests(unittest.IsolatedAsyncioTestCase):
                     self.fail(
                         f"Tab input: {self.buffer.text!r}; completer={self.buffer.completer!r}; state={self.buffer.complete_state!r}"
                     )
-                await wait_for(lambda: self.buffer.complete_state is not None)
+                await wait_for(
+                    lambda: self.buffer.complete_state
+                    and self.buffer.complete_state.completions
+                )
                 pipe.send_text("\x1b[B\x1b[B\t")
                 await wait_for(lambda: self.buffer.text == "deploy production ")
                 # Start a fresh directory command, accept it, and submit from inside
@@ -309,7 +321,10 @@ class CompletionAcceptanceTests(unittest.IsolatedAsyncioTestCase):
                 self.buffer.document = Document("cd " + (Path(root) / "a").as_posix())
                 pipe.send_text("\t")
                 await wait_for(self.app.layout.completion_quote_at_cursor)
-                await wait_for(lambda: self.buffer.complete_state is not None)
+                await wait_for(
+                    lambda: self.buffer.complete_state
+                    and self.buffer.complete_state.completions
+                )
                 pipe.send_text("\x1b[B")
                 await wait_for(lambda: self.buffer.complete_state.complete_index == 0)
                 self.assertEqual(

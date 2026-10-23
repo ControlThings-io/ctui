@@ -79,6 +79,22 @@ class DialogTests(unittest.IsolatedAsyncioTestCase):
 class ValueDialogTests(unittest.IsolatedAsyncioTestCase):
     """Check typed dialog results and a real modal application's queue/cleanup."""
 
+    async def wait_for_dialog(self, app, dialog):
+        """Wait for rendering to expose the dialog's Tab targets before input.
+
+        Inserting a float and focusing it precedes redraw. prompt-toolkit's Tab
+        navigation uses visible windows from the last render, so waiting only
+        for the float can send keys through the previous layout on slower runs.
+        """
+        import asyncio
+
+        async with asyncio.timeout(3):
+            while not (
+                app.layout.has_focus(dialog)
+                and app.layout.current_window in app.layout.visible_windows
+            ):
+                await asyncio.sleep(0.01)
+
     async def test_dictionary_conversion_validation_and_input_copy(self):
         from ctui.dialogs import DialogValidationError, DictField, DictInputDialog
 
@@ -202,6 +218,7 @@ class ValueDialogTests(unittest.IsolatedAsyncioTestCase):
                 input=pipe,
                 output=TerminalOutput(),
                 full_screen=True,
+                min_redraw_interval=0.05,
             )
             running = asyncio.create_task(app.run_async())
             await until(lambda: app.is_running)
@@ -210,7 +227,8 @@ class ValueDialogTests(unittest.IsolatedAsyncioTestCase):
                 first = asyncio.create_task(show_dialog(form))
                 second_dialog = MessageDialog(text="Queued")
                 second = asyncio.create_task(show_dialog(second_dialog))
-                await until(lambda: len(root.floats) == 1)
+                await self.wait_for_dialog(app, form)
+                self.assertEqual(len(root.floats), 1)
                 form.inputs["port"].text = "bad"
                 form.inputs["host"].text = "edited"
                 # Exercise the actual upstream Tab path to the confirmation button.
@@ -224,9 +242,7 @@ class ValueDialogTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(
                     await asyncio.wait_for(first, 3), {"port": 1234, "host": "edited"}
                 )
-                await until(
-                    lambda: bool(root.floats) and app.layout.has_focus(second_dialog)
-                )
+                await self.wait_for_dialog(app, second_dialog)
                 self.assertEqual(len(root.floats), 1)
                 pipe.send_text("\x1b")
                 await asyncio.wait_for(second, 3)
@@ -235,7 +251,7 @@ class ValueDialogTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(draft.text, "background update")
                 third_dialog = MessageDialog(text="Cancel task")
                 third = asyncio.create_task(show_dialog(third_dialog))
-                await until(lambda: bool(root.floats))
+                await self.wait_for_dialog(app, third_dialog)
                 third.cancel()
                 with self.assertRaises(asyncio.CancelledError):
                     await third
@@ -282,7 +298,12 @@ class ValueDialogTests(unittest.IsolatedAsyncioTestCase):
         with create_pipe_input() as pipe:
             draft = TextArea(text="kept")
             root = FloatContainer(content=draft, floats=[])
-            app = Application(layout=Layout(root), input=pipe, output=TerminalOutput())
+            app = Application(
+                layout=Layout(root),
+                input=pipe,
+                output=TerminalOutput(),
+                min_redraw_interval=0.05,
+            )
             running = asyncio.create_task(app.run_async())
             try:
                 async with asyncio.timeout(3):
@@ -297,9 +318,7 @@ class ValueDialogTests(unittest.IsolatedAsyncioTestCase):
                         (CheckboxListDialog(values=[(1, "One")]), None),
                     ):
                         task = asyncio.create_task(show_dialog(dialog))
-                        async with asyncio.timeout(3):
-                            while not root.floats:
-                                await asyncio.sleep(0.01)
+                        await self.wait_for_dialog(app, dialog)
                         pipe.send_text("\x1b")
                         self.assertEqual(await asyncio.wait_for(task, 3), expected)
                         self.assertFalse(root.floats)
@@ -309,9 +328,7 @@ class ValueDialogTests(unittest.IsolatedAsyncioTestCase):
                         (CheckboxListDialog(values=[(1, "One"), (2, "Two")]), [2]),
                     ):
                         task = asyncio.create_task(show_dialog(dialog))
-                        async with asyncio.timeout(3):
-                            while not root.floats:
-                                await asyncio.sleep(0.01)
+                        await self.wait_for_dialog(app, dialog)
                         pipe.send_text("\x1b[B \t\r")
                         self.assertEqual(await asyncio.wait_for(task, 3), expected)
             finally:

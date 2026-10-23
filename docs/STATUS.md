@@ -1,10 +1,17 @@
 # Project status
 
-Last reconciled: 2026-10-23 on `main` at `8374bee`, with a local quoted-path
-preview fix. Prior owner-supplied Windows CI output reported seven test
-errors across Python 3.11–3.14; no successful remote rerun or publication is claimed.
+Last reconciled: 2026-10-23 on `main` at `8a409c4`, with local Windows test
+portability and synchronization fixes. The latest GitHub run failed on Windows
+Python 3.11–3.14; all Linux/macOS jobs and formatting passed. A remote run of
+these local fixes remains pending; no publication is claimed.
 
 ## Current state
+
+- Windows CI test fixes preserve quote-escaping coverage through a synthetic
+  path suggestion instead of creating a filename containing a forbidden double
+  quote. Completion checks wait for populated results; dialog keyboard tests
+  wait for rendered focus targets before sending input. Dialog tests deliberately
+  delay redraw to exercise this synchronization. Runtime behavior is unchanged.
 
 - Tab now accepts the highlighted suggestion (or first candidate). Commands and
   scalar/file values add/reuse a separator and request the next suggestions;
@@ -88,6 +95,19 @@ errors across Python 3.11–3.14; no successful remote rerun or publication is c
   still 3.0.53; no dependency/version change is needed.
 
 ## Validation evidence
+
+- October 23 Windows test fixes on `8a409c4` plus the working tree: all 198 tests
+  passed on Python 3.11.16/Linux. Controlled 100 ms provider/redraw delays
+  reproduced the empty completion list and dialog selection timeout in the
+  original tests; corrected tests passed with the same delays. Black/isort,
+  lockfile and whitespace checks passed. Windows execution remains pending.
+- Inspected [GitHub run 40040974891](https://github.com/ControlThings-io/ctui/actions/runs/40040974891)
+  at `8a409c4`: all four Windows versions rejected the double-quote filename;
+  3.11–3.13 also timed out in dialog selection, and 3.11–3.12 additionally timed
+  out in dictionary validation and checked an empty, still-loading completion
+  list. All 12 Linux/macOS test jobs and formatting passed; artifact jobs were
+  skipped because tests failed. Earlier console/path fixes are no longer the
+  failures reported by this run.
 
 - October 23 quoted-path preview fix on `8374bee` plus the working tree: all 198
   tests passed on Python 3.11.16/Linux, including repeated menu selections,
@@ -242,7 +262,8 @@ errors across Python 3.11–3.14; no successful remote rerun or publication is c
 
 - Owner acceptance: try actual downstream tools in terminal, CLI and --web modes,
   including custom layouts, background progress and remote trusted certificates.
-- Rerun Windows CI on Python 3.11–3.14 for the console/path fixes.
+- After explicit commit/push authorization, rerun Windows CI on Python 3.11–3.14
+  for the test portability/synchronization fixes and confirm the artifact jobs run.
 - Confirm Safari behavior and the cross-platform CI matrix.
   Arbitrary third-party prompt-toolkit controls, custom floats and renderer
   internals require dedicated browser adapters; these are documented limitations.
@@ -263,4 +284,5 @@ output protection is committed at `ec16fb1`. Config command nesting is committed
 at `0c8cc91`; built-in result dialogs at `79579d0`. Dialog expansion and audit
 follow-up changes are committed at `72ad45d`; Alt-arrow output shortcuts at
 `d060d28`. Completion acceptance is committed at `8374bee`; the quoted-path
-preview fix is local and uncommitted. Commit/push only with explicit authorization.
+preview fix at `8a409c4`. Windows test portability/synchronization fixes are local
+and uncommitted. Commit/push only with explicit authorization.
