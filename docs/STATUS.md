@@ -1,7 +1,7 @@
 # Project status
 
-Last reconciled: 2026-10-20 on `main` at `d060d28`, with local completion
-acceptance changes. Prior owner-supplied Windows CI output reported seven test
+Last reconciled: 2026-10-23 on `main` at `8374bee`, with a local quoted-path
+preview fix. Prior owner-supplied Windows CI output reported seven test
 errors across Python 3.11–3.14; no successful remote rerun or publication is claimed.
 
 ## Current state
@@ -16,6 +16,8 @@ errors across Python 3.11–3.14; no successful remote rerun or publication is c
   directory-only/filter configuration and advisory validation remain unchanged.
   Dispatch now keeps filesystem arguments literal instead of expanding them
   into a sole child or a similarly named existing file.
+  Arrow-key previews now reuse the closing quote under the cursor and preserve
+  its quote style, preventing duplicate quotes when selecting path children.
   See [completion usage](../README.md#completion-and-validation) and D04.
 
 - Metadata remains `1.0.0rc1`; RC2 is next, pending owner acceptance and the
@@ -86,6 +88,14 @@ errors across Python 3.11–3.14; no successful remote rerun or publication is c
   still 3.0.53; no dependency/version change is needed.
 
 ## Validation evidence
+
+- October 23 quoted-path preview fix on `8374bee` plus the working tree: all 198
+  tests passed on Python 3.11.16/Linux, including repeated menu selections,
+  cancellation, both quote styles, apostrophes, inline options, later arguments,
+  and real terminal input processing for Down/Up, Tab and Space. Black/isort,
+  lockfile and whitespace checks passed. The sandbox stalled asyncio executor
+  shutdown; the suite passed outside it. Manual terminal
+  acceptance, browser smoke and remote platform checks remain pending for this fix.
 
 - October 20 completion acceptance on `d060d28` plus the working tree: all 197
   ctui tests passed on Python 3.11.16/Linux, including the real terminal input
@@ -252,5 +262,5 @@ committed at `216ef28`. Output alignment is committed at `47a454a`. Terminal
 output protection is committed at `ec16fb1`. Config command nesting is committed
 at `0c8cc91`; built-in result dialogs at `79579d0`. Dialog expansion and audit
 follow-up changes are committed at `72ad45d`; Alt-arrow output shortcuts at
-`d060d28`. Completion acceptance changes are local and uncommitted. Commit/push
-only with explicit authorization.
+`d060d28`. Completion acceptance is committed at `8374bee`; the quoted-path
+preview fix is local and uncommitted. Commit/push only with explicit authorization.

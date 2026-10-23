@@ -223,12 +223,13 @@ class CommandCompleter(Completer):
         except CommandValidationError:
             return
         for result in results:
+            value = inline_option + result.value
             completion = _InputCompletion(
-                inline_option + shlex.quote(result.value) if result.value else "",
+                _preview_value(document, raw_length, value) if result.value else "",
                 start_position=-raw_length if result.value else 0,
                 display=result.display or result.value,
                 display_meta=result.help,
-                value=inline_option + result.value,
+                value=value,
                 finish=not list_argument or word.startswith("-"),
                 directory=bool(
                     config
@@ -284,6 +285,27 @@ def _quote_value(value: str, original: str) -> str:
     if original.startswith("'"):
         return "'" + value.replace("'", "'\"'\"'") + "'"
     return shlex.quote(value)
+
+
+def _preview_value(document: Document, raw_length: int, value: str) -> str:
+    """Quote a menu preview, reusing a closing quote immediately after the cursor.
+
+    prompt-toolkit only replaces text before the cursor during arrow navigation.
+    Keep the original quote style and omit the preview's closing quote when the
+    untouched suffix already supplies it. Accepted edits still replace the whole
+    token through completion_edit using the decoded value.
+    """
+    cursor = document.cursor_position
+    start = cursor - raw_length
+    end = _token_end(document.text, start)
+    inserted = _quote_value(value, document.text[start:end])
+    if (
+        end == cursor + 1
+        and inserted[:1] in ("'", '"')
+        and document.text[cursor:end] == inserted[:1] == inserted[-1:]
+    ):
+        return inserted[:-1]
+    return inserted
 
 
 class _CompletionEdit(TypedDict):

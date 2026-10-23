@@ -143,6 +143,37 @@ class CompletionAcceptanceTests(unittest.IsolatedAsyncioTestCase):
         edit = await self.edit("read /a-new-unmatched-file")
         self.assertEqual(edit["text"], "read /a-new-unmatched-file")
 
+    async def test_quoted_path_previews_reuse_closing_quote_and_preserve_suffix(self):
+        with tempfile.TemporaryDirectory() as root:
+            targets = [Path(root) / name for name in ("a folder", "a file's name")]
+            targets[0].mkdir()
+            targets[1].touch()
+            for prefix in ("read ", "named --path="):
+                for quote in ("'", '"'):
+                    with self.subTest(prefix=prefix, quote=quote):
+                        text = prefix + quote + (Path(root) / "a").as_posix()
+                        document, items = await self.candidates(
+                            text + quote + " 2", len(text)
+                        )
+                        self.buffer.document = document
+                        self.buffer.complete_state = CompletionState(document, items)
+                        for index in (0, 1, 0, 1):
+                            self.buffer.go_to_completion(index)
+                            self.assertEqual(self.buffer.text[len(prefix)], quote)
+                            command = prefix.split()[0]
+                            value = items[index].value
+                            if command == "named":
+                                value = "--path=" + value
+                            self.assertEqual(
+                                shlex.split(self.buffer.text),
+                                [command, value, "2"],
+                            )
+                            self.assertEqual(
+                                self.buffer.document.text_after_cursor, quote + " 2"
+                            )
+                        self.buffer.cancel_completion()
+                        self.assertEqual(self.buffer.document, document)
+
     async def test_tab_accepts_highlighted_preview_and_fetches_first_candidate(self):
         document, items = await self.candidates("deploy ")
         self.buffer.document = document
@@ -277,6 +308,24 @@ class CompletionAcceptanceTests(unittest.IsolatedAsyncioTestCase):
                 )
                 self.buffer.document = Document("cd " + (Path(root) / "a").as_posix())
                 pipe.send_text("\t")
+                await wait_for(self.app.layout.completion_quote_at_cursor)
+                await wait_for(lambda: self.buffer.complete_state is not None)
+                pipe.send_text("\x1b[B")
+                await wait_for(lambda: self.buffer.complete_state.complete_index == 0)
+                self.assertEqual(
+                    shlex.split(self.buffer.text),
+                    ["cd", (directory / "only child").as_posix() + "/"],
+                )
+                self.assertTrue(self.app.layout.completion_quote_at_cursor())
+                pipe.send_text("\x1b[A")
+                await wait_for(
+                    lambda: self.buffer.complete_state.complete_index is None
+                )
+                self.assertEqual(
+                    shlex.split(self.buffer.text), ["cd", directory.as_posix() + "/"]
+                )
+                pipe.send_text("\x1b[B\t")
+                await wait_for(lambda: "only child" in self.buffer.text)
                 await wait_for(self.app.layout.completion_quote_at_cursor)
                 pipe.send_text(" ")
                 await wait_for(lambda: self.buffer.text.endswith("' "))
