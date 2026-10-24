@@ -1,13 +1,19 @@
 # Project status
 
-Last reconciled: 2026-10-23 on `main` at `3e968b3`. The latest remote run at
+Last reconciled: 2026-10-23 on `main` at `bfebed1` plus changelog cleanup.
+The last verified remote run at
 `7bdf16e` passed all 16 platform/Python jobs, formatting and distribution checks.
-The whitespace fix is committed locally, one commit ahead of
+The whitespace and browser sizing fixes are committed locally, two commits ahead of
 origin/main. Metadata remains RC1. The owner reports testing complete and is
 considering stable `1.0.0` instead of RC2; release preparation remains pending.
 No new publication is claimed.
 
 ## Current state
+
+- Changelog now separates Added/Changed/Fixed/Removed/Compatibility entries,
+  includes notable post-RC1 changes and a command migration table, and labels the
+  September release as `1.0.0rc1`. Upcoming notes remain Unreleased pending the
+  final version/date. Runtime and package metadata are unchanged.
 
 - Browser path/tag suggestions without help text use a single full-width label
   column instead of reserving a capped label column and empty help space.
@@ -123,6 +129,11 @@ No new publication is claimed.
   still 3.0.53; no dependency/version change is needed.
 
 ## Validation evidence
+
+- October 23 changelog cleanup on `bfebed1` plus the working tree: reviewed
+  entries against the RC1 tag, post-RC1 commits, accepted decisions and current
+  command/dialog APIs. Checked release headings, link targets and whitespace.
+  Documentation-only changes; runtime tests were not rerun.
 
 - October 23 browser popup sizing on `3e968b3` plus the working tree: reproduced
   the original short-tag wrapping (BTimer: 2 lines, EmergencyTimer: 3) in Chromium
@@ -347,11 +358,10 @@ No new publication is claimed.
   build containing `3e968b3`, browser popup sizing and final release
   preparation changes. The current remote run does not cover the whitespace fix.
 - For the proposed stable release, prepare a dated `1.0.0` changelog section
-  covering the comparison with `v1.0.0rc1`, including command/API compatibility
-  changes. Correct the premature September 13 stable heading to reflect RC1
-  history. Merge Unreleased material into the stable release notes and add
-  omitted post-RC1 changes. Publishing currently selects the old stable section
-  and would omit all Unreleased notes.
+  from the cleaned Unreleased notes and review it against `v1.0.0rc1`. The RC1
+  heading/history and command migration notes are corrected. Add the stable
+  release link when the final version/date are set; publishing requires an
+  exact `1.0.0` section before tagging.
 - For stable `1.0.0`, set `pyproject.toml` to `1.0.0`, refresh the root package
   entry in `uv.lock`, and follow [RELEASE_CHECKLIST.md](../RELEASE_CHECKLIST.md)
   on the intended release revision: source/lock checks, artifact smoke tests
@@ -362,9 +372,7 @@ No new publication is claimed.
 
 ## Handoff
 
-All implementation changes through whitespace handling are committed at
-`3e968b3` on `main`, one commit ahead of origin/main. Browser popup sizing,
-browser regression checks and changelog/status updates remain uncommitted,
-alongside the prior proposed stable-release direction in D10. Remaining release
-work and validation are listed above.
+Implementation changes through browser popup sizing are committed at `bfebed1`
+on `main`, two commits ahead of origin/main. Changelog cleanup and status updates
+remain uncommitted. Remaining release work and validation are listed above.
 Commit/push only with explicit authorization.

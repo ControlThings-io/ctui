@@ -9,42 +9,93 @@ ISO 8601 format.
 
 ### Added
 
-- Asyncio browser frontend included in standard installs via `--web` and
-  `CtuiApp.run_web()`, with packaged HTML/CSS/JavaScript and WebSockets.
-- Shared browser views of one app session, existing custom-widget rendering,
-  completion, per-view help/confirmation/input popups, and optional authenticated
-  HTTPS access using supplied certificates.
-- Browser-session integration tests, installed web artifact checks, and a
-  runnable custom-layout web tutorial.
+- Browser mode via `--web` and `CtuiApp.run_web()`, included in standard installs
+  and using the same application definition as terminal and CLI modes.
+- Shared browser sessions with per-tab drafts, completion and dialogs, plus
+  authenticated HTTPS access using supplied certificates.
+- Hierarchical command help, targeted help popups, and interface-specific
+  editing and shortcut guidance.
+- Reusable `PathCompleter` for file and directory arguments, with optional
+  directory-only suggestions and file filters.
+- Comma-separated list completion and project-name suggestions for loading
+  and deleting projects.
+- Button-choice, radio/checkbox-list, and typed dictionary-editor dialogs with
+  synchronous validation.
+- `@command(result_title=...)` for presenting command results in queued dialogs
+  while preserving application output.
+- Explicit mixed-radix byte formats for `HexBytes` and `FuzzyHexPattern`,
+  including decimal components.
 
 ### Changed
 
-- Browser completion popups use their full width for labels when no help text
-  is present, avoiding cramped path/tag suggestions. Long values wrap within
-  the viewport; optional help retains aligned desktop columns and mobile stacking.
-- Accept repeated spaces and tabs between command words and aliases while
-  preserving quoted argument values.
-- Remove the top-level `clear` command; use Ctrl-L to clear terminal/browser output.
-- Move `history`, `history search`, and `history export` under `project history`
-  without old-name aliases. Add `project history clear` alongside
-  `project reset history`, sharing the same confirmed reset operation.
-  Apps without a project backend retain in-memory history and input recall,
-  with no built-in history commands.
+- Startup always opens the persistent `default` project. Saved projects require
+  an explicit `project load`.
+- Configuration and history commands now live under `project`; see the command
+  migration table below. `project history clear` and `project reset history`
+  share the same confirmed reset operation.
+- Built-in project and history results appear in dialogs in terminal and browser
+  modes, preserving application output. CLI mode continues to print results.
+- Interactive `exit` requires confirmation. Approved browser exit stops the
+  shared session and attempts to close the submitting tab.
 - Tab accepts the highlighted completion (or first candidate) in terminal and
-  browser modes. At empty input or between command words, Tab first opens a
-  hidden menu without inserting text; another Tab accepts the highlighted row.
-  Escape dismisses pending or visible menus. Commands and scalar/file arguments
-  advance with a separator;
-  directories and lists stay editable, including inside generated quotes.
-- PathCompleter arguments remain exactly as submitted during dispatch; use Tab
-  to explicitly expand filesystem suggestions. This avoids automatic descent
-  into a sole child and rewriting of new output filenames.
+  browser modes. With empty input or between command words, Tab first reveals a
+  hidden menu without insertion. Escape dismisses visible or pending menus.
+  Accepted commands and scalar/file arguments advance with a separator;
+  directories and lists remain editable, including inside generated quotes.
+- Arguments using `PathCompleter` remain literal during dispatch. Use Tab to
+  accept filesystem suggestions explicitly.
+- Alt-Up/Down scroll output one line; Alt-Left/Right scroll horizontally while
+  command input retains focus.
+- Plain hexadecimal input accepts whitespace between digits or pattern elements.
 
-## [1.0.0] - 2026-09-13
+### Fixed
 
-ctui 1.0 establishes the first stable public API for building typed command
-tools that can run as either full-screen terminal applications or conventional
-command-line programs.
+- Repeated spaces and tabs between command words and aliases now work
+  consistently, preserving quoted argument values and error positions.
+- Path completion preserves quote style, reuses closing quotes, and retains
+  later arguments. Windows paths preserve the user's typed separators.
+- Browser completion popups give labels the full width when help text is absent,
+  avoiding cramped path/tag suggestions. Long values wrap within the viewport;
+  optional help stays aligned on desktop and stacks on narrow screens.
+- Background stdout, stderr, and logging output no longer overwrite the
+  full-screen terminal layout.
+- Command, completion, and UI callback failures are contained and reported;
+  argument errors identify the offending input in command-line order.
+- Dialogs redraw after asynchronous work, retain button focus while scrolling,
+  and clean up correctly after cancellation or focus failures.
+- Decorated command type hints and named-option choice-prefix expansion are
+  preserved consistently.
+- Browser rendering supports the declared minimum prompt-toolkit version.
+
+### Removed
+
+- The top-level `clear` command; use Ctrl-L in terminal and browser modes.
+- The obsolete `functions.show_help` helper, unused command/help metadata,
+  and the unused `tabulate` dependency.
+
+### Compatibility
+
+Applications and command files upgrading from rc1 should update these names:
+
+| Previous command | Replacement |
+| --- | --- |
+| `history …` | `project history …` |
+| `configs …` | `project configs …` |
+| `clear` | Ctrl-L in terminal/browser modes |
+
+The old command names have no compatibility aliases. Applications without a
+project backend retain in-memory history and input recall, with no built-in
+history commands. See the [public API and compatibility policy](README.md#public-api-and-compatibility)
+for the supported Python interface.
+
+## [1.0.0rc1] - 2026-09-13
+
+This release candidate introduces the redesigned API for typed command tools
+that run as full-screen terminal applications or conventional command-line
+programs.
+
+[Unreleased]: https://github.com/ControlThings-io/ctui/compare/v1.0.0rc1...HEAD
+[1.0.0rc1]: https://github.com/ControlThings-io/ctui/releases/tag/v1.0.0rc1
 
 ### Added
 
@@ -84,4 +135,3 @@ Versions before 1.0 were development releases. Applications upgrading from a
 0.x release should review the current README and tutorials rather than assume
 compatibility with undocumented earlier behavior.
 
-[1.0.0]: https://github.com/ControlThings-io/ctui/releases/tag/v1.0.0
