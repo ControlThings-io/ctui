@@ -1,11 +1,11 @@
 # Project status
 
-Last reconciled: 2026-10-23 on `main` at `bb4803c` plus stable version preparation.
+Last reconciled: 2026-10-23 on `main` at `4d41d72` after release CI verification.
 Package metadata and lockfile now report `1.0.0`, matching the dated changelog.
 Local source and wheel/sdist release checks passed on Python 3.11.16/Linux.
-The last verified remote run at `7bdf16e` passed all platform/artifact jobs but
-does not cover the final release revision. Preparation changes are uncommitted;
-no tag or publication is claimed.
+[GitHub run 40065512692](https://github.com/ControlThings-io/ctui/actions/runs/40065512692)
+passed all 16 platform/Python jobs, formatting and distribution smoke checks at
+the committed/pushed release-preparation revision. No tag/publication is claimed.
 
 ## Current state
 
@@ -133,6 +133,16 @@ no tag or publication is claimed.
   still 3.0.53; no dependency/version change is needed.
 
 ## Validation evidence
+
+- October 23 remote release preparation at `4d41d72`: run 40065512692 passed
+  the full matrix, Black/isort, wheel/sdist builds, isolated base/web smoke tests
+  and artifact upload. Windows 3.11's test step took 143 seconds versus 20–23
+  seconds for Windows 3.12–3.14. Its log reports 212 tests in 140.297 seconds,
+  with roughly 60.9/60.7-second gaps around the dialog-queue cancellation and
+  shared-tab/reconnect web tests. The timing matches aiohttp's default 60-second
+  server shutdown timeout, suggesting delayed connection/request cleanup;
+  the exact awaited operation is not established by these logs. This is a
+  timing investigation, with no failed assertions or runtime changes made.
 
 - October 23 stable version preparation on `bb4803c` plus the working tree:
   locked sync and all 212 tests passed on Python 3.11.16/Linux; Black/isort,
@@ -373,20 +383,21 @@ no tag or publication is claimed.
 
 ## Next steps
 
-- Commit release preparation and obtain a passing remote branch build on that
-  exact revision, with the checklist's clean-checkout verification. The last
-  verified remote run does not cover all current implementation/metadata changes.
+- Release preparation is committed/pushed at `4d41d72`, and remote source and
+  artifact checks passed on that exact revision.
 - Confirm the `pypi` GitHub environment and PyPI trusted publisher configuration,
   then create/push annotated `v1.0.0` only when explicitly authorized. Watch
   verification, artifacts, attestations, publication and GitHub release creation.
 - Verify published metadata/artifacts/attestations, GitHub stable/latest status,
   and an isolated PyPI installation plus tutorial before announcement. Owner
   testing was reported complete October 23; no release is published by this work.
+- Optional follow-up: instrument Windows 3.11 WebSocket disconnect/teardown and
+  runner cleanup to identify the two near-60-second waits; do not treat the
+  inferred shutdown-timeout explanation as a confirmed stack trace.
 
 ## Handoff
 
-Implementation and changelog finalization are committed through `bb4803c` on
-`main`, four commits ahead of origin/main. Version/lockfile preparation and these
-status updates remain uncommitted. All local release checks above passed;
-remaining remote and publication checks are listed above.
+Release preparation is committed/pushed through `4d41d72` on `main`. Local and
+remote source/artifact checks passed. This CI/timing status reconciliation is
+uncommitted; remaining publication checks and optional timing work are above.
 Commit/push only with explicit authorization.
