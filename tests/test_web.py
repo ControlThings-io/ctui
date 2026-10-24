@@ -39,8 +39,8 @@ def nodes(tree):
 class BrowserApp(CtuiApp):
     """A reusable existing-style app exercising custom widgets and async commands."""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.progress = ProgressBar()
         self.clicks = 0
         self.hooks = []
@@ -341,11 +341,19 @@ class WebTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(self.session.stopped.is_set())
 
     async def test_history_result_dialog_is_local_and_preserves_output_updates(self):
+        await self.session.close()
+        root = tempfile.TemporaryDirectory()
+        self.addCleanup(root.cleanup)
+        self.app = BrowserApp(app_id="io.example.web-history", data_dir=Path(root.name))
+        await self.app.backend.open()
+        self.addAsyncCleanup(self.app.backend.close)
+        self.session = WebSession(self.app, port=0, stdout=io.StringIO())
+        await self.session.start()
         await self.login()
         socket, _ = await self.connect()
         other, _ = await self.connect()
         self.app.layout.set_output("application output")
-        await socket.send_json({"type": "command", "text": "history", "id": 1})
+        await socket.send_json({"type": "command", "text": "project history", "id": 1})
         dialog = await self.receive(socket, "dialog")
         self.assertEqual(dialog["title"], "Command history")
         self.assertEqual(dialog["text"], "No command history.")

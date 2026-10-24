@@ -139,13 +139,15 @@ class HelpTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn(expected, matches)
 
     async def test_history_count_completion_explains_zero(self):
-        completer = CommandCompleter(HelpApp().commands)
-        matches = [
-            item
-            async for item in completer.get_completions_async(
-                Document("history "), CompleteEvent()
-            )
-        ]
+        with tempfile.TemporaryDirectory() as root:
+            app = CtuiApp(app_id="io.example.help-count", data_dir=Path(root))
+            completer = CommandCompleter(app.commands)
+            matches = [
+                item
+                async for item in completer.get_completions_async(
+                    Document("project history "), CompleteEvent()
+                )
+            ]
         count = next(item for item in matches if item.text == "")
         self.assertEqual(
             str(count.display_meta),
@@ -245,9 +247,9 @@ class HelpTests(unittest.IsolatedAsyncioTestCase):
                         self.assertTrue(
                             terminal.layout.has_focus(app.layout.input_field)
                         )
-                        input_pipe.send_text("history")
+                        input_pipe.send_text("project history")
                         await asyncio.sleep(0.1)
-                        self.assertEqual(app.layout.input_field.text, "history")
+                        self.assertEqual(app.layout.input_field.text, "project history")
                         terminal.exit()
                         await asyncio.wait_for(running, 2)
             finally:

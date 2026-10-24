@@ -1114,10 +1114,12 @@ def _parse_since(value: str) -> datetime:
 
 
 def register_project_commands(app: Any) -> None:
-    """Install project/config commands around the configured backend and services.
+    """Install project/config/history commands around the configured backend.
 
-    These commands suppress history, especially when switching projects or
-    resetting history. Create, saveas, load, and import emit project_changed
+    Management, history search and clearing commands suppress history; history
+    display/export record themselves after reading earlier entries. History
+    commands target backend.history, even if app.history has been overridden.
+    Create, saveas, load, and import emit project_changed
     with previous/current metadata; create uses previous=None. Delete and reset
     commands require formatted confirmation. Config exchange uses JSON; project
     exchange uses SQLite. Successful text results request titled UI dialogs;
@@ -1152,6 +1154,10 @@ def register_project_commands(app: Any) -> None:
                 "project export": "Project exported",
                 "project import": "Project imported",
                 "project reset": "Project reset",
+                "project history": "Command history",
+                "project history export": "History exported",
+                "project history search": "History search",
+                "project history clear": "History cleared",
                 "project configs": "Configurations",
                 "project configs list": "Configurations",
                 "project configs show": "Configuration",
@@ -1304,6 +1310,14 @@ def register_project_commands(app: Any) -> None:
         await app.events.emit("project_changed", previous=previous, current=info)
         return f"Imported and loaded project {info.name!r}."
 
+    async def reset_project_section(section: str) -> str:
+        """Apply a reset shared by project reset and project history clear.
+
+        Dispatch supplies confirmation and history suppression for both commands.
+        """
+        await backend.reset(section)
+        return f"Reset project {section}."
+
     @register(
         name="project reset",
         record_history=False,
@@ -1317,8 +1331,70 @@ def register_project_commands(app: Any) -> None:
     )
     async def project_reset(section: str):
         """Reset configs, records, history, or all project data."""
-        await backend.reset(section)
-        return f"Reset project {section}."
+        return await reset_project_section(section)
+
+    @register(
+        name="project history",
+        arguments={
+            "count": Argument(
+                help="Maximum number of recent commands to show; 0 shows all"
+            )
+        },
+    )
+    async def history(count: int = 0):
+        """Show recent command history in the active project."""
+        entries = await backend.history.all()
+        entries = entries[-count:] if count else entries
+        return "\n".join(entry.command for entry in entries) or "No command history."
+
+    @register(
+        name="project history export",
+        arguments={
+            "path": Argument(
+                help="Destination text file for exported commands",
+                completer=PathCompleter(),
+            ),
+            "count": Argument(flags=("-n", "--count")),
+        },
+    )
+    async def history_export(path: Path, count: int = 0):
+        """Export all or the most recent project commands as replayable UTF-8."""
+        entries = await backend.history.all()
+        entries = entries[-count:] if count else entries
+        try:
+            path.write_text(
+                "".join(f"{entry.command}\n" for entry in entries),
+                encoding="utf-8",
+            )
+        except OSError as error:
+            raise CommandError(f"Cannot export history: {error}") from error
+        return (
+            f"Exported {len(entries)} command"
+            f"{'s' if len(entries) != 1 else ''} to {path}."
+        )
+
+    @register(
+        name="project history search",
+        record_history=False,
+        arguments={
+            "keyword": Argument(help="Text to match in recorded commands"),
+            "limit": Argument(flags=("-n", "--limit")),
+            "since": Argument(flags=("-s", "--since")),
+        },
+    )
+    async def history_search(keyword: str, limit: int = 0, since: str | None = None):
+        """Search project command history by keyword, limit, and relative age."""
+        entries = await backend.history.search(keyword, limit=limit, since=since)
+        return "\n".join(entry.command for entry in entries) or "No command history."
+
+    @register(
+        name="project history clear",
+        record_history=False,
+        confirmation="Reset history in the active project?",
+    )
+    async def history_clear():
+        """Clear the active project's history without recording this command."""
+        return await reset_project_section("history")
 
     @register(name="project configs", record_history=False)
     @register(name="project configs list", record_history=False)

@@ -29,6 +29,7 @@ import ctui.projects as projects_module
 from ctui import CommandError, ConfirmationRequired, CtuiApp, SqliteProjectBackend
 from ctui.commands import CommandNotFound
 from ctui.completion import CommandCompleter
+from ctui.services import MemoryHistory
 
 
 class ProjectTests(unittest.IsolatedAsyncioTestCase):
@@ -131,21 +132,105 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
         await self.app.dispatch("project delete lab confirm")
         self.assertEqual(await suggestions("project delete "), ["staging"])
 
-    async def test_history_search_clear_and_project_load_are_not_recorded(self):
-        """Check implemented history suppression, including legacy history clear.
-
-        The original decision preferred project reset history, but the current
-        command remains installed; this test records behavior, not a removal decision.
-        """
+    async def test_history_search_reset_and_project_load_are_not_recorded(self):
+        """Keep history management and project loading out of recorded history."""
         await self.app.dispatch("help")
         await self.app.dispatch("project create lab")
         await self.app.dispatch("project load default")
         entries = await self.app.history.all()
         self.assertEqual([entry.command for entry in entries], ["help"])
-        result = await self.app.dispatch("history search help --since 7d --limit 5")
+        result = await self.app.dispatch(
+            "project history search help --since 7d --limit 5"
+        )
         self.assertEqual(result.output, "help")
-        await self.app.dispatch("history clear confirm")
-        self.assertEqual(await self.app.history.all(), [])
+        for command in ("project history clear", "project reset history"):
+            with self.subTest(command=command):
+                if not await self.app.history.all():
+                    await self.app.dispatch("help")
+                with self.assertRaisesRegex(ConfirmationRequired, "Reset history"):
+                    await self.app.dispatch(command)
+                rejected = await self.app.dispatch(
+                    command, confirm_callback=lambda _: False
+                )
+                self.assertFalse(rejected.accepted)
+                self.assertEqual(
+                    [entry.command for entry in await self.app.history.all()], ["help"]
+                )
+                with patch.object(
+                    self.app.backend, "reset", wraps=self.app.backend.reset
+                ) as reset:
+                    result = await self.app.dispatch(command + " confirm")
+                    reset.assert_awaited_once_with("history")
+                self.assertEqual(result.output, "Reset project history.")
+                self.assertEqual(await self.app.history.all(), [])
+
+    async def test_project_history_help_completion_and_old_names(self):
+        completer = CommandCompleter(self.app.commands, self.app)
+        for prefix in ("project history ", "help project history "):
+            matches = [
+                item.text
+                async for item in completer.get_completions_async(
+                    Document(prefix), CompleteEvent()
+                )
+            ]
+            self.assertTrue({"search", "export", "clear"}.issubset(matches))
+        self.assertIn("history", self.app.format_help("project"))
+        for suffix in ("", " search", " export", " clear"):
+            name = "project history" + suffix
+            self.assertIn("Usage: " + name, self.app.format_cli_help(target=name))
+            with self.assertRaises(CommandNotFound):
+                await self.app.dispatch("history" + suffix)
+
+    async def test_project_history_exports_all_or_recent_commands(self):
+        """Export prior history as replayable UTF-8 with quoted portable paths."""
+        await self.app.dispatch("help")
+        await self.app.dispatch("clear")
+        all_path = Path(self.temporary.name) / "all commands.txt"
+        recent_path = Path(self.temporary.name) / "recent commands.txt"
+        all_command = f'project history export "{all_path}"'
+        result = await self.app.dispatch(all_command)
+        self.assertIn("Exported 2 commands", result.output)
+        self.assertEqual(result.dialog_title, "History exported")
+        self.assertEqual(all_path.read_text(encoding="utf-8"), "help\nclear\n")
+
+        result = await self.app.dispatch(
+            f'project history export "{recent_path}" --count 2'
+        )
+        self.assertIn("Exported 2 commands", result.output)
+        self.assertEqual(
+            recent_path.read_text(encoding="utf-8"), f"clear\n{all_command}\n"
+        )
+        with self.assertRaisesRegex(CommandError, "Cannot export history"):
+            await self.app.dispatch(
+                f'project history export "{all_path / "missing.txt"}"'
+            )
+
+    async def test_project_history_follows_active_project(self):
+        await self.app.dispatch("help")
+        await self.app.dispatch("project create lab")
+        self.assertEqual(
+            (await self.app.dispatch("project history")).output, "No command history."
+        )
+        await self.app.dispatch("project load default")
+        result = await self.app.dispatch("project history 1")
+        self.assertEqual(result.output, "help")
+        self.assertEqual(result.dialog_title, "Command history")
+        result = await self.app.dispatch(
+            "project history search help --limit 1 --since 7d"
+        )
+        self.assertEqual(result.output, "help")
+
+    async def test_project_history_targets_backend_with_history_override(self):
+        """Project history reads/resets project data despite a tracking override."""
+        self.app.history = MemoryHistory()
+        await self.app.backend.history.append("saved command")
+        result = await self.app.dispatch("project history")
+        self.assertEqual(result.output, "saved command")
+        await self.app.dispatch("project history clear confirm")
+        self.assertEqual(await self.app.backend.history.all(), [])
+        self.assertEqual(
+            [entry.command for entry in self.app.history.all()], ["project history"]
+        )
 
     async def test_nested_config_commands_help_completion_and_reset(self):
         names = ["list", "show", "export", "import", "reset"]
@@ -195,10 +280,14 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
         status = await app.run_cli(["-c", "project configs"], stdout=output)
         self.assertEqual(status, 0)
         self.assertEqual(output.getvalue(), "No configs.\n")
+        output = io.StringIO()
+        status = await app.run_cli(["-c", "project history"], stdout=output)
+        self.assertEqual(status, 0)
+        self.assertEqual(output.getvalue(), "No command history.\n")
 
     async def test_builtin_result_metadata_follows_completed_actions(self):
         for name, item in self.app.commands.commands.items():
-            if name.startswith("project") or name.startswith("history"):
+            if name.startswith("project"):
                 self.assertTrue(item.result_title, name)
         result = await self.app.dispatch("project create laboratory")
         self.assertEqual(self.app.backend.current.name, "laboratory")

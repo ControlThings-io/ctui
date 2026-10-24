@@ -19,6 +19,11 @@ ISO 8601 format.
 
 ### Changed
 
+- Move `history`, `history search`, and `history export` under `project history`
+  without old-name aliases. Add `project history clear` alongside
+  `project reset history`, sharing the same confirmed reset operation.
+  Apps without a project backend retain in-memory history and input recall,
+  with no built-in history commands.
 - Tab accepts the highlighted completion (or first candidate) in terminal and
   browser modes. Commands and scalar/file arguments advance with a separator;
   directories and lists stay editable, including inside generated quotes.

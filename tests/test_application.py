@@ -146,32 +146,30 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.output, "deleted")
         self.assertEqual(called, ["old", "other"])
 
-    async def test_history_exports_all_or_recent_commands(self):
-        """Keep exports replayable and quote paths for Windows and spaces.
-
-        An export sees prior history; its own accepted entry is appended afterward.
-        """
+    async def test_memory_history_remains_without_history_commands(self):
+        """Apps without projects record accepted commands without history commands."""
         app = CtuiApp()
+        self.assertIsNone(app.backend)
+        self.assertIsInstance(app.history, MemoryHistory)
         await app.dispatch("help")
         await app.dispatch("clear")
-        with tempfile.TemporaryDirectory() as folder:
-            all_path = Path(folder) / "all.txt"
-            recent_path = Path(folder) / "recent.txt"
-            all_command = f'history export "{all_path}"'
-
-            result = await app.dispatch(all_command)
-            self.assertIn("Exported 2 commands", result.output)
-            self.assertEqual(all_path.read_text(encoding="utf-8"), "help\nclear\n")
-
-            result = await app.dispatch(f'history export "{recent_path}" --count 2')
-            self.assertIn("Exported 2 commands", result.output)
-            self.assertEqual(
-                recent_path.read_text(encoding="utf-8"),
-                f"clear\n{all_command}\n",
-            )
-
-            self.assertNotIn("history export", app.format_help())
-            self.assertIn("export", app.format_help("history"))
+        self.assertEqual(
+            [entry.command for entry in app.history.all()], ["help", "clear"]
+        )
+        for name in (
+            "history",
+            "history search",
+            "history export",
+            "history clear",
+            "project history",
+            "project history search",
+            "project history export",
+            "project history clear",
+            "project reset history",
+        ):
+            with self.subTest(command=name):
+                with self.assertRaises(CommandNotFound):
+                    await app.dispatch(name)
 
     async def test_unknown_command(self):
         with self.assertRaises(CommandNotFound):

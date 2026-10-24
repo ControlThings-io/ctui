@@ -108,9 +108,7 @@ async def check_tutorial(browser, name, commands, directory):
         async def submit(text, expected=None):
             await command_input.fill(text)
             await command_input.press("Enter")
-            if expected is not None and (
-                text.startswith("project ") or text.startswith("history")
-            ):
+            if expected is not None and text.startswith("project "):
                 dialog = page.get_by_role("dialog")
                 await dialog.wait_for(state="visible")
                 assert expected in await dialog.text_content()

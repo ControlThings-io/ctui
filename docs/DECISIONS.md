@@ -193,12 +193,16 @@ Protocol-specific record commands remain application-owned. Detailed service,
 exchange, and command contracts live in [projects.py](../src/ctui/projects.py)
 and [commands.py](../src/ctui/commands.py).
 
-Unresolved implementation discrepancy, identified Sep 18: the Aug 26 request
-preferred `project reset history` and explicitly omitted `history clear`.
-Current registration nevertheless installs `history clear` for searchable
-history backends, and `tests/test_projects.py` exercises it. No later acceptance
-of that difference was found in available logs. This documentation review does
-not remove it or treat its presence as a new user decision.
+Accepted follow-up, October 23: move history display/search/export under
+`project history`, with `project history clear` and `project reset history`
+sharing one confirmed reset operation. Remove all top-level history command
+names without aliases. Commands target the active project's backend history,
+including when app.history is overridden. Preserve display/export recording
+after reading prior entries; search and clearing suppress their own entries.
+Apps without a project backend retain internal memory history and input recall
+without built-in history commands; their history service remains accessible
+programmatically. This resolves the Sep 18 discrepancy and supersedes earlier
+choices about exposing history clearing at the top level.
 
 ## D08 — Real asynchronous SQLite; recoverable migrations
 

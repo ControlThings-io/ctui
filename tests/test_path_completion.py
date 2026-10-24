@@ -125,7 +125,7 @@ class PathCompletionTests(unittest.IsolatedAsyncioTestCase):
                 "project export",
                 "project configs import",
                 "project configs export",
-                "history export",
+                "project history export",
             ):
                 item, _ = app.commands.resolve(name)
                 self.assertIsInstance(item.arguments["path"].completer, PathCompleter)

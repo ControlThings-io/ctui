@@ -305,7 +305,7 @@ class CtuiApp:
             "  -c, --command COMMAND  Run a command; may be repeated.",
             "  -f, --file FILE        Run nonblank commands from a file in order.",
             "  -h, --help             Print this help page.",
-            f'  Example: {program} -c "help history export"',
+            f'  Example: {program} -c "help clear"',
             "",
         ]
         return "\n".join(usage) + "\n" + self.format_help()

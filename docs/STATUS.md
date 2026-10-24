@@ -1,11 +1,18 @@
 # Project status
 
-Last reconciled: 2026-10-23 on `main` at `8a409c4`, with local Windows test
-portability and synchronization fixes. The latest GitHub run failed on Windows
-Python 3.11–3.14; all Linux/macOS jobs and formatting passed. A remote run of
-these local fixes remains pending; no publication is claimed.
+Last reconciled: 2026-10-23 on `main` at `755f5ac`. The latest GitHub run passed
+all 16 platform/Python combinations, formatting, and wheel/sdist build and
+installed smoke checks, including the web frontend. Release metadata remains
+RC1; the owner reports testing complete. RC2 release preparation remains
+pending. No RC2 publication is claimed.
 
 ## Current state
+
+- D07 is resolved: history display/search/export now live under `project history`
+  without top-level aliases. `project history clear` and `project reset history`
+  share a confirmed backend reset and suppress their own history entries.
+  Apps without a project backend retain internal memory history and input recall
+  with no built-in history commands. README, changelog and D07 document the move.
 
 - Windows CI test fixes preserve quote-escaping coverage through a synthetic
   path suggestion instead of creating a filename containing a forbidden double
@@ -27,7 +34,7 @@ these local fixes remains pending; no publication is claimed.
   its quote style, preventing duplicate quotes when selecting path children.
   See [completion usage](../README.md#completion-and-validation) and D04.
 
-- Metadata remains `1.0.0rc1`; RC2 is next, pending owner acceptance and the
+- Metadata remains `1.0.0rc1`; RC2 is next, pending release preparation and the
   release checks in [RELEASE_CHECKLIST.md](../RELEASE_CHECKLIST.md).
 - Main includes reusable path completion (`fdda194`), dialog redraw, command
   error containment, and the post-RC1 help/type improvements.
@@ -95,6 +102,25 @@ these local fixes remains pending; no publication is claimed.
   still 3.0.53; no dependency/version change is needed.
 
 ## Validation evidence
+
+- October 23 D07 history hierarchy on `755f5ac` plus the working tree:
+  all 202 tests passed on Python 3.11.16/Linux. Coverage includes retained memory
+  history without commands, removed top-level names, nested help/completion and
+  path providers, replayable exports and export errors, active-project switching,
+  explicit history overrides, confirmation rejection and both shared clearing
+  paths, CLI output, and browser result-dialog isolation/background output.
+  Black/isort, lockfile and whitespace checks passed. Tests and formatting ran
+  outside the sandbox to avoid previously observed executor stalls. Remote CI
+  and manual acceptance remain pending for this command migration.
+
+- October 23 release-readiness review: [GitHub run 40041532116](https://github.com/ControlThings-io/ctui/actions/runs/40041532116)
+  passed at `755f5ac`: Python 3.11–3.14 on Linux x86-64, Linux ARM64, Windows,
+  and macOS; Black/isort; distribution builds; isolated wheel/sdist base and
+  web smoke tests; artifact upload. This resolves the remote Windows and
+  artifact-job gaps below. These artifacts still report `1.0.0rc1`; final RC2
+  metadata and artifacts need release verification. The owner subsequently
+  reported testing complete on October 23; no per-platform manual results were
+  supplied. Earlier evidence below describes checks and gaps at those revisions.
 
 - October 23 Windows test fixes on `8a409c4` plus the working tree: all 198 tests
   passed on Python 3.11.16/Linux. Controlled 100 ms provider/redraw delays
@@ -251,38 +277,28 @@ these local fixes remains pending; no publication is claimed.
 
 ## Next steps
 
-- Owner completion acceptance: try Tab/Up/Down, nested quoted paths, directory
-  acceptance with Space, matching quote reuse, new output names and list entries
-  in a real terminal and browser. Repeat the browser completion smoke in Firefox
-  and Safari, and include Windows path behavior in the remote platform checks.
-
-- Owner dialog acceptance: try the new tutorial in a real terminal, particularly
-  large dictionaries, Tab/Shift-Tab, list selection, validation and Escape.
-  Verify downstream application validators and apply/persist results explicitly.
-
-- Owner acceptance: try actual downstream tools in terminal, CLI and --web modes,
-  including custom layouts, background progress and remote trusted certificates.
-- After explicit commit/push authorization, rerun Windows CI on Python 3.11–3.14
-  for the test portability/synchronization fixes and confirm the artifact jobs run.
-- Confirm Safari behavior and the cross-platform CI matrix.
-  Arbitrary third-party prompt-toolkit controls, custom floats and renderer
-  internals require dedicated browser adapters; these are documented limitations.
-- Reconcile release labels: CHANGELOG says stable 1.0 while package metadata is
-  RC1. Prepare RC2 only after acceptance, complete release verification and
-  matching tag/publication checks. No release/version change made here.
-- Resolve D07's outstanding history-clear naming discrepancy with the owner
-  before changing that behavior. Existing palette definitions remain identical;
-  no theme redesign is included in this work.
+- Owner testing is complete as reported October 23. The cross-platform CI matrix
+  and artifact jobs passed at `755f5ac`; remote checks for the subsequent D07
+  command migration and release-version checks remain pending.
+- Prepare an explicit dated `1.0.0rc2` changelog section covering the comparison
+  with `v1.0.0rc1`, including command/API compatibility changes; reconcile the
+  existing stable `1.0.0` heading with the actual prerelease history. Current
+  Unreleased notes cover only browser support and completion, omitting other
+  shipped changes. The publishing workflow falls back to the stable section
+  unless an exact RC2 section exists.
+- Set `pyproject.toml` to `1.0.0rc2`, refresh the root package
+  entry in `uv.lock`, and follow [RELEASE_CHECKLIST.md](../RELEASE_CHECKLIST.md)
+  on the intended release revision: source/lock checks, artifact smoke tests
+  and archive metadata inspection, then a passing branch build. Confirm trusted
+  publishing configuration before an explicitly authorized matching tag/push.
+  Verify PyPI artifacts/attestations, GitHub prerelease status and an isolated
+  published-package tutorial afterward. No release/version change made here.
 
 ## Handoff
 
-Web frontend changes are merged into `main` via PR #7; Windows CI fixes are
-committed at `4833e58`; default-project startup is committed at `813f9aa`.
-Project deletion completion is committed at `d4dd614`; list completion is
-committed at `216ef28`. Output alignment is committed at `47a454a`. Terminal
-output protection is committed at `ec16fb1`. Config command nesting is committed
-at `0c8cc91`; built-in result dialogs at `79579d0`. Dialog expansion and audit
-follow-up changes are committed at `72ad45d`; Alt-arrow output shortcuts at
-`d060d28`. Completion acceptance is committed at `8374bee`; the quoted-path
-preview fix at `8a409c4`. Windows test portability/synchronization fixes are local
-and uncommitted. Commit/push only with explicit authorization.
+Implementation and Windows test portability/synchronization fixes are committed
+through `755f5ac` on `main`. The status reconciliation and D07 follow-up are
+uncommitted, including project history command migration, regression tests, README,
+changelog and decision updates. Remaining release work and validation are listed
+above.
+Commit/push only with explicit authorization.

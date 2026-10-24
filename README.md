@@ -253,17 +253,18 @@ In help and confirmation popups, Up/Down scroll one line and Page Up/Page Down
 scroll one page while the buttons retain focus. Press Enter on Ok to close help
 and restore input focus. Tab or Left/Right selects confirmation buttons.
 
-The main command reference lists only top-level commands and groups. Use
-`help history` to see its usage and immediate subcommands, then
-`help history export` for argument details. Help accepts aliases and unique
-command prefixes, and its targets support completion. Detailed command help
-includes additional docstring text, so commands can document examples there.
+The main command reference lists only top-level commands and groups. In a
+project-backed app, use `help project history` to see its usage and immediate
+subcommands, then `help project history export` for argument details. Help accepts
+aliases and unique command prefixes, and its targets support completion.
+Detailed command help includes additional docstring text, so commands can
+document examples there.
 
 CLI help prints to the terminal, with invocation and batch-execution guidance:
 
 ```bash
-python my_tool.py help history export
-python my_tool.py -c "help history export"
+python my_tool.py help project history export
+python my_tool.py -c "help project history export"
 ```
 
 Customize interface introductions independently on your application class:
@@ -482,9 +483,11 @@ undo the completed action.
 `command_failed`. Commands defined as application methods can emit custom events
 directly with `await self.events.emit("download_progress", percent=50)`.
 
-History and storage remain injectable. An application with a stable `app_id`
-also receives a default SQLite project backend in the platform-appropriate user
-data directory. Each project has its own database containing named configs,
+History and storage remain injectable. Applications without an `app_id` or an
+explicit project backend keep accepted-command history in memory, with no
+built-in history commands. Input recall remains available. An application with a
+stable `app_id` also receives a default SQLite project backend in the
+platform-appropriate user data directory. Each project has its own database containing named configs,
 command history, record sessions, and raw or decoded protocol records. Every
 startup opens `default`, creating it if needed. Existing data in `default`
 persists across runs and can be reset like any project with `project reset`.
@@ -542,15 +545,26 @@ consistent `.ctui-project` SQLite snapshots. Destructive commands show a UI
 confirmation dialog; noninteractive execution requires a trailing `confirm`.
 
 Application command options use explicitly declared Linux-style flags, for
-example `history search timeout --limit 50 --since 7d`. Decorated commands can
-opt out of history and require a formatted confirmation message.
+example `project history search timeout --limit 50 --since 7d`. Decorated commands
+can opt out of history and require a formatted confirmation message.
+
+Use `project history [count]` to view the active project's command history
+(omit count or use 0 for all entries). `project history search` searches it.
+These commands operate on the project backend's history even when `self.history`
+is overridden. View and export commands record themselves after reading prior
+entries; search and clearing commands omit themselves from history.
+
+Clear history with `project history clear` or `project reset history`. Both use
+the same reset operation and require confirmation; noninteractive callers append
+`confirm`. The former top-level `history`, `history search`, `history export`,
+and `history clear` names have been removed without aliases.
 
 Export all history, or only the most recent commands, as a reusable command
 file:
 
 ```text
-history export commands.txt
-history export recent-commands.txt --count 5
+project history export commands.txt
+project history export recent-commands.txt --count 5
 ```
 
 The resulting UTF-8 file can be executed later with `-f` or `--file`.

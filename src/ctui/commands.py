@@ -936,14 +936,11 @@ def command(
 
 
 def register_default_commands(app):
-    """Install the standard clear, help, history, and exit commands.
+    """Install the standard clear, help, and exit commands.
 
-    History export is a separate command so it is discoverable alongside the
-    parent history command and produces replayable UTF-8 command files. History
-    search/clear are installed only when the history service exposes search.
-    The project backend exposes search, so it also receives history clear in
-    addition to project reset history. Help returns a private result so UI and CLI can
-    present the same reference differently.
+    Project/history commands are registered separately when a backend exists.
+    Help returns a private result so UI and CLI can present the same reference
+    differently. Apps without a backend retain their internal history service.
     """
 
     @app.commands.register
@@ -963,83 +960,6 @@ def register_default_commands(app):
         return _HelpResult(output=app.format_cli_help(target=target), target=target)
 
     help.__ctui_help__ = True
-
-    @app.commands.register(
-        result_title="Command history",
-        arguments={
-            "count": Argument(
-                help="Maximum number of recent commands to show; 0 shows all"
-            )
-        },
-    )
-    async def history(count: int = 0):
-        """Show recent command history."""
-        entries = app.history.all()
-        entries = await entries if inspect.isawaitable(entries) else entries
-        entries = entries[-count:] if count else entries
-        return CommandResult.success(
-            "\n".join(x.command for x in entries) or "No command history."
-        )
-
-    @app.commands.register(
-        name="history export",
-        result_title="History exported",
-        arguments={
-            "path": Argument(
-                help="Destination text file for exported commands",
-                completer=PathCompleter(),
-            ),
-            "count": Argument(flags=("-n", "--count")),
-        },
-    )
-    async def history_export(path: Path, count: int = 0):
-        """Export all or the most recent commands to a text file."""
-        entries = app.history.all()
-        entries = await entries if inspect.isawaitable(entries) else entries
-        entries = entries[-count:] if count else entries
-        try:
-            path.write_text(
-                "".join(f"{entry.command}\n" for entry in entries),
-                encoding="utf-8",
-            )
-        except OSError as error:
-            raise CommandError(f"Cannot export history: {error}") from error
-        return CommandResult.success(
-            f"Exported {len(entries)} command"
-            f"{'s' if len(entries) != 1 else ''} to {path}."
-        )
-
-    if hasattr(app.history, "search"):
-
-        @app.commands.register(
-            name="history search",
-            result_title="History search",
-            record_history=False,
-            arguments={
-                "keyword": Argument(help="Text to match in recorded commands"),
-                "limit": Argument(flags=("-n", "--limit")),
-                "since": Argument(flags=("-s", "--since")),
-            },
-        )
-        async def history_search(
-            keyword: str, limit: int = 0, since: str | None = None
-        ):
-            """Search command history by keyword, limit, and relative age."""
-            entries = await app.history.search(keyword, limit=limit, since=since)
-            return CommandResult.success(
-                "\n".join(x.command for x in entries) or "No command history."
-            )
-
-        @app.commands.register(
-            name="history clear",
-            result_title="History cleared",
-            record_history=False,
-            confirmation="Clear all command history in the active project?",
-        )
-        async def history_clear():
-            """Clear command history without recording this command."""
-            await app.history.clear()
-            return CommandResult.success("Cleared command history.")
 
     @app.commands.register(confirmation="Exit the application?")
     async def exit():
