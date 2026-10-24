@@ -845,16 +845,23 @@ class Commands:
     def resolve(self, text):
         """Resolve exact names first, then unique word prefixes and aliases.
 
-        Prefer the longest matching exact name. If no exact name matches, compare
-        prefixes at each word and retain the deepest matching command. Multiple
-        aliases for the same command are not ambiguity. Return the Command and its
+        Prefer the longest matching exact name, allowing any whitespace between
+        command words. Limit splitting to those words so the argument tail,
+        including quoting and internal whitespace, is returned unchanged.
+        If no exact name matches, compare prefixes at each word and retain the
+        deepest matching command. Multiple aliases for the same command are not
+        ambiguity. Return the Command and its
         remaining argument text; raise CommandNotFound for no match, malformed
         quoting during prefix resolution, or multiple distinct matches.
         """
         stripped, all_names = text.lstrip(), {**self.commands, **self.aliases}
         for name in sorted(all_names, key=lambda x: len(x.split()), reverse=True):
-            if stripped == name or stripped.startswith(name + " "):
-                return all_names[name], stripped[len(name) :].lstrip()
+            words = name.split()
+            parts = stripped.split(maxsplit=len(words))
+            if parts[: len(words)] == words:
+                return all_names[name], (
+                    parts[len(words)] if len(parts) > len(words) else ""
+                )
         try:
             tokens = shlex.split(stripped)
         except ValueError as error:

@@ -461,6 +461,9 @@ Command names and constrained choices accept unique prefixes. For example,
 match. Ambiguous prefixes produce validation help instead of guessing. Quote
 free-form strings to include spaces: `greet "Ada Lovelace"`.
 
+Repeated spaces or tabs between command words are accepted: `project      list`
+behaves like `project list`. Spaces inside quoted argument values are preserved.
+
 The dropdown stays on the current argument until an unquoted space is typed.
 Free-form values show a typed aid such as `<NAME: str>` or `<COUNT: int>`;
 typing an unquoted, unescaped space advances the menu to the next argument.

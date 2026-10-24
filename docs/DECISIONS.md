@@ -117,6 +117,12 @@ values retain the October 20 acceptance behavior. Both frontends use the shared
 command-boundary decision, including help targets; moving to the beginning of
 existing text does not activate the empty-input policy.
 
+Accepted follow-up, October 23: command names and aliases accept repeated
+whitespace between words consistently with argument parsing. Keep longest exact
+command matching and unique-prefix behavior. Exact-name resolution splits only
+the leading command words, preserving the raw argument tail for quoting,
+completion and original-input error positions.
+
 ## D05 — Terminal-native selection and concurrent output
 
 Accepted, Aug 23; `84679d3`, `1b53da9`.

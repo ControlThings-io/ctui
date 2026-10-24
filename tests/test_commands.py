@@ -65,16 +65,52 @@ class CommandTests(unittest.IsolatedAsyncioTestCase):
         def project_load():
             pass
 
-        item, arguments = commands.resolve("proj conf l")
-        self.assertIs(item, commands["project configs list"])
-        self.assertEqual(arguments, "")
+        for separator in (" ", "      ", "\t  \t"):
+            with self.subTest(separator=separator):
+                item, arguments = commands.resolve(
+                    separator.join(("proj", "conf", "l"))
+                )
+                self.assertIs(item, commands["project configs list"])
+                self.assertEqual(arguments, "")
 
-        item, arguments = commands.resolve("proj li")
-        self.assertIs(item, commands["project list"])
-        self.assertEqual(arguments, "")
+                item, arguments = commands.resolve("proj" + separator + "li")
+                self.assertIs(item, commands["project list"])
+                self.assertEqual(arguments, "")
 
-        with self.assertRaisesRegex(CommandNotFound, "Ambiguous command"):
-            commands.resolve("proj l")
+                with self.assertRaisesRegex(CommandNotFound, "Ambiguous command"):
+                    commands.resolve("proj" + separator + "l")
+
+    def test_command_whitespace_preserves_longest_names_aliases_and_argument_tail(self):
+        commands = Commands()
+
+        @commands.register(name="project")
+        def project():
+            return "project"
+
+        @commands.register
+        def project_configs():
+            return "configs"
+
+        @commands.register(aliases=("profile values show",))
+        def project_configs_show(value: str, count: int):
+            return value, count
+
+        raw_arguments = '"two  spaces"    4  '
+        for words in (("project", "configs", "show"), ("profile", "values", "show")):
+            for separator in (" ", "      ", "\t", " \t  ", "\n"):
+                with self.subTest(words=words, separator=separator):
+                    text = "  " + separator.join(words) + separator + raw_arguments
+                    item, arguments = commands.resolve(text)
+                    self.assertIs(item, commands["project configs show"])
+                    self.assertEqual(arguments, raw_arguments)
+                    self.assertEqual(
+                        item.parse_args(arguments), {"value": "two  spaces", "count": 4}
+                    )
+                    item, arguments = commands.resolve(
+                        "project" + separator + "configs"
+                    )
+                    self.assertIs(item, commands["project configs"])
+                    self.assertEqual(arguments, "")
 
     def test_typed_parsing(self):
         def build(

@@ -136,6 +136,29 @@ class CompletionTests(unittest.IsolatedAsyncioTestCase):
         completer = CommandCompleter(Commands())
         self.assertEqual(await self.collect(completer, ""), [])
 
+    async def test_nested_command_argument_completion_tolerates_repeated_whitespace(
+        self,
+    ):
+        commands = Commands()
+
+        @commands.register(name="project")
+        def project():
+            return "project"
+
+        @commands.register(
+            arguments={"environment": Argument(choices=("development", "production"))}
+        )
+        def project_deploy(environment: str):
+            return environment
+
+        completer = CommandCompleter(commands)
+        for separator in (" ", "      ", "\t  "):
+            with self.subTest(separator=separator):
+                matches = await self.collect(
+                    completer, "project" + separator + "deploy" + separator + "pr"
+                )
+                self.assertEqual([item.text for item in matches], ["production"])
+
     async def test_subcommands_and_parent_arguments_share_dropdown(self):
         commands = Commands()
 

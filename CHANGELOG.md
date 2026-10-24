@@ -19,6 +19,8 @@ ISO 8601 format.
 
 ### Changed
 
+- Accept repeated spaces and tabs between command words and aliases while
+  preserving quoted argument values.
 - Remove the top-level `clear` command; use Ctrl-L to clear terminal/browser output.
 - Move `history`, `history search`, and `history export` under `project history`
   without old-name aliases. Add `project history clear` alongside

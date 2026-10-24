@@ -52,6 +52,14 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await self.app.configs.get("local"), {"host": "127.0.0.1"})
         self.assertTrue((Path(self.temporary.name) / "state.json").exists())
 
+    async def test_project_list_accepts_repeated_command_whitespace(self):
+        expected = (await self.app.dispatch("project list")).output
+        for text in ("project      list", "project\tlist", "  project \t  list  "):
+            with self.subTest(text=text):
+                result = await self.app.dispatch(text)
+                self.assertEqual(result.output, expected)
+                self.assertEqual(result.dialog_title, "Projects")
+
     async def test_restart_uses_default_and_saved_copy_requires_loading(self):
         await self.app.configs.save("device", {"port": 502})
         await self.app.dispatch("project saveas lab")

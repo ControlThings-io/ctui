@@ -1,6 +1,6 @@
 # Project status
 
-Last reconciled: 2026-10-23 on `main` at `c203d33` plus output-clear command removal.
+Last reconciled: 2026-10-23 on `main` at `7bdf16e` plus command-whitespace changes.
 The last verified GitHub run at `755f5ac` passed
 all 16 platform/Python combinations, formatting, and wheel/sdist build and
 installed smoke checks, including the web frontend. Release metadata remains
@@ -8,6 +8,10 @@ RC1; the owner reports testing complete. RC2 release preparation remains
 pending. No RC2 publication is claimed.
 
 ## Current state
+
+- Command resolution accepts repeated spaces/tabs between command words and
+  aliases, selecting the longest exact name before unique-prefix fallback.
+  The raw argument tail, quoted values and original error positions are retained.
 
 - Removed the top-level `clear` command; Ctrl-L clears output in terminal and
   browser modes. Programmatic clear_output results and project history clearing
@@ -111,6 +115,13 @@ pending. No RC2 publication is claimed.
   still 3.0.53; no dependency/version change is needed.
 
 ## Validation evidence
+
+- October 23 command whitespace on `7bdf16e` plus the working tree: all 212 tests
+  passed on Python 3.11.16/Linux. Regressions cover real `project list` dispatch,
+  nested exact names, aliases and abbreviations, quoted/raw argument whitespace,
+  error positions and nested argument completion. Black/isort, lockfile and
+  whitespace checks passed. Tests/formatting ran outside the sandbox to avoid
+  known executor stalls. Remote CI remains pending for this change.
 
 - October 23 output-clear command removal on `c203d33` plus the working tree:
   all 208 tests passed on Python 3.11.16/Linux, including absent command/help/
@@ -306,13 +317,12 @@ pending. No RC2 publication is claimed.
 
 - Owner testing is complete as reported October 23. The cross-platform CI matrix
   and artifact jobs passed at `755f5ac`; remote checks for the subsequent D07
-  command migration, Tab menu behavior, clear removal and release-version checks
-  remain pending.
+  command/interface changes and release-version checks remain pending.
 - Prepare an explicit dated `1.0.0rc2` changelog section covering the comparison
   with `v1.0.0rc1`, including command/API compatibility changes; reconcile the
   existing stable `1.0.0` heading with the actual prerelease history. Current
-  Unreleased notes cover browser support, history command migration, clear removal
-  and completion, omitting other shipped changes. The publishing workflow falls back to the stable section
+  Unreleased notes cover browser support, command changes and completion, omitting
+  other shipped changes. The publishing workflow falls back to the stable section
   unless an exact RC2 section exists.
 - Set `pyproject.toml` to `1.0.0rc2`, refresh the root package
   entry in `uv.lock`, and follow [RELEASE_CHECKLIST.md](../RELEASE_CHECKLIST.md)
@@ -324,8 +334,8 @@ pending. No RC2 publication is claimed.
 
 ## Handoff
 
-Project history migration and Tab menu changes are committed through `c203d33`
-on `main`. Output-clear command removal, regression tests, help examples, README,
-changelog and D05/status updates remain uncommitted. Remaining release work and
-validation are listed above.
+Project history migration, Tab menu changes and output-clear command removal are
+committed through `7bdf16e` on `main`. Command-whitespace handling, regression
+tests, README/changelog and D04/status updates remain uncommitted. Remaining
+release work and validation are listed above.
 Commit/push only with explicit authorization.

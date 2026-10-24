@@ -204,6 +204,26 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
         result = await app.dispatch("gr Ad")
         self.assertEqual(result.output, "Hello Ada")
 
+    async def test_command_whitespace_preserves_quoted_values_and_error_positions(self):
+        app = CtuiApp(register_defaults=False)
+
+        @app.commands.register(name="project")
+        def project():
+            return "project"
+
+        @app.commands.register(aliases=("inspect value",))
+        def project_show(value: str, count: int):
+            return f"{value}: {count}"
+
+        for name in ("project    show", "inspect\t  value"):
+            with self.subTest(name=name):
+                text = f'  {name}\t  "two  spaces"    4'
+                self.assertEqual((await app.dispatch(text)).output, "two  spaces: 4")
+                invalid = text[:-1] + "bad-count"
+                with self.assertRaises(CommandValidationError) as raised:
+                    await app.dispatch(invalid)
+                self.assertEqual(raised.exception.position, invalid.index("bad-count"))
+
     async def test_ambiguous_command_prefix_is_rejected(self):
         app = CtuiApp(register_defaults=False)
 
