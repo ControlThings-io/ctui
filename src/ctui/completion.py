@@ -86,6 +86,29 @@ class CommandCompleter(Completer):
         self.commands, self.app = commands, app
         self.type_hint = None
 
+    def show_menu_first(self, document: Document) -> bool:
+        """Whether Tab must reveal a hidden command menu before accepting it.
+
+        Empty/whitespace-only input and unquoted command-word boundaries use
+        this policy, including help targets. Partial words, argument values,
+        quoted/escaped spaces and the start of existing text retain immediate
+        acceptance. Both frontends use this decision only while no menu is shown.
+        """
+        text = document.text_before_cursor
+        if not text.strip():
+            return not document.text.strip()
+        if not _argument_state(text)[2]:
+            return False
+        target = text.lstrip()
+        try:
+            item, arguments = self.commands.resolve(text)
+        except CommandNotFound:
+            pass
+        else:
+            if getattr(item.func, "__ctui_help__", False):
+                target = arguments + " "
+        return any(self._command_completions(target))
+
     def _command_completions(self, text):
         """Yield one next word per matching command or alias, deduplicating words.
 

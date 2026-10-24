@@ -326,6 +326,9 @@ class WebClient:
                 "text": text,
                 "cursor": cursor,
                 "items": items,
+                "menu_first": self.session.ctui.layout.completer.show_menu_first(
+                    document
+                ),
             }
         )
 

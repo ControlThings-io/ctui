@@ -69,6 +69,9 @@ function applyCompletion(item) {
   rememberDraft(); hideCompletions(); commandInput.focus(); requestCompletion();
 }
 function hideCompletions() { suggestions.hidden = true; completionItems = []; completionSource=null; }
+function dismissCompletions() {
+  clearTimeout(completeTimer);++completeSequence;acceptNextCompletion=false;hideCompletions();
+}
 // Shared columns separate insertion text from help; hints remain non-inserting.
 function showCompletions(items, source) {
   completionSource=source;
@@ -175,7 +178,7 @@ function inputKey(event) {
     if(output)output.scrollTop+=(event.key==='ArrowUp'?-1:1)*parseFloat(getComputedStyle(output).lineHeight);
   } else if (event.key==='Enter') {event.preventDefault();submitCommand();}
   else if (event.key==='Tab') {event.preventDefault();if (!suggestions.hidden&&completionMatchesInput()) applyCompletion(completionItems[completionIndex]);else requestCompletion(true);}
-  else if (event.key==='Escape') hideCompletions();
+  else if (event.key==='Escape') dismissCompletions();
   else if ((event.key==='ArrowUp'||event.key==='ArrowDown')&&!event.ctrlKey) {
     event.preventDefault(); const direction=event.key==='ArrowUp'?-1:1;
     if (!suggestions.hidden && completionItems.some(item=>item.text)) {
@@ -274,7 +277,8 @@ function connect() {
     } else if(message.type==='completion'&&message.id===completeSequence&&commandInput&&message.text===commandInput.value&&message.cursor===completionCursor()) {
       const accept=acceptNextCompletion;acceptNextCompletion=false;
       showCompletions(message.items,{text:message.text,cursor:message.cursor});
-      if(accept)applyCompletion(message.items.find(item=>item.text));
+      // A hidden command menu is revealed before accepting any of its rows.
+      if(accept&&!message.menu_first)applyCompletion(message.items.find(item=>item.text));
     }
     else if(message.type==='dialog')openDialog(message);
     else if(message.type==='dialog-close')closeDialog(message.id);

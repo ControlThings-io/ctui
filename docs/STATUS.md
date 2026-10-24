@@ -1,6 +1,7 @@
 # Project status
 
-Last reconciled: 2026-10-23 on `main` at `755f5ac`. The latest GitHub run passed
+Last reconciled: 2026-10-23 on `main` at `b11920e` plus the Tab menu changes.
+The last verified GitHub run at `755f5ac` passed
 all 16 platform/Python combinations, formatting, and wheel/sdist build and
 installed smoke checks, including the web frontend. Release metadata remains
 RC1; the owner reports testing complete. RC2 release preparation remains
@@ -20,7 +21,11 @@ pending. No RC2 publication is claimed.
   wait for rendered focus targets before sending input. Dialog tests deliberately
   delay redraw to exercise this synchronization. Runtime behavior is unchanged.
 
-- Tab now accepts the highlighted suggestion (or first candidate). Commands and
+- Tab reveals a hidden menu without insertion at empty/whitespace-only input
+  and between command words, highlighting the first row. Another Tab accepts
+  the selection. Escape dismisses visible/pending suggestions, and repeated Tab
+  while loading does not accept unseen commands. Partial words and argument
+  values retain their existing acceptance behavior. Commands and
   scalar/file values add/reuse a separator and request the next suggestions;
   directories and comma-separated lists stay editable. Quoted continuing values
   keep the cursor inside the closing quote; Space finishes the argument and a
@@ -102,6 +107,17 @@ pending. No RC2 publication is claimed.
   still 3.0.53; no dependency/version change is needed.
 
 ## Validation evidence
+
+- October 23 Tab menu changes on `b11920e` plus the working tree: all 207 tests
+  passed on Python 3.11.16/Linux, including a rendered terminal menu without
+  input changes, initial highlighting, nested commands, Escape/reopening,
+  delayed/repeated Tab, quote-aware boundaries and web protocol parity.
+  Chromium and Firefox passed the expanded browser completion smoke, including
+  delayed repeated Tab, Escape during loading, reopening, nested choices and
+  existing paths/quotes/Unicode/lists/clicks/middle-of-command edits. Black/isort,
+  JavaScript syntax, lockfile and whitespace checks passed. Tests/formatting and
+  browser checks ran outside the sandbox because of known executor restrictions.
+  Manual visual acceptance, Safari and remote CI remain pending for this change.
 
 - October 23 D07 history hierarchy on `755f5ac` plus the working tree:
   all 202 tests passed on Python 3.11.16/Linux. Coverage includes retained memory
@@ -279,7 +295,7 @@ pending. No RC2 publication is claimed.
 
 - Owner testing is complete as reported October 23. The cross-platform CI matrix
   and artifact jobs passed at `755f5ac`; remote checks for the subsequent D07
-  command migration and release-version checks remain pending.
+  command migration, Tab menu behavior and release-version checks remain pending.
 - Prepare an explicit dated `1.0.0rc2` changelog section covering the comparison
   with `v1.0.0rc1`, including command/API compatibility changes; reconcile the
   existing stable `1.0.0` heading with the actual prerelease history. Current
@@ -296,9 +312,8 @@ pending. No RC2 publication is claimed.
 
 ## Handoff
 
-Implementation and Windows test portability/synchronization fixes are committed
-through `755f5ac` on `main`. The status reconciliation and D07 follow-up are
-uncommitted, including project history command migration, regression tests, README,
-changelog and decision updates. Remaining release work and validation are listed
-above.
+Project history migration and the prior status reconciliation are committed at
+`b11920e` on `main`. Tab menu changes, regression checks, help/README, changelog
+and D04/status updates remain uncommitted. Remaining release work and validation
+are listed above.
 Commit/push only with explicit authorization.

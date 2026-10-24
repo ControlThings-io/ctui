@@ -283,8 +283,13 @@ in the UI guidance, using prompt-toolkit key names.
 
 ## Completion and validation
 
-Tab accepts the highlighted suggestion, or the first candidate when none is
-selected; Up/Down choose another candidate. Completed command words and ordinary
+With empty or whitespace-only input, or between command words such as
+`project ` and `project history `, Tab opens a hidden completion menu without
+changing input. Press Tab again to accept the highlighted suggestion; Up/Down
+choose another candidate. Escape dismisses the menu, including pending requests.
+Repeated Tab while that menu is loading does not accept an unseen command.
+Partial-word and argument completion retain immediate acceptance of the
+highlighted suggestion (or first candidate). Completed command words and ordinary
 arguments gain a separating space and show the next word's suggestions. Existing
 whitespace is reused, and completing in the middle retains later arguments.
 Browser clicks use the same acceptance rules. Type hints never insert text.

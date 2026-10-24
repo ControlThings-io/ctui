@@ -27,6 +27,7 @@ import asyncio
 import inspect
 import traceback
 
+from prompt_toolkit.buffer import CompletionState
 from prompt_toolkit.completion import CompleteEvent
 from prompt_toolkit.filters import Condition, has_focus
 from prompt_toolkit.key_binding import KeyBindings
@@ -74,17 +75,30 @@ def get_key_bindings(ctui):
     command_completion = has_focus(input_field) & Condition(
         lambda: input_field.completer is ctui.layout.completer
     )
+    completion_task = None
+    completion_document = None
 
     @kb.add("tab", filter=command_completion)
     def _(event):
-        """Accept the highlighted candidate, or fetch and accept the first match."""
+        """Reveal hidden command menus at boundaries; otherwise accept a match.
+
+        Select the first row without previewing it into input. Repeated Tab while
+        loading does not queue acceptance, and newer input discards stale results.
+        """
+        nonlocal completion_task, completion_document
         buffer = input_field.buffer
         state = buffer.complete_state
-        if state:
+        if state and state.completions:
             selected = state.current_completion or state.completions[0]
             ctui.layout.accept_completion(selected, state.original_document)
             return
         document = buffer.document
+        if completion_task is not None and not completion_task.done():
+            if completion_document == document:
+                return
+            completion_task.cancel()
+        completion_document = document
+        show_first = ctui.layout.completer.show_menu_first(document)
 
         async def complete():
             candidates = [
@@ -94,11 +108,32 @@ def get_key_bindings(ctui):
                 )
             ]
             if buffer.document == document:
+                if show_first:
+                    if candidates:
+                        buffer.complete_state = CompletionState(
+                            document, candidates, complete_index=0
+                        )
+                        buffer.on_completions_changed.fire()
+                    return
                 selected = next((item for item in candidates if item.text), None)
                 if selected:
                     ctui.layout.accept_completion(selected, document)
 
-        event.app.create_background_task(complete())
+        completion_task = event.app.create_background_task(complete())
+
+    @kb.add(
+        "escape",
+        filter=command_completion
+        & Condition(
+            lambda: bool(input_field.buffer.complete_state)
+            or (completion_task is not None and not completion_task.done())
+        ),
+    )
+    def _(event):
+        """Dismiss suggestions and cancel a pending Tab request without insertion."""
+        if completion_task is not None:
+            completion_task.cancel()
+        input_field.buffer.cancel_completion()
 
     @kb.add(
         " ",

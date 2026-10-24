@@ -25,7 +25,10 @@ ISO 8601 format.
   Apps without a project backend retain in-memory history and input recall,
   with no built-in history commands.
 - Tab accepts the highlighted completion (or first candidate) in terminal and
-  browser modes. Commands and scalar/file arguments advance with a separator;
+  browser modes. At empty input or between command words, Tab first opens a
+  hidden menu without inserting text; another Tab accepts the highlighted row.
+  Escape dismisses pending or visible menus. Commands and scalar/file arguments
+  advance with a separator;
   directories and lists stay editable, including inside generated quotes.
 - PathCompleter arguments remain exactly as submitted during dispatch; use Tab
   to explicitly expand filesystem suggestions. This avoids automatic descent

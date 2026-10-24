@@ -44,8 +44,25 @@ async def main():
     def select(names: list[str]):
         return ",".join(names)
 
+    @app.commands.register(name="project history clear")
+    def clear_history():
+        return "cleared"
+
+    @app.commands.register(name="project history export")
+    def export_history():
+        return "exported"
+
     session = WebSession(app, port=0, stdout=io.StringIO())
     await session.start()
+    original = app.layout.completer.get_completions_async
+
+    async def delayed_commands(document, event):
+        if document.text_before_cursor in ("", "   ", "project ", "project history "):
+            await asyncio.sleep(0.15)
+        async for item in original(document, event):
+            yield item
+
+    app.layout.completer.get_completions_async = delayed_commands
     browser_name = os.environ.get("CTUI_BROWSER", "chromium")
     try:
         async with async_playwright() as playwright:
@@ -64,6 +81,45 @@ async def main():
                 field = page.get_by_role("textbox", name="Command", exact=True)
                 menu = page.locator("#suggestions")
                 await field.wait_for(state="visible")
+                # Repeated Tab while loading must reveal, not insert, an unseen command.
+                await field.press("Tab")
+                await field.press("Tab")
+                await expect(menu).to_be_visible()
+                await expect(field).to_have_value("")
+                await expect(menu.locator(".selected")).to_contain_text("deploy")
+                await field.press("Tab")
+                await expect(field).to_have_value("deploy ")
+
+                for prefix in ("   ", "project ", "project history "):
+                    await field.fill(prefix)
+                    await field.press("Escape")
+                    await expect(menu).to_be_hidden()
+                    await field.press("Tab")
+                    await field.press("Tab")
+                    await expect(menu).to_be_visible()
+                    await expect(field).to_have_value(prefix)
+                    await field.press("Escape")
+                    await expect(menu).to_be_hidden()
+                    await expect(field).to_have_value(prefix)
+                    await field.press("Tab")
+                    await expect(menu).to_be_visible()
+                    await expect(field).to_have_value(prefix)
+                    await field.press("Tab")
+                    await expect(field).not_to_have_value(prefix)
+
+                # Escape must invalidate a response that has not arrived yet.
+                await field.fill("project history ")
+                await field.press("Tab")
+                await field.press("Escape")
+                await page.wait_for_timeout(350)
+                await expect(menu).to_be_hidden()
+                await expect(field).to_have_value("project history ")
+                await field.press("Tab")
+                await expect(menu).to_be_visible()
+                await field.press("ArrowDown")
+                await field.press("Tab")
+                await expect(field).to_have_value("project history export ")
+
                 await field.fill("dep")
                 # Tab before the delayed response must still accept the first result.
                 await field.press("Tab")
@@ -155,7 +211,7 @@ async def main():
                 await expect(field).to_have_value("select alpha,beta")
                 assert not errors, errors
                 print(
-                    f"{browser_name}: completion acceptance, path quotes, Unicode, lists, clicking and middle-of-command editing passed"
+                    f"{browser_name}: menu-first Tab, loading/cancellation, completion acceptance, path quotes, Unicode, lists, clicking and middle-of-command editing passed"
                 )
             finally:
                 await browser.close()

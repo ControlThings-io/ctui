@@ -100,7 +100,8 @@ def ui_guidance(app):
     """
     text = """Input window — type and edit commands here:
   Enter                 Run the command; you can enter another while it runs.
-  Tab                   Accept the highlighted suggestion (first if none selected).
+  Tab                   Show a hidden menu at command boundaries; otherwise accept.
+  Escape                Dismiss completion suggestions without accepting them.
   Up / Down             Navigate completion choices or input history.
   Left / Right          Move the input cursor.
   Ctrl-A / Ctrl-E       Move to the beginning / end of input.

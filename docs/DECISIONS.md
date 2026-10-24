@@ -107,6 +107,16 @@ implicit dispatch-time prefix expansion for PathCompleter arguments: paths stay
 literal unless explicitly completed, preventing automatic descent into a sole
 child and replacement of new output filenames.
 
+Accepted follow-up, October 23: at empty/whitespace-only input or an unquoted,
+unescaped command-word boundary, Tab reveals a hidden menu without inserting
+text and highlights its first row. A subsequent Tab accepts the selected row;
+Up/Down retain selection behavior. Escape dismisses visible/pending menus, and
+repeated Tab during loading does not queue acceptance of an unseen command.
+Use menu state rather than counting key presses. Partial words and argument
+values retain the October 20 acceptance behavior. Both frontends use the shared
+command-boundary decision, including help targets; moving to the beginning of
+existing text does not activate the empty-input policy.
+
 ## D05 — Terminal-native selection and concurrent output
 
 Accepted, Aug 23; `84679d3`, `1b53da9`.

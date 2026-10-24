@@ -63,6 +63,14 @@ class CompletionAcceptanceTests(unittest.IsolatedAsyncioTestCase):
         def select(names: list[str]):
             return names
 
+        @self.app.commands.register(name="project history clear")
+        def clear_history():
+            return "cleared"
+
+        @self.app.commands.register(name="project history export")
+        def export_history():
+            return "exported"
+
     async def candidates(self, text, cursor=None):
         document = Document(text, len(text) if cursor is None else cursor)
         items = [
@@ -205,6 +213,105 @@ class CompletionAcceptanceTests(unittest.IsolatedAsyncioTestCase):
         await asyncio.gather(*tasks)
         self.assertEqual(self.buffer.text, "deploy ")
 
+    def test_menu_first_policy_is_limited_to_command_boundaries(self):
+        app = CtuiApp()
+        app.commands.register(name="project history clear")(lambda: "cleared")
+        completer = CtuiLayout(app).completer
+        for text, cursor, expected in (
+            ("", 0, True),
+            (" \t", 2, True),
+            ("project ", 8, True),
+            ("project history ", 16, True),
+            ("help project ", 13, True),
+            ("project history clear", 8, True),
+            ("project history", 0, False),
+            ("project h", 9, False),
+            ("project history clear ", 22, False),
+            ('project "history ', 17, False),
+            ("project\\ ", 9, False),
+        ):
+            with self.subTest(text=text, cursor=cursor):
+                self.assertEqual(
+                    completer.show_menu_first(Document(text, cursor)), expected
+                )
+
+    async def test_tab_reveals_hidden_command_menus_without_previewing_input(self):
+        bindings = get_key_bindings(self.app).bindings
+        tab = next(b for b in bindings if str(b.keys[0]) == "Keys.ControlI")
+        escape = next(b for b in bindings if str(b.keys[0]) == "Keys.Escape")
+        tasks = []
+
+        def schedule(coroutine):
+            task = asyncio.create_task(coroutine)
+            tasks.append(task)
+            return task
+
+        event = SimpleNamespace(app=SimpleNamespace(create_background_task=schedule))
+        for text, accepted in (
+            ("", "deploy "),
+            ("   ", "   deploy "),
+            ("project ", "project history "),
+            ("project history ", "project history clear "),
+        ):
+            with self.subTest(text=text):
+                self.buffer.document = Document(text)
+                tab.handler(event)
+                await tasks[-1]
+                self.assertEqual(self.buffer.text, text)
+                self.assertEqual(self.buffer.complete_state.complete_index, 0)
+                escape.handler(event)
+                self.assertIsNone(self.buffer.complete_state)
+                self.assertEqual(self.buffer.text, text)
+                tab.handler(event)
+                await tasks[-1]
+                self.assertEqual(self.buffer.text, text)
+                with patch.object(self.buffer, "start_completion"):
+                    tab.handler(event)
+                self.assertEqual(self.buffer.document, Document(accepted))
+
+    async def test_pending_tab_never_accepts_unseen_commands_and_escape_cancels(self):
+        bindings = get_key_bindings(self.app).bindings
+        tab = next(b for b in bindings if str(b.keys[0]) == "Keys.ControlI")
+        escape = next(b for b in bindings if str(b.keys[0]) == "Keys.Escape")
+        original = self.app.layout.completer.get_completions_async
+        for cancel in (False, True):
+            with self.subTest(cancel=cancel):
+                ready, release = asyncio.Event(), asyncio.Event()
+                tasks = []
+
+                async def delayed(document, event):
+                    ready.set()
+                    await release.wait()
+                    async for item in original(document, event):
+                        yield item
+
+                def schedule(coroutine):
+                    task = asyncio.create_task(coroutine)
+                    tasks.append(task)
+                    return task
+
+                event = SimpleNamespace(
+                    app=SimpleNamespace(create_background_task=schedule)
+                )
+                self.buffer.complete_state = None
+                self.buffer.document = Document("project ")
+                with patch.object(
+                    self.app.layout.completer, "get_completions_async", delayed
+                ):
+                    tab.handler(event)
+                    await asyncio.wait_for(ready.wait(), 2)
+                    tab.handler(event)
+                    self.assertEqual(len(tasks), 1)
+                    if cancel:
+                        escape.handler(event)
+                    release.set()
+                    await asyncio.gather(*tasks, return_exceptions=cancel)
+                self.assertEqual(self.buffer.text, "project ")
+                if cancel:
+                    self.assertIsNone(self.buffer.complete_state)
+                else:
+                    self.assertTrue(self.buffer.complete_state.completions)
+
     async def test_accepting_directory_preview_refreshes_child_suggestions(self):
         with tempfile.TemporaryDirectory() as root:
             directory = Path(root) / "plain"
@@ -346,6 +453,69 @@ class CompletionAcceptanceTests(unittest.IsolatedAsyncioTestCase):
                 await wait_for(lambda: self.buffer.text.endswith("' "))
                 self.assertEqual(self.buffer.cursor_position, len(self.buffer.text))
                 self.assertTrue(terminal.layout.has_focus(self.app.layout.input_field))
+            finally:
+                terminal.exit()
+                await asyncio.wait_for(running, 3)
+
+    async def test_real_terminal_tab_reveals_command_menus_before_accepting(self):
+        async def wait_for(predicate):
+            async with asyncio.timeout(3):
+                while not predicate():
+                    await asyncio.sleep(0.01)
+
+        highlighted = asyncio.Event()
+
+        def after_render(terminal):
+            screen = terminal.renderer.last_rendered_screen
+            if screen is not None and any(
+                "completion-menu.completion.current" in cell.style
+                for row in screen.data_buffer.values()
+                for cell in row.values()
+            ):
+                highlighted.set()
+
+        with create_pipe_input() as pipe:
+            terminal = Application(
+                layout=Layout(
+                    self.app.layout.root_container,
+                    focused_element=self.app.layout.input_field,
+                ),
+                key_bindings=get_key_bindings(self.app),
+                input=pipe,
+                output=DummyOutput(),
+                full_screen=True,
+                after_render=after_render,
+            )
+            terminal.ttimeoutlen = 0.05
+            self.app.app = terminal
+            running = asyncio.create_task(terminal.run_async())
+            try:
+                await wait_for(lambda: terminal.is_running)
+                pipe.send_text("\t")
+                await asyncio.wait_for(highlighted.wait(), 3)
+                self.assertEqual(self.buffer.text, "")
+                pipe.send_text("\t")
+                await wait_for(lambda: self.buffer.text == "deploy ")
+
+                self.buffer.document = Document("project history ")
+                pipe.send_text("\t")
+                await wait_for(
+                    lambda: self.buffer.complete_state
+                    and self.buffer.complete_state.complete_index == 0
+                    and self.buffer.complete_state.original_document
+                    == Document("project history ")
+                )
+                self.assertEqual(self.buffer.text, "project history ")
+                pipe.send_text("\x1b[B")
+                await wait_for(lambda: self.buffer.text == "project history export")
+                pipe.send_text("\x1b")
+                await wait_for(lambda: self.buffer.complete_state is None)
+                self.assertEqual(self.buffer.text, "project history ")
+                pipe.send_text("\t")
+                await wait_for(lambda: bool(self.buffer.complete_state))
+                self.assertEqual(self.buffer.text, "project history ")
+                pipe.send_text("\t")
+                await wait_for(lambda: self.buffer.text == "project history clear ")
             finally:
                 terminal.exit()
                 await asyncio.wait_for(running, 3)

@@ -284,6 +284,7 @@ class WebTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(completion["items"][0]["text"], "echo")
         self.assertEqual(completion["text"], "ec")
         self.assertEqual(completion["cursor"], 2)
+        self.assertFalse(completion["menu_first"])
         self.assertEqual(
             completion["items"][0]["edit"],
             {"text": "echo ", "cursor": 5, "quote": None},
@@ -299,6 +300,30 @@ class WebTests(unittest.IsolatedAsyncioTestCase):
         await socket.send_json({"type": "answer", "id": dialog["id"], "button": 0})
         await self.receive(socket, "finished")
         self.assertEqual(self.app.layout.output_field.text, "preserved")
+
+    async def test_completion_replies_identify_hidden_command_menu_boundaries(self):
+        @self.app.commands.register(name="project history clear")
+        def clear_history():
+            return "cleared"
+
+        await self.login()
+        socket, _ = await self.connect()
+        for identifier, (text, expected) in enumerate(
+            (
+                ("", True),
+                ("   ", True),
+                ("project ", True),
+                ("project history ", True),
+                ("project h", False),
+                ("echo ", False),
+            )
+        ):
+            with self.subTest(text=text):
+                await socket.send_json(
+                    {"type": "complete", "text": text, "id": identifier}
+                )
+                completion = await self.receive(socket, "completion")
+                self.assertEqual(completion["menu_first"], expected)
 
     async def test_exit_confirms_and_notifies_only_submitting_tab(self):
         await self.login()
