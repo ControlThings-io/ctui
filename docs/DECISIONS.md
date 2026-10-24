@@ -285,11 +285,10 @@ functional. More testing and changes are required, so the next release will
 be RC2. The specific changes/tests are still to be listed. A background-job
 manager and `py.typed` remain optional ideas, not release requirements.
 
-Proposed follow-up, October 23: the owner is considering publishing stable
-`1.0.0` directly instead of the earlier RC2 plan after reporting testing complete.
-Stable release preparation still requires current metadata/changelog, source and
-artifact verification, and a passing platform matrix. No version/tag/publication
-change is authorized or implied by this readiness discussion.
+Accepted follow-up, October 23: the next release is stable `1.0.0`, dated
+2026-10-23, superseding the earlier RC2 plan. The owner reports testing complete
+and requested the dated stable changelog section. Metadata preparation, final
+release verification, tagging and publication remain separate release steps.
 
 Implemented metadata policy: retain the repository's existing
 `GPL-3.0-or-later` license and include LICENSE in distributions. Metadata was

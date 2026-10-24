@@ -5,7 +5,7 @@ All notable changes to ctui are documented in this file.
 The project follows [Semantic Versioning](https://semver.org/). Dates use the
 ISO 8601 format.
 
-## [Unreleased]
+## [1.0.0] - 2026-10-23
 
 ### Added
 
@@ -94,9 +94,6 @@ This release candidate introduces the redesigned API for typed command tools
 that run as full-screen terminal applications or conventional command-line
 programs.
 
-[Unreleased]: https://github.com/ControlThings-io/ctui/compare/v1.0.0rc1...HEAD
-[1.0.0rc1]: https://github.com/ControlThings-io/ctui/releases/tag/v1.0.0rc1
-
 ### Added
 
 - Typed command conversion, validation, completion, aliases, unique-prefix
@@ -135,3 +132,6 @@ Versions before 1.0 were development releases. Applications upgrading from a
 0.x release should review the current README and tutorials rather than assume
 compatibility with undocumented earlier behavior.
 
+[Unreleased]: https://github.com/ControlThings-io/ctui/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/ControlThings-io/ctui/releases/tag/v1.0.0
+[1.0.0rc1]: https://github.com/ControlThings-io/ctui/releases/tag/v1.0.0rc1

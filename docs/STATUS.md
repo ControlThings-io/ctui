@@ -1,19 +1,19 @@
 # Project status
 
-Last reconciled: 2026-10-23 on `main` at `bfebed1` plus changelog cleanup.
+Last reconciled: 2026-10-23 on `main` at `a065bff` plus stable changelog finalization.
 The last verified remote run at
 `7bdf16e` passed all 16 platform/Python jobs, formatting and distribution checks.
-The whitespace and browser sizing fixes are committed locally, two commits ahead of
-origin/main. Metadata remains RC1. The owner reports testing complete and is
-considering stable `1.0.0` instead of RC2; release preparation remains pending.
+The whitespace/browser sizing fixes and changelog cleanup are committed locally,
+three commits ahead of origin/main. Metadata remains RC1. The owner confirmed
+stable `1.0.0` for October 23; remaining release preparation is pending.
 No new publication is claimed.
 
 ## Current state
 
-- Changelog now separates Added/Changed/Fixed/Removed/Compatibility entries,
-  includes notable post-RC1 changes and a command migration table, and labels the
-  September release as `1.0.0rc1`. Upcoming notes remain Unreleased pending the
-  final version/date. Runtime and package metadata are unchanged.
+- Changelog has a `1.0.0` section dated 2026-10-23, with an empty Unreleased
+  section above it and updated stable/compare links. Added/Changed/Fixed/Removed/
+  Compatibility entries include notable post-RC1 changes and a command migration
+  table. September history remains `1.0.0rc1`. Runtime/package metadata is unchanged.
 
 - Browser path/tag suggestions without help text use a single full-width label
   column instead of reserving a capped label column and empty help space.
@@ -59,8 +59,8 @@ No new publication is claimed.
   its quote style, preventing duplicate quotes when selecting path children.
   See [completion usage](../README.md#completion-and-validation) and D04.
 
-- Metadata remains `1.0.0rc1`; stable `1.0.0` is the owner's proposed next release,
-  replacing the earlier RC2 plan if adopted. Preparation and the release checks
+- Metadata remains `1.0.0rc1`; stable `1.0.0` is the owner's confirmed next release,
+  replacing the earlier RC2 plan. Preparation and the release checks
   in [RELEASE_CHECKLIST.md](../RELEASE_CHECKLIST.md) remain pending.
 - Main includes reusable path completion (`fdda194`), dialog redraw, command
   error containment, and the post-RC1 help/type improvements.
@@ -129,6 +129,11 @@ No new publication is claimed.
   still 3.0.53; no dependency/version change is needed.
 
 ## Validation evidence
+
+- October 23 stable changelog finalization on `a065bff` plus the working tree:
+  verified release heading/date, empty Unreleased section, stable/compare/RC1
+  reference links, and release-note extraction boundaries. Whitespace checks
+  passed. Documentation-only changes; runtime tests were not rerun.
 
 - October 23 changelog cleanup on `bfebed1` plus the working tree: reviewed
   entries against the RC1 tag, post-RC1 commits, accepted decisions and current
@@ -357,22 +362,21 @@ No new publication is claimed.
 - Owner testing is complete as reported October 23. Obtain a passing remote
   build containing `3e968b3`, browser popup sizing and final release
   preparation changes. The current remote run does not cover the whitespace fix.
-- For the proposed stable release, prepare a dated `1.0.0` changelog section
-  from the cleaned Unreleased notes and review it against `v1.0.0rc1`. The RC1
-  heading/history and command migration notes are corrected. Add the stable
-  release link when the final version/date are set; publishing requires an
-  exact `1.0.0` section before tagging.
+- The dated `1.0.0` changelog section and release links are ready. Include them
+  in the final release revision and follow the remaining metadata/artifact checks.
 - For stable `1.0.0`, set `pyproject.toml` to `1.0.0`, refresh the root package
   entry in `uv.lock`, and follow [RELEASE_CHECKLIST.md](../RELEASE_CHECKLIST.md)
   on the intended release revision: source/lock checks, artifact smoke tests
   and archive metadata inspection, then a passing branch build. Confirm trusted
   publishing configuration before an explicitly authorized matching tag/push.
   Verify PyPI artifacts/attestations, GitHub stable/latest status and an isolated
-  published-package tutorial afterward. No release/version change made here.
+  published-package tutorial afterward. No package version/tag/publication change
+  was made during changelog finalization.
 
 ## Handoff
 
-Implementation changes through browser popup sizing are committed at `bfebed1`
-on `main`, two commits ahead of origin/main. Changelog cleanup and status updates
-remain uncommitted. Remaining release work and validation are listed above.
+Implementation changes and changelog cleanup are committed through `a065bff`
+on `main`, three commits ahead of origin/main. Stable changelog finalization,
+status updates and the accepted release direction in D10 remain uncommitted.
+Remaining release work and validation are listed above.
 Commit/push only with explicit authorization.
