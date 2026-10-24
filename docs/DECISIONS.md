@@ -153,6 +153,11 @@ to the submitting tab. Dismissal/disconnection never rolls back completed work.
 CLI prints results normally. clear/help/exit keep their established behavior.
 Application commands may opt in with result_title; ordinary output is unchanged.
 
+Accepted follow-up, October 23: remove the top-level `clear` command because
+Ctrl-L already clears output in terminal and browser modes. Keep the shortcut,
+programmatic `CommandResult(clear_output=True)` support, and project history
+clearing commands. This supersedes the output-clear command exception above.
+
 Apply output appends when commands finish to avoid overwriting concurrent
 results with stale snapshots. See [CommandResult](../src/ctui/commands.py).
 Progress tracking stays application-owned; the

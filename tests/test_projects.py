@@ -184,21 +184,21 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
     async def test_project_history_exports_all_or_recent_commands(self):
         """Export prior history as replayable UTF-8 with quoted portable paths."""
         await self.app.dispatch("help")
-        await self.app.dispatch("clear")
+        await self.app.dispatch("help exit")
         all_path = Path(self.temporary.name) / "all commands.txt"
         recent_path = Path(self.temporary.name) / "recent commands.txt"
         all_command = f'project history export "{all_path}"'
         result = await self.app.dispatch(all_command)
         self.assertIn("Exported 2 commands", result.output)
         self.assertEqual(result.dialog_title, "History exported")
-        self.assertEqual(all_path.read_text(encoding="utf-8"), "help\nclear\n")
+        self.assertEqual(all_path.read_text(encoding="utf-8"), "help\nhelp exit\n")
 
         result = await self.app.dispatch(
             f'project history export "{recent_path}" --count 2'
         )
         self.assertIn("Exported 2 commands", result.output)
         self.assertEqual(
-            recent_path.read_text(encoding="utf-8"), f"clear\n{all_command}\n"
+            recent_path.read_text(encoding="utf-8"), f"help exit\n{all_command}\n"
         )
         with self.assertRaisesRegex(CommandError, "Cannot export history"):
             await self.app.dispatch(
@@ -296,8 +296,7 @@ class ProjectTests(unittest.IsolatedAsyncioTestCase):
         result = await self.app.dispatch("project configs")
         self.assertEqual(result.dialog_title, "Configurations")
         self.assertEqual(result.output, "local")
-        result = await self.app.dispatch("clear")
-        self.assertTrue(result.clear_output)
+        result = await self.app.dispatch("help")
         self.assertIsNone(result.dialog_title)
 
     async def test_config_json_and_project_snapshot_round_trip(self):

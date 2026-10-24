@@ -936,17 +936,12 @@ def command(
 
 
 def register_default_commands(app):
-    """Install the standard clear, help, and exit commands.
+    """Install the standard help and exit commands.
 
     Project/history commands are registered separately when a backend exists.
     Help returns a private result so UI and CLI can present the same reference
     differently. Apps without a backend retain their internal history service.
     """
-
-    @app.commands.register
-    def clear():
-        """Clear the output."""
-        return CommandResult(clear_output=True)
 
     @app.commands.register(
         arguments={

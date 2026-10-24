@@ -13,8 +13,12 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from prompt_toolkit.completion import CompleteEvent
+from prompt_toolkit.document import Document
+
 from ctui import CommandError, CommandResult, ConfirmationRequired, CtuiApp, command
 from ctui.commands import Argument, CommandNotFound, CommandValidationError
+from ctui.completion import CommandCompleter
 from ctui.functions import scroll_left, scroll_right
 from ctui.keybindings import get_key_bindings
 from ctui.layout import CtuiLayout
@@ -152,9 +156,9 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(app.backend)
         self.assertIsInstance(app.history, MemoryHistory)
         await app.dispatch("help")
-        await app.dispatch("clear")
+        await app.dispatch("help exit")
         self.assertEqual(
-            [entry.command for entry in app.history.all()], ["help", "clear"]
+            [entry.command for entry in app.history.all()], ["help", "help exit"]
         )
         for name in (
             "history",
@@ -170,6 +174,26 @@ class ApplicationTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(command=name):
                 with self.assertRaises(CommandNotFound):
                     await app.dispatch(name)
+
+    async def test_builtin_clear_is_absent_with_and_without_projects(self):
+        """Output clearing uses Ctrl-L rather than a built-in command."""
+        with tempfile.TemporaryDirectory() as root:
+            for app in (
+                CtuiApp(),
+                CtuiApp(app_id="io.example.no-clear", data_dir=Path(root)),
+            ):
+                with self.subTest(projects=app.backend is not None):
+                    self.assertNotIn("clear", app.commands)
+                    self.assertNotIn("clear", app.format_help())
+                    with self.assertRaises(CommandNotFound):
+                        await app.dispatch("clear")
+                    matches = [
+                        item.text
+                        async for item in CommandCompleter(
+                            app.commands
+                        ).get_completions_async(Document("cl"), CompleteEvent())
+                    ]
+                    self.assertNotIn("clear", matches)
 
     async def test_unknown_command(self):
         with self.assertRaises(CommandNotFound):

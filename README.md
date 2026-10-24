@@ -473,8 +473,9 @@ History and project commands (including `project configs`) show successful
 results in scrollable dialogs in terminal and browser modes, preserving
 application output. Actions finish before results appear; output can continue
 updating while a dialog is open. Result dialogs queue, and browser results appear
-only in the submitting tab. CLI mode prints the same messages normally. `clear`
-still clears output; help and exit retain their existing behavior.
+only in the submitting tab. CLI mode prints the same messages normally. Use
+Ctrl-L to clear output; the top-level `clear` command has been removed. Help and
+exit retain their existing behavior.
 
 Application commands can opt into this presentation with
 `@command(result_title="Operation complete")`. Return a string or a

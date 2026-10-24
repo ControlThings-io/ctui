@@ -19,6 +19,7 @@ ISO 8601 format.
 
 ### Changed
 
+- Remove the top-level `clear` command; use Ctrl-L to clear terminal/browser output.
 - Move `history`, `history search`, and `history export` under `project history`
   without old-name aliases. Add `project history clear` alongside
   `project reset history`, sharing the same confirmed reset operation.

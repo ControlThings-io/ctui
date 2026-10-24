@@ -1,6 +1,6 @@
 # Project status
 
-Last reconciled: 2026-10-23 on `main` at `b11920e` plus the Tab menu changes.
+Last reconciled: 2026-10-23 on `main` at `c203d33` plus output-clear command removal.
 The last verified GitHub run at `755f5ac` passed
 all 16 platform/Python combinations, formatting, and wheel/sdist build and
 installed smoke checks, including the web frontend. Release metadata remains
@@ -8,6 +8,10 @@ RC1; the owner reports testing complete. RC2 release preparation remains
 pending. No RC2 publication is claimed.
 
 ## Current state
+
+- Removed the top-level `clear` command; Ctrl-L clears output in terminal and
+  browser modes. Programmatic clear_output results and project history clearing
+  remain available. Help examples and compatibility notes reflect the removal.
 
 - D07 is resolved: history display/search/export now live under `project history`
   without top-level aliases. `project history clear` and `project reset history`
@@ -88,7 +92,7 @@ pending. No RC2 publication is claimed.
 
 - Built-in history/project results, including project configs, use queued UI
   dialogs and preserve application output. Actions finish before presentation;
-  browser results belong to the submitting tab. CLI printing and clear/help/exit
+  browser results belong to the submitting tab. CLI printing and help/exit
   behavior stay unchanged. Application commands can opt in with result_title.
 
 - Dialog support now includes button choices, radio/checkbox lists and a typed
@@ -107,6 +111,13 @@ pending. No RC2 publication is claimed.
   still 3.0.53; no dependency/version change is needed.
 
 ## Validation evidence
+
+- October 23 output-clear command removal on `c203d33` plus the working tree:
+  all 208 tests passed on Python 3.11.16/Linux, including absent command/help/
+  completion entries with and without projects. Existing Ctrl-L, browser clear
+  messages, programmatic clear_output and project history clearing checks passed.
+  Black/isort, lockfile and whitespace checks passed. Tests/formatting ran outside
+  the sandbox to avoid known executor stalls. Remote CI remains pending.
 
 - October 23 Tab menu changes on `b11920e` plus the working tree: all 207 tests
   passed on Python 3.11.16/Linux, including a rendered terminal menu without
@@ -295,12 +306,13 @@ pending. No RC2 publication is claimed.
 
 - Owner testing is complete as reported October 23. The cross-platform CI matrix
   and artifact jobs passed at `755f5ac`; remote checks for the subsequent D07
-  command migration, Tab menu behavior and release-version checks remain pending.
+  command migration, Tab menu behavior, clear removal and release-version checks
+  remain pending.
 - Prepare an explicit dated `1.0.0rc2` changelog section covering the comparison
   with `v1.0.0rc1`, including command/API compatibility changes; reconcile the
   existing stable `1.0.0` heading with the actual prerelease history. Current
-  Unreleased notes cover only browser support and completion, omitting other
-  shipped changes. The publishing workflow falls back to the stable section
+  Unreleased notes cover browser support, history command migration, clear removal
+  and completion, omitting other shipped changes. The publishing workflow falls back to the stable section
   unless an exact RC2 section exists.
 - Set `pyproject.toml` to `1.0.0rc2`, refresh the root package
   entry in `uv.lock`, and follow [RELEASE_CHECKLIST.md](../RELEASE_CHECKLIST.md)
@@ -312,8 +324,8 @@ pending. No RC2 publication is claimed.
 
 ## Handoff
 
-Project history migration and the prior status reconciliation are committed at
-`b11920e` on `main`. Tab menu changes, regression checks, help/README, changelog
-and D04/status updates remain uncommitted. Remaining release work and validation
-are listed above.
+Project history migration and Tab menu changes are committed through `c203d33`
+on `main`. Output-clear command removal, regression tests, help examples, README,
+changelog and D05/status updates remain uncommitted. Remaining release work and
+validation are listed above.
 Commit/push only with explicit authorization.
