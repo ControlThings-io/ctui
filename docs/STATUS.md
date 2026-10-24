@@ -1,19 +1,23 @@
 # Project status
 
-Last reconciled: 2026-10-23 on `main` at `a065bff` plus stable changelog finalization.
-The last verified remote run at
-`7bdf16e` passed all 16 platform/Python jobs, formatting and distribution checks.
-The whitespace/browser sizing fixes and changelog cleanup are committed locally,
-three commits ahead of origin/main. Metadata remains RC1. The owner confirmed
-stable `1.0.0` for October 23; remaining release preparation is pending.
-No new publication is claimed.
+Last reconciled: 2026-10-23 on `main` at `bb4803c` plus stable version preparation.
+Package metadata and lockfile now report `1.0.0`, matching the dated changelog.
+Local source and wheel/sdist release checks passed on Python 3.11.16/Linux.
+The last verified remote run at `7bdf16e` passed all platform/artifact jobs but
+does not cover the final release revision. Preparation changes are uncommitted;
+no tag or publication is claimed.
 
 ## Current state
 
-- Changelog has a `1.0.0` section dated 2026-10-23, with an empty Unreleased
-  section above it and updated stable/compare links. Added/Changed/Fixed/Removed/
+- `pyproject.toml` and the root package entry in `uv.lock` are `1.0.0`.
+  Dependency versions are unchanged. uv 0.13.5 regenerated lock schema revision
+  5 and recorded the existing default-groups setting. Locked Python 3.11 sync
+  installed the editable package as `1.0.0`.
+
+- Changelog has a `1.0.0` section dated 2026-10-23 and updated stable/compare links.
+  The owner removed the empty Unreleased heading. Added/Changed/Fixed/Removed/
   Compatibility entries include notable post-RC1 changes and a command migration
-  table. September history remains `1.0.0rc1`. Runtime/package metadata is unchanged.
+  table. September history remains `1.0.0rc1`; runtime code is unchanged.
 
 - Browser path/tag suggestions without help text use a single full-width label
   column instead of reserving a capped label column and empty help space.
@@ -59,9 +63,9 @@ No new publication is claimed.
   its quote style, preventing duplicate quotes when selecting path children.
   See [completion usage](../README.md#completion-and-validation) and D04.
 
-- Metadata remains `1.0.0rc1`; stable `1.0.0` is the owner's confirmed next release,
-  replacing the earlier RC2 plan. Preparation and the release checks
-  in [RELEASE_CHECKLIST.md](../RELEASE_CHECKLIST.md) remain pending.
+- Stable `1.0.0` is the owner's confirmed release, replacing the earlier RC2 plan.
+  Remaining submission/publication checks are below; the full procedure is in
+  [RELEASE_CHECKLIST.md](../RELEASE_CHECKLIST.md).
 - Main includes reusable path completion (`fdda194`), dialog redraw, command
   error containment, and the post-RC1 help/type improvements.
 - Browser support uses required aiohttp; standard installs include it. `--web` runs a browser-only
@@ -129,6 +133,16 @@ No new publication is claimed.
   still 3.0.53; no dependency/version change is needed.
 
 ## Validation evidence
+
+- October 23 stable version preparation on `bb4803c` plus the working tree:
+  locked sync and all 212 tests passed on Python 3.11.16/Linux; Black/isort,
+  lockfile and whitespace checks passed. Built `ctui-1.0.0-py3-none-any.whl`
+  and `ctui-1.0.0.tar.gz` in a fresh temporary output directory. All four isolated
+  wheel/sdist base and web smoke tests passed; the wheel import reported `1.0.0`
+  from site-packages. Both archives have matching version, Python requirement,
+  dependency declarations, project URLs, license, UTF-8 README description and
+  bundled web assets. Dependency versions match the previous lockfile. These
+  are working-tree checks, not final clean-commit/remote CI or publication proof.
 
 - October 23 stable changelog finalization on `a065bff` plus the working tree:
   verified release heading/date, empty Unreleased section, stable/compare/RC1
@@ -359,24 +373,20 @@ No new publication is claimed.
 
 ## Next steps
 
-- Owner testing is complete as reported October 23. Obtain a passing remote
-  build containing `3e968b3`, browser popup sizing and final release
-  preparation changes. The current remote run does not cover the whitespace fix.
-- The dated `1.0.0` changelog section and release links are ready. Include them
-  in the final release revision and follow the remaining metadata/artifact checks.
-- For stable `1.0.0`, set `pyproject.toml` to `1.0.0`, refresh the root package
-  entry in `uv.lock`, and follow [RELEASE_CHECKLIST.md](../RELEASE_CHECKLIST.md)
-  on the intended release revision: source/lock checks, artifact smoke tests
-  and archive metadata inspection, then a passing branch build. Confirm trusted
-  publishing configuration before an explicitly authorized matching tag/push.
-  Verify PyPI artifacts/attestations, GitHub stable/latest status and an isolated
-  published-package tutorial afterward. No package version/tag/publication change
-  was made during changelog finalization.
+- Commit release preparation and obtain a passing remote branch build on that
+  exact revision, with the checklist's clean-checkout verification. The last
+  verified remote run does not cover all current implementation/metadata changes.
+- Confirm the `pypi` GitHub environment and PyPI trusted publisher configuration,
+  then create/push annotated `v1.0.0` only when explicitly authorized. Watch
+  verification, artifacts, attestations, publication and GitHub release creation.
+- Verify published metadata/artifacts/attestations, GitHub stable/latest status,
+  and an isolated PyPI installation plus tutorial before announcement. Owner
+  testing was reported complete October 23; no release is published by this work.
 
 ## Handoff
 
-Implementation changes and changelog cleanup are committed through `a065bff`
-on `main`, three commits ahead of origin/main. Stable changelog finalization,
-status updates and the accepted release direction in D10 remain uncommitted.
-Remaining release work and validation are listed above.
+Implementation and changelog finalization are committed through `bb4803c` on
+`main`, four commits ahead of origin/main. Version/lockfile preparation and these
+status updates remain uncommitted. All local release checks above passed;
+remaining remote and publication checks are listed above.
 Commit/push only with explicit authorization.
