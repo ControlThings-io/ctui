@@ -18,6 +18,69 @@ from ctui import Argument, CtuiApp, PathCompleter
 from ctui.web import WebSession
 
 
+async def check_completion_layout(page, field, menu):
+    """Check natural label widths, optional help and viewport-constrained wrapping.
+
+    Exercise real string choices and PathCompleter results at normal/enlarged
+    text sizes. Short labels should fit on one line; genuinely long paths may
+    wrap, with the popup remaining inside the viewport. Help stays aligned on
+    desktop and stacks below labels on narrow screens.
+    """
+
+    async def label_lines():
+        return await menu.locator(".completion-label").evaluate_all(
+            """labels => labels.map(label => {
+                const range = document.createRange();
+                range.selectNodeContents(label);
+                return {text: label.textContent, lines: range.getClientRects().length};
+            })"""
+        )
+
+    with tempfile.TemporaryDirectory() as root:
+        target = Path(root) / ("a" * 192 + ".json")
+        target.touch()
+        for width, font_size in ((910, 24), (673, 24), (1280, 15), (390, 15)):
+            await page.set_viewport_size({"width": width, "height": 1080})
+            await page.evaluate(
+                "size => { document.documentElement.style.fontSize = size + 'px'; }",
+                font_size,
+            )
+            await field.fill("read tag ")
+            await expect(menu).to_contain_text("EmergencyTimer")
+            labels = await label_lines()
+            assert all(label["lines"] == 1 for label in labels), (width, labels)
+
+            await field.fill("read ")
+            await expect(menu).to_contain_text("pyproject.toml")
+            paths = [
+                label
+                for label in await label_lines()
+                if label["text"] in ("README.md", "pyproject.toml", "src/")
+            ]
+            assert len(paths) == 3, paths
+            assert all(label["lines"] == 1 for label in paths), (width, paths)
+
+            await field.fill("explain ")
+            await expect(menu).to_contain_text("Help for a selectable value")
+            row = menu.locator("button").filter(has_text="helped").first
+            aligned = await row.evaluate("""row => {
+                    const label = row.children[0].getBoundingClientRect();
+                    const help = row.children[1].getBoundingClientRect();
+                    return {columns: help.left >= label.right - 1,
+                            stacked: help.top >= label.bottom - 1};
+                }""")
+            assert aligned["columns" if width > 600 else "stacked"], (width, aligned)
+
+            await field.fill("read " + Path(root).as_posix() + "/")
+            await expect(menu).to_contain_text(target.name)
+            bounds = await menu.evaluate(
+                "element => ({left: element.getBoundingClientRect().left, "
+                "right: element.getBoundingClientRect().right})"
+            )
+            assert bounds["left"] >= 0 and bounds["right"] <= width, (width, bounds)
+            assert (await label_lines())[0]["lines"] > 1
+
+
 async def main():
     app = CtuiApp(register_defaults=False)
 
@@ -43,6 +106,35 @@ async def main():
     @app.commands.register(arguments={"names": Argument(choices=("alpha", "beta"))})
     def select(names: list[str]):
         return ",".join(names)
+
+    @app.commands.register(
+        arguments={
+            "tag": Argument(
+                help="Tag to read",
+                choices=(
+                    "BTimer",
+                    "BatchTimer",
+                    "Chem1Pump",
+                    "ETimer",
+                    "EmergencyFlush",
+                    "EmergencyTimer",
+                ),
+            )
+        }
+    )
+    def read_tag(tag: str):
+        return tag
+
+    @app.commands.register(
+        arguments={
+            "value": Argument(
+                help="Value to explain",
+                choices={"plain": "", "helped": "Help for a selectable value"},
+            )
+        }
+    )
+    def explain(value: str):
+        return value
 
     @app.commands.register(name="project history clear")
     def clear_history():
@@ -209,9 +301,10 @@ async def main():
                 await expect(menu).to_contain_text("beta")
                 await field.press("Tab")
                 await expect(field).to_have_value("select alpha,beta")
+                await check_completion_layout(page, field, menu)
                 assert not errors, errors
                 print(
-                    f"{browser_name}: menu-first Tab, loading/cancellation, completion acceptance, path quotes, Unicode, lists, clicking and middle-of-command editing passed"
+                    f"{browser_name}: menu-first Tab, loading/cancellation, completion acceptance, path quotes, Unicode, lists, clicking, middle-of-command editing and popup sizing passed"
                 )
             finally:
                 await browser.close()

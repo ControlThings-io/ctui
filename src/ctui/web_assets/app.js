@@ -76,6 +76,7 @@ function dismissCompletions() {
 function showCompletions(items, source) {
   completionSource=source;
   completionItems = items; completionIndex = 0; suggestions.replaceChildren();
+  suggestions.classList.toggle('has-help', items.some(item => item.help));
   for (const [index,item] of items.entries()) {
     const element = document.createElement(item.text ? 'button' : 'div');
     const label = document.createElement('span');
@@ -91,6 +92,8 @@ function showCompletions(items, source) {
   if (commandInput) {
     const rect = commandInput.getBoundingClientRect();
     suggestions.style.top = `${rect.bottom}px`; suggestions.style.left = `${rect.left}px`;
+    // Account for the input's left offset so long labels wrap within the viewport.
+    suggestions.style.maxWidth = `calc(100vw - ${rect.left}px - .5rem)`;
   }
   suggestions.hidden = !items.length;
 }

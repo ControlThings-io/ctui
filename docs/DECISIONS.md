@@ -285,6 +285,12 @@ functional. More testing and changes are required, so the next release will
 be RC2. The specific changes/tests are still to be listed. A background-job
 manager and `py.typed` remain optional ideas, not release requirements.
 
+Proposed follow-up, October 23: the owner is considering publishing stable
+`1.0.0` directly instead of the earlier RC2 plan after reporting testing complete.
+Stable release preparation still requires current metadata/changelog, source and
+artifact verification, and a passing platform matrix. No version/tag/publication
+change is authorized or implied by this readiness discussion.
+
 Implemented metadata policy: retain the repository's existing
 `GPL-3.0-or-later` license and include LICENSE in distributions. Metadata was
 aligned with existing license/header evidence, not a newly approved relicensing

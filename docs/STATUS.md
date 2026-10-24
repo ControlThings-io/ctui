@@ -1,13 +1,19 @@
 # Project status
 
-Last reconciled: 2026-10-23 on `main` at `7bdf16e` plus command-whitespace changes.
-The last verified GitHub run at `755f5ac` passed
-all 16 platform/Python combinations, formatting, and wheel/sdist build and
-installed smoke checks, including the web frontend. Release metadata remains
-RC1; the owner reports testing complete. RC2 release preparation remains
-pending. No RC2 publication is claimed.
+Last reconciled: 2026-10-23 on `main` at `3e968b3`. The latest remote run at
+`7bdf16e` passed all 16 platform/Python jobs, formatting and distribution checks.
+The whitespace fix is committed locally, one commit ahead of
+origin/main. Metadata remains RC1. The owner reports testing complete and is
+considering stable `1.0.0` instead of RC2; release preparation remains pending.
+No new publication is claimed.
 
 ## Current state
+
+- Browser path/tag suggestions without help text use a single full-width label
+  column instead of reserving a capped label column and empty help space.
+  Popups are limited to viewport space to the right of the input anchor, so long
+  values wrap when needed. Suggestions with help retain aligned desktop columns
+  and stacked mobile help.
 
 - Command resolution accepts repeated spaces/tabs between command words and
   aliases, selecting the longest exact name before unique-prefix fallback.
@@ -47,8 +53,9 @@ pending. No RC2 publication is claimed.
   its quote style, preventing duplicate quotes when selecting path children.
   See [completion usage](../README.md#completion-and-validation) and D04.
 
-- Metadata remains `1.0.0rc1`; RC2 is next, pending release preparation and the
-  release checks in [RELEASE_CHECKLIST.md](../RELEASE_CHECKLIST.md).
+- Metadata remains `1.0.0rc1`; stable `1.0.0` is the owner's proposed next release,
+  replacing the earlier RC2 plan if adopted. Preparation and the release checks
+  in [RELEASE_CHECKLIST.md](../RELEASE_CHECKLIST.md) remain pending.
 - Main includes reusable path completion (`fdda194`), dialog redraw, command
   error containment, and the post-RC1 help/type improvements.
 - Browser support uses required aiohttp; standard installs include it. `--web` runs a browser-only
@@ -66,7 +73,8 @@ pending. No RC2 publication is claimed.
   to close, with a manual-close message when browser policy blocks closure.
 
 - Web completion rows separate bright suggestion labels from muted help with
-  aligned columns and a subtle divider; narrow screens stack indented help.
+  aligned columns and a subtle divider when help is present; narrow screens
+  stack indented help. Label-only providers use the whole popup width.
 
 - Startup always opens `default`, creating it if absent. Saved projects require
   manual loading; default data persists. Current selection remains informational
@@ -116,6 +124,26 @@ pending. No RC2 publication is claimed.
 
 ## Validation evidence
 
+- October 23 browser popup sizing on `3e968b3` plus the working tree: reproduced
+  the original short-tag wrapping (BTimer: 2 lines, EmergencyTimer: 3) in Chromium
+  at a 910px viewport with 24px text. The corrected completion smoke passed in
+  Chromium and Firefox at 910/673px with 24px text and 1280/390px with 15px text.
+  Coverage includes single-line short tags/relative paths, long-path wrapping
+  within the viewport, mixed optional help, aligned/stacked help and the existing
+  keyboard/quote/list/click completion checks. All 212 tests passed on Python
+  3.11.16/Linux. Black/isort, JavaScript syntax, lockfile and whitespace checks
+  passed. Browser/tests/formatting ran outside the sandbox to avoid known
+  execution restrictions. Safari and remote CI remain pending for this fix.
+
+- October 23 stable-release readiness review at `3e968b3`: the working tree was
+  clean before this review, with the latest whitespace fix one commit ahead of
+  origin/main. [GitHub run 40062844930](https://github.com/ControlThings-io/ctui/actions/runs/40062844930)
+  at `7bdf16e` passed all 16 platform/Python jobs, formatting and distribution
+  build/installed base and web smoke tests. The latest commit's 212-test local
+  evidence is below.
+  PyPI's project API lists RC1 and no `1.0.0` release as of this review. No
+  version, lockfile, changelog release heading, tag or publication was changed.
+
 - October 23 command whitespace on `7bdf16e` plus the working tree: all 212 tests
   passed on Python 3.11.16/Linux. Regressions cover real `project list` dispatch,
   nested exact names, aliases and abbreviations, quoted/raw argument whitespace,
@@ -155,7 +183,7 @@ pending. No RC2 publication is claimed.
   passed at `755f5ac`: Python 3.11–3.14 on Linux x86-64, Linux ARM64, Windows,
   and macOS; Black/isort; distribution builds; isolated wheel/sdist base and
   web smoke tests; artifact upload. This resolves the remote Windows and
-  artifact-job gaps below. These artifacts still report `1.0.0rc1`; final RC2
+  artifact-job gaps below. These artifacts still report `1.0.0rc1`; final release
   metadata and artifacts need release verification. The owner subsequently
   reported testing complete on October 23; no per-platform manual results were
   supplied. Earlier evidence below describes checks and gaps at those revisions.
@@ -315,27 +343,28 @@ pending. No RC2 publication is claimed.
 
 ## Next steps
 
-- Owner testing is complete as reported October 23. The cross-platform CI matrix
-  and artifact jobs passed at `755f5ac`; remote checks for the subsequent D07
-  command/interface changes and release-version checks remain pending.
-- Prepare an explicit dated `1.0.0rc2` changelog section covering the comparison
-  with `v1.0.0rc1`, including command/API compatibility changes; reconcile the
-  existing stable `1.0.0` heading with the actual prerelease history. Current
-  Unreleased notes cover browser support, command changes and completion, omitting
-  other shipped changes. The publishing workflow falls back to the stable section
-  unless an exact RC2 section exists.
-- Set `pyproject.toml` to `1.0.0rc2`, refresh the root package
+- Owner testing is complete as reported October 23. Obtain a passing remote
+  build containing `3e968b3`, browser popup sizing and final release
+  preparation changes. The current remote run does not cover the whitespace fix.
+- For the proposed stable release, prepare a dated `1.0.0` changelog section
+  covering the comparison with `v1.0.0rc1`, including command/API compatibility
+  changes. Correct the premature September 13 stable heading to reflect RC1
+  history. Merge Unreleased material into the stable release notes and add
+  omitted post-RC1 changes. Publishing currently selects the old stable section
+  and would omit all Unreleased notes.
+- For stable `1.0.0`, set `pyproject.toml` to `1.0.0`, refresh the root package
   entry in `uv.lock`, and follow [RELEASE_CHECKLIST.md](../RELEASE_CHECKLIST.md)
   on the intended release revision: source/lock checks, artifact smoke tests
   and archive metadata inspection, then a passing branch build. Confirm trusted
   publishing configuration before an explicitly authorized matching tag/push.
-  Verify PyPI artifacts/attestations, GitHub prerelease status and an isolated
+  Verify PyPI artifacts/attestations, GitHub stable/latest status and an isolated
   published-package tutorial afterward. No release/version change made here.
 
 ## Handoff
 
-Project history migration, Tab menu changes and output-clear command removal are
-committed through `7bdf16e` on `main`. Command-whitespace handling, regression
-tests, README/changelog and D04/status updates remain uncommitted. Remaining
-release work and validation are listed above.
+All implementation changes through whitespace handling are committed at
+`3e968b3` on `main`, one commit ahead of origin/main. Browser popup sizing,
+browser regression checks and changelog/status updates remain uncommitted,
+alongside the prior proposed stable-release direction in D10. Remaining release
+work and validation are listed above.
 Commit/push only with explicit authorization.

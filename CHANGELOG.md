@@ -19,6 +19,9 @@ ISO 8601 format.
 
 ### Changed
 
+- Browser completion popups use their full width for labels when no help text
+  is present, avoiding cramped path/tag suggestions. Long values wrap within
+  the viewport; optional help retains aligned desktop columns and mobile stacking.
 - Accept repeated spaces and tabs between command words and aliases while
   preserving quoted argument values.
 - Remove the top-level `clear` command; use Ctrl-L to clear terminal/browser output.
